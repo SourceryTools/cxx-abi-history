@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 15 March 2000</i>
+<i>Revised 21 March 2000</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000321]</font>
+Additions to <a href=#F1>F-1</a>, <a href=#F6>F-6</a>.
 
 <p>
 <font color=blue>[000313]</font>
@@ -4512,6 +4516,12 @@ to get a more precise grammar description,
 and to incorporate the loose ends decisions from the meeting
 and proposals for a few more.
 
+<p>
+<font color=blue>[000316 All]</font>
+Extensive discussions in the meeting,
+reflected in the updated
+<a href=abi-layout.html#mangling>ABI Layout</a> document.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -4818,6 +4828,16 @@ If we do this,
 should we attempt to specify exactly what demangled names look like,
 or should we explicitly leave it unspecified and warn users
 not to depend on the exact format?
+
+<p>
+<font color=blue>[000321 HU-Berlin -- Martin]</font>
+Suggestion:
+<code><pre>
+  namespace abi {
+    std::string demangle_mangled_name (const char*);	// &lt;mangled-name>
+    std::string demangle_type (const char*);		// &lt;type>
+  }
+</pre></code>
 
 
 <p>
