@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 6 December 1999</i>
+<i>Revised 9 December 1999</i>
 
 </center>
 
@@ -3881,6 +3881,77 @@ so that the solution is not worth the resulting code bloat.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <a name=D4></a> <td> D-4 </td>
+<td> Unwind routines nested? </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 991209 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The IA-64 runtime conventions call for the unwind personality routine
+to behave like a routine nested in the routine raising an exception.
+Is that the preferred definition?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+This is not required, nor included in the proposed common implementation.
+However, a conforming implementation could add this option in the
+personality routine and tables.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990902 All]</font>
+Discussion reveals that Intel and HP have very different models of how
+cleanup actions are handled.
+
+<p>
+Intel builds one or more routines which are called from the unwind runtime,
+based on action descriptors in the unwind tables,
+and acting on the stack contents or objects to be destroyed
+without actually modifying the stack pointer until the final transfer
+of control to the user handler.
+This approach avoids actually restoring registers until the final
+transfer to the handler.
+
+<p>
+HP transfers control back to a user landing pad whenever anything needs
+to be done -- descriptors or handlers --
+and reenters the unwind runtime if further processing is required.
+They believe this approach to use much less space than the action
+descriptors would,
+and most importantly,
+that it allows arbitrary fixup for code motion around the call that throws.
+
+<p>
+<font color=blue>[991209 All]</font>
+An implementation can conform with the proposed C++ personality routine
+interface and either support or not support nested handlers --
+the only requirement is that the generated personality tables and
+routine collaborate.
+The
+<a href=http://reality.sgi.com//dehnert_engr/cxx/exceptions.pdf>
+proposed common EH interface from HP</a>
+does not use nested functions as handlers,
+but could easily be extended.
+
+<p>
+This issue is closed, with the immediate resolution of changing the
+base unwind ABI to <b>not</b> require nested function handlers.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <a name=D5></a> <td> D-5 </td>
 <td> Interaction with other languages (e.g. Java) </td>
 <td> lib ps </td>
@@ -3996,6 +4067,90 @@ Is there an example where stack walkback must occur to identify the
 handler, but resumption at the point-of-exception is required?
 I can't think of any, and I think the model of registering a trap
 handler is preferable for such purposes.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D7></a> <td> D-7 </td>
+<td> Interaction with signals or asynch events </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 991209 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The Standard says that the behavior of anything other than
+"pure C code" (POF) is implementation defined,
+and warns (in a note) against using EH in a signal handler.
+We should define what is supported,
+possibly explicitly stating that signal handler code must be a POF.
+We could allow any feature but exception handling to be used.
+We could allow some EH routines to be called
+(for instance, <code>uncaught_exception()</code>).
+Or we could allow even an exception to be thrown,
+if it does not exit the handler.
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+This ABI requires no support beyond the Standard requirements.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991006 All]</font>
+This common ABI will not allow throwing exceptions from a signal handler.
+
+<p>
+<font color=blue>[991007 All]</font>
+There remains concern about how to help customers
+(examples were presented of big database applications)
+for which raising exceptions from signal handlers for I/O failures
+is a highly desirable design.
+We will revisit this issue.
+
+<p>
+<font color=blue>[991209 All]</font>
+Further discussion clarified the situation.
+
+<p>
+The fundamental problem is that signals thrown from a signal handler
+(or otherwise asynchronously)
+may appear at arbitrary points in the program,
+where the unwind information is inadequate to reliably clean up,
+for instance because global variable updates have been moved across the
+point of exception.
+
+<p>
+A second problem is that signals are often processed on their own stack,
+and making the transition to the main user stack might not happen
+automatically.
+
+<p>
+As a result, it was generally agreed that dealing with exceptions
+raised asynchronously would require simply passing through the
+immediately enclosing stack frame (to avoid the first problem),
+and a special raise invocation (as a basis for addressing both).
+
+<p>
+However, the only customer that has been adamant about supporting
+asynchronous exceptions has also been adamant that such a partial
+solution would not be adequate.
+Their intended application involves raising the exception in a simple
+routine that they expect to be inlined (for performance reasons)
+directly into a try block,
+which would be bypassed by the proposed solution.
+Since making this work would involve significant performance penalties
+elsewhere, the group's concensus is that there is inadequate benefit
+from an attempted solution.
 
 
 <p> <hr> <p>
