@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 16 June 1999</i>
+<i>Revised 22 June 1999</i>
 
 </center>
 
@@ -110,6 +110,19 @@ Given the absence of addressing modes with displacements on IA-64,
 the consensus is to answer the first part of this question with "first."
 
 <p>
+[990617 All]
+Given a Vptr and only non-polymorphic bases,
+which (Vptr or base) goes at offset 0?
+<ul>
+<li> HP: Vptr at end, but IA-64 is different because no load displacement
+<li> Sun: Vptr at 0 probably preferred
+<li> g++: Vptr at end today
+</ul>
+<p>
+Tentative decision:  Vptr always goes at beginning.
+This issue is reduced to the question of Vtable layout.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -128,7 +141,8 @@ the consensus is to answer the first part of this question with "first."
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Matt]
+Where are the virtual base subobjects placed in the class layout?
+How are data member accesses to them handled?
 </td> </tr>
 
 </table>
@@ -138,6 +152,19 @@ the consensus is to answer the first part of this question with "first."
 With regard to how data member accesses are handled,
 the choices are to store either a pointer or an offset in the Vtable.
 The concensus seems to be to prefer an offset.
+
+<p>
+[990617 All]
+Any number of empty virtual base subobjects (rare) will be placed at
+offset zero.
+If there are no non-virtual polymorphic bases,
+the first virtual base subobject with a Vpointer will be placed at
+offset zero.
+Finally, all other virtual base subobjects will be allocated at the
+end of the class, left-to-right, depth-first.
+
+<p>
+Therefore,
 
 <p>
 <table border=on cellpadding=3>
@@ -158,10 +185,34 @@ The concensus seems to be to prefer an offset.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Matt]
+Define the class layout in the presence of multiple base classes.
 </td> </tr>
 
 </table>
+
+<p>
+[990617 All]
+At offset zero is the Vptr whenever there is one,
+as well as the first non-virtual base class with a Vptr
+(or if there is no no-virtual base class with a Vptr,
+but there is a virtual base class with a Vptr, it goes at offset zero).
+Also at offset zero is any number of empty base classes,
+as long as that does not place multiple subobjects of the same type at
+the same offset.
+If there are multiple empty base classes such that placing two of them
+at offset zero would violate this constraint, the first is placed there.
+(First means in declaration order.)
+
+<p>
+All other non-virtual base classes are laid out in declaration order at
+the beginning of the class.
+All other virtual base subobjects will be allocated at the
+end of the class, left-to-right, depth-first.
+
+<p>
+The above ignores issues of padding for alignment,
+and possible reordering of class members to fit in padding areas.
+See issue A-9.
 
 <p>
 <table border=on cellpadding=3>
@@ -182,10 +233,17 @@ The concensus seems to be to prefer an offset.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Matt]
+Where are empty base classes allocated?
+(An empty base class is one with no non-static data members,
+no virtual functions, no virtual base classes,
+and no non-empty non-virtual base classes.)
 </td> </tr>
 
 </table>
+
+<p>
+[990622]
+See A-3 above.
 
 <p>
 <table border=on cellpadding=3>
@@ -206,10 +264,19 @@ The concensus seems to be to prefer an offset.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Matt]
+When passing a parameter whose type is an empty class (see A-4 for
+definition), what is the convention?
 </td> </tr>
 
 </table>
+
+<p>
+[990623 SGI]
+We propose that no parameter slot be allocated to such parameters,
+i.e. that no register be used,
+and that no space in the parameter memory sequence be used.
+This implies that the callee must allocate storage at a unique address
+if the address is taken (which we expect to be rare).
 
 <p>
 <table border=on cellpadding=3>
@@ -230,7 +297,7 @@ The concensus seems to be to prefer an offset.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Matt]
+[Christophe]
 </td> </tr>
 
 </table>
@@ -262,6 +329,12 @@ Which base class do we use for this?
 </table>
 
 <p>
+[990617 All]
+It will be shared with the first polymorphic non-virtual base class,
+or if none, with the first polymorphic virtual base class.
+See A-2.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -288,6 +361,12 @@ allow the virtual base to move in the complete object.)
 </td> </tr>
 
 </table>
+
+<p>
+[990623 SGI]
+We propose that the alignment of a class be the maximum alignment of
+its virtual and non-virtual base classes,
+non-static data members, and Vptr if any.
 
 <p>
 <table border=on cellpadding=3>
@@ -321,6 +400,35 @@ Some participants want to avoid attempts to reorder members differently
 than the underlying C struct ABI rules.
 Others think there may be benefit in reordering later access sections
 to fill holes in earlier ones, or even in base classes.
+
+<p>
+[990617 all]
+There are several potential reordering questions, more or less independent:
+<ol>
+<li> Do we reorder whole access regions relative to one another?
+<li> Do we attempt to fill padding in earlier access regions with
+	initial members from later regions?
+<li> Do we fill the tail padding of non-POD base classes with members from
+	the current class?
+<li> Do we attempt to fill interior padding of non-POD base classes with later
+	members?
+</ol>
+
+<p>
+There is no apparent support for (1),
+since no simple heuristic has been identified with obvious benefits.
+There is interest in (2), based on a simple heuristic which might
+sometimes help and will never hurt.
+However, it is not clear that it will help much,
+and Sun objects on grounds that they prefer to match C struct layout.
+Unless someone is interested enough to implement and run experiments,
+this will be hard to agree upon.
+G++ has implemented (3) as an option,
+based on specific user complaints.
+It clearly helps HP's example of a base class containing a word and flag,
+with a derived class adding more flags.
+Idea (4) has more problems, including some non-intuitive (to users) layouts,
+and possibly complicating the selection of bitwise copy in the compiler.
 
 <p>
 <table border=on cellpadding=3>
@@ -361,13 +469,13 @@ What about the copy constructor and <code>this</code> pointer in that case?
 <td> Representation of pointers to members </td>
 <td> data </td>
 <td> open </td>
-<td> Sun </td>
+<td> Cygnus </td>
 <td> 990603 </td>
 <td> </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Sun]
+[Ian]
 </td> </tr>
 
 </table>
@@ -446,7 +554,7 @@ what are the rules for identifying "small" classes?
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-There are several methods for adjusting the this pointer
+There are several methods for adjusting the <i>this</i> pointer
 for a member function call,
 including thunks or offsets located in the vtable.
 We need to agree on the mechanism used,
@@ -709,7 +817,7 @@ requires a mechanism for early destruction of a subset.
 <td> Calling vfuncs in ctors/dtors </td>
 <td> call </td>
 <td> open </td>
-<td> Sun </td>
+<td> Cygnus </td>
 <td> 990603 </td>
 <td> </td>
 </tr>
@@ -981,7 +1089,9 @@ if it does not exit the handler.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+What happens when an exception is not caught in the thread where raised?
+What does uncaught_exception() return if another thread is currently
+processing an exception?
 </td> </tr>
 
 </table>
@@ -1014,7 +1124,13 @@ if it does not exit the handler.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+There are two principal models for instantiation.
+The <i>early instantiation</i> (or Borland) model performs all
+instantiation at compile time,
+potentially resulting in extra copies which are removed at link time.
+The <i>pre-link instantiation</i> model identifies the required
+instantiations prior to linking and instantiates them via a special
+compile step.
 </td> </tr>
 
 </table>
@@ -1156,7 +1272,11 @@ which at least mitigate it.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+In order to allow detection of conflicting template instantiation
+and specialization (in different translation units),
+should we name them differently?
+If we do so in an easily recognizable way,
+the linker could check for conflicts and report the ODR violation.
 </td> </tr>
 
 </table>
