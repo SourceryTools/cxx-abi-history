@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 9 September 1999</i>
+<i>Revised 6 October 1999</i>
 
 </center>
 
@@ -24,7 +24,30 @@ C++ ABI for IA-64: Data Layout
 <BODY>
 
 <p> <hr> <p>
+<h3> Contents </h3>
+
+<ul>
+<li> <a href=#general> General </a>
+<li> <a href=#definitions> Definitions </a>
+<li> <a href=#pod> POD Data Types </a>
+<li> <a href=#member-pointers> Member Pointers </a>
+<li> <a href=#class-types> Non-POD Class Types </a>
+<li> <a href=#vtable> Virtual Table Layout </a>
+<li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
+<li> <a href=#rtti> Run-Time Type Information (RTTI) </a>
+<li> <a href=#external-names> External Names </a>
+</ul>
+
+<p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[991006]</font>
+Added RTTI proposal.
+
+<p>
+<font color=blue>[990930]</font>
+Updated to new vtable layout proposal.
 
 <p>
 <font color=blue>[990811]</font>
@@ -36,6 +59,7 @@ Selected first variant for empty base allocation; removed others.
 
 
 <p> <hr> <p>
+<a name=general>
 <h3> General </h3>
 
 In what follows, we define the memory layout for C++ data objects.
@@ -53,6 +77,7 @@ we also specify the <i>data size</i> of an object, <i>dsize</i>(O),
 which intuitively is sizeof(O) minus the size of tail padding.
 
 <p> <hr> <p>
+<a name=definitions>
 <h3> Definitions </h3>
 
 <p>
@@ -94,6 +119,7 @@ the unique base class (if any) with which it shares the Vptr at offset 0.
 </dl>
 
 <p> <hr> <p>
+<a name=pod>
 <h3> POD Data Types </h3>
 
 The size and alignment of C POD types is as specified by the base (C) ABI.
@@ -298,15 +324,23 @@ Each vtable consists of the following components:
 <li>
 <i>Base offsets</i> are used to access
 the virtual bases of an object,
-or non-virtual bases when pointer adjustment is required
-for some overriden virtual function.
 Such an entry is a displacement to a virtual base subobject from the
 location within the object of the vtable pointer that addresses this vtable.
-These entries are only necessary if the class directly or indirectly
-inherits from virtual base classes,
-or if it overrides a virtual function defined in a base class and if
-adjustment from the base to the derived class is needed.
+These entries are only necessary if the class directly
+(or <font color=red>indirectly?</font>)
+inherits from virtual base classes.
 The values can be positive or negative.
+
+<p>
+<li>
+<i>vcall offsets</i> are used to perform pointer adjustment
+for overridden virtual functions.
+These entries are allocated when the
+class is used as a virtual base.
+They are referenced by the virtual functions
+to find the necessary adjustment from the base to the derived class,
+if any.
+These values may be positive or negative.
 
 <p>
 <li>
@@ -321,20 +355,10 @@ subobject with a vtable pointer.
 This is necessary for dynamic_cast<void*> in particular.
 
 <p>
-The virtual pointer points to the "offset to top" field.
-
-<p>
 <li>
 The <i>typeinfo pointer</i> points to the typeinfo object used for RTTI.
 All entries in each of the vtables for a given class point to the same
 typeinfo object.
-
-<p>
-<li>
-The <i>duplicate base information pointer</i> points to a table used to
-perform runtime disambiguation of duplicate base classes for dynamic casts.
-The entries in the vtables for a given class do not necessarily
-all point to the same table of duplicate base information.
 
 <p>
 <li>
@@ -352,12 +376,16 @@ a virtual function pointer entry is the descriptor.
 
 <p>
 <li>
-<i>Base vtables</i> are copies of the vtables for base classes of the
+<i>Secondary vtables</i> are copies of the vtables for base classes of the
 current class
 (copies in the sense that they have the same layout,
 though virtual function pointers may point to overriding functions).
 
 </ul>
+
+<p>
+The virtual pointer in the object points to the first virtual
+function pointer.
 
 <p>
 <h4> Virtual Table Order </h4>
@@ -369,13 +397,28 @@ analogous to the corresponding object layout.
 <ol>
 <p>
 <li>
+If vcall offsets are required,
+they come first,
+with ordering as defined in categories 3 and 4 below.
+
+<p>
+<li>
 If virtual base offsets are required,
-they come first, with ordering as defined in categories 3 and 4 below.
-<font color=red> <i>Question:</i>
-Is the characterization of which bases need offsets above adequate?
-<i>Note:</i> The non-virtual cases need to be reflected in the
-descriptions below of categories 3 and 4.
+they come next, with ordering as defined in categories 3 and 4 below.
+
+<p>
+<li>
+The offset to top field is next.
+It is present if the class has virtual functions.
+<font color=red>
+Question: Should we include the RTTI fields for classes with no virtual
+functions (only virtual bases), too?
 </font>
+
+<p>
+<li>
+The typeinfo pointer field is next.
+It is present if the class has virtual functions.
 
 <p>
 <li>
@@ -384,40 +427,15 @@ i.e. this is the address of the vtable contained in an object's vptr.
 
 <p>
 <li>
-The offset to top field is next (therefore at the vtable address),
-if required (always if there is a virtual function declared in the class).
-
-<p>
-<li>
-The typeinfo pointer field is next.
-It is always present.
-
-<p>
-<li>
-The duplicate base information pointer comes next, if required.
-
-<p>
-<li>
 Virtual function pointers come next,
 in order of declaration of the corresponding member function in the class.
-They appear only if there is no suitable entry in one of the base vtables,
-i.e. if the return type is overridden or if it is not declared in a base.
-<font color=red> <i>Question:</i>
-Is this a correct characterization?
-</font>
+They appear both for newly introduced functions and overridden functions.
 
 <p>
 <li>
-The base vtables are last,
-except for the primary base class vtable,
-which is a subtable of the derived class vtable.
-They are in order of base class declaration,
-with the vtables for a virtual base class coming after
-the vtable for the first base class defining it.
-<font color=red> <i>Question:</i>
-Can we just use the first vtable for the virtual base class embedded in
-another of the base vtables?
-</font>
+The secondary vtables are last.
+They are laid out in the same order used for the bases themselves in
+the object.
 
 </ol>
 
@@ -435,7 +453,7 @@ based on their base class structure.
 
 Structure:
 <ul>
-<li> No inherited base classes.
+<li> No virtual base classes.
 <li> No virtual functions.
 </ul>
 
@@ -448,7 +466,8 @@ and its objects contain no vptr.
 
 Structure:
 <ul>
-<li> No inherited base classes.
+<li> No inherited virtual functions.
+<li> No virtual base classes.
 <li> Declares virtual functions.
 </ul>
 
@@ -463,17 +482,11 @@ virtual function declared in the class.
 Structure:
 <ul>
 <li> Only non-virtual base classes.
-<li> Base classes are trivial or leaf (they have no base classes).
-<li> No adjustment is required in any overridden virtual functions.
+<li> Inherits virtual functions.
 </ul>
 
 <p>
-If none of the base classes have vtables,
-a vtable is constructed for the class
-according to the Category 1 rules.
-
-<p>
-Otherwise, the class has a vtable for each base class that has a vtable.
+The class has a vtable for each base class that has a vtable.
 The class's vtables are constructed from copies of the base class vtables.
 The entries are the same, except:
 
@@ -487,11 +500,6 @@ The entries are the same, except:
      the base class and overridden by this class are replaced with the
      addresses of the overriding functions
      (or the corresponding adjustor secondary entry points).
-
-<p>
-<li> At negative offsets,
-     offsets to the base classes are generated if used by adjustor
-     secondary entry points. 
 </ul>
 
 <p>
@@ -519,9 +527,6 @@ the primary vtable holds the following additional entries at its tail:
 <li> Entries for overridden virtual functions not already in the vtable.
      (These are also called replicated entries because they are already
      in the secondary vtables of the class.)
-    <font color=red> <i>Question:</i>
-    Are these really needed?
-    </font>
 </ul>
 
 The primary vtable, therefore,
@@ -549,20 +554,22 @@ Structure:
 <ul>
 <li> Only virtual base classes.
 <li> Base classes are not empty or nearly empty.
-<li> Base classes are trivial or leaf (they have no base classes).
 </ul>
 
 <p>
 The class has a vtable for each virtual base class that has a vtable.
 These are all secondary vtables and are constructed from copies of the
-base class vtables according to the same rules as in Category 2.
-The vtable pointers of the virtual base subobjects within the object
-address these vtables. 
+base class vtables according to the same rules as in Category 2,
+except that the vtable for a virtual base A also includes a vcall
+offset entry for each virtual function represented in A's primary
+vtable and the secondary vtables from A's non-virtual bases.
+The vcall offset entries are allocated from the inside out,
+in the same order as the functions appear in A's vtables.
 
 <p>
 The class also has a vtable that is not copied from the virtual base
 class vtables.
-This vtable is the primary vtable of the class and addressed by the
+This vtable is the primary vtable of the class and is addressed by the
 vtable pointer at the top of the object, which is not shared.
 It holds the following function pointer entries: 
 
@@ -581,7 +588,8 @@ The primary vtable also has virtual base offset entries
 to allow finding the virtual base subobjects.
 There is one virtual base offset entry for each virtual base class.
 For a class that inherits only virtual bases,
-the entries are in the reverse order in which the
+the entries are at increasing negative offsets from the address point
+of the vtable in the order in which the
 virtual bases appear in the class declaration,
 that is, the entry for the leftmost virtual
 base is closest to the address point of the vtable. 
@@ -630,7 +638,6 @@ order that virtual bases are placed in the object.
 <p>
 <h4> Issues: </h4>
 <ul>
-<li> A-6:  RTTI representation.
 <li> A-6:  Duplicate base structure representation.
 <li> B-2:  Will contain one entry per return type for covariant returns.
 </ul>
@@ -639,10 +646,420 @@ order that virtual bases are placed in the object.
 
 
 <p> <hr> <p>
+<a name=vtable-ctor>
+<h3> Vtables During Object Construction (open issue C-4)</h3>
+
+<p>
+In some situations,
+a special vtable called a construction vtable is used during
+the execution of base class constructors and destructors.
+These vtables are for specific cases of virtual inheritance.
+
+<p>
+During the construction of a class object, the object assumes the
+type of each of its base classes, as each base class subobject is
+constructed. RTTI queries in the base class constructor will return  
+the type of the base class, and virtual calls will resolve to member  
+functions of the base class rather than the complete class. Normally,  
+this behavior is accomplished by setting, in the base class
+constructor, the object's vtable pointers to the addresses of the
+vtables for the base class.
+
+<p>
+However, if the base class has direct or indirect virtual bases, the  
+vtable pointers have to be set to the addresses of construction
+vtables. This is because the normal base class vtables may not hold  
+the correct virtual base index values to access the virtual bases of  
+the object under construction, and adjustment addressed by these
+vtables may hold
+the wrong this parameter adjustment if the adjustment is to cast
+from a virtual base to another part of the object. The problem is
+that a complete object of a base class and a complete object of a
+derived class do not have virtual bases at the same offsets.
+
+<p>
+A construction vtable holds the virtual function addresses and the
+RTTI information associated with the base class and the virtual base  
+indexes and the addresses of adjustor entry points with this
+parameter adjustments associated with objects of the complete class.
+
+<p>
+To ensure that the vtable pointers are set to the appropriate
+vtables during base class construction, a table of vtable pointers,  
+called the VTT, which holds the addresses of construction and
+non-construction vtables is generated for the complete class. The
+constructor for the complete class passes to each base class
+constructor a pointer to the appropriate place in the VTT where the  
+base class constructor can find its set of vtables. Construction
+vtables are used in a similar way during the execution of base class  
+destructors.
+
+
+
+<p> <hr> <p>
+<a name=rtti>
+<h3> Run-Time Type Information (RTTI) </h3>
+
+<p>
+The C++ programming language definition implies that information about
+types be available at run time for three distinct purposes:
+<ol type=a>
+<li> to support the typeid operator,
+<li> to match an exception handler with a thrown object, and
+<li> to implement the dynamic_cast operator.
+</ol>
+(c) only requires type information about polymorphic class types,
+but (a) and (b) may apply to other types as well;
+for example, when a pointer to an int is thrown,
+it can be caught by a handler that catches "int const*".
+
+
+<p>
+<h5>Deliberations</h5>
+<p>
+The following conclusions were arrived at by the attending members of
+the C++ IA-64 ABI group:
+
+<ul>
+<p>
+<li> The exact layout for type_info objects is dependent on whether a
+    32-bit or 64-bit model is supported.
+<p>
+<li> Advantage should be taken of COMDAT sections and symbol preemption:
+    two type_info pointers point to equivalent types if and only if the
+    pointers are equal.
+<p>
+<li> A simple dynamic_cast algorithm that is efficient in the common
+    case of base-to-most-derived cast case is preferrable over more
+    sophisticated ideas that handle deep-base-to-in-between-derived
+    casts more efficiently at a slight cost to the common case.
+    Hence, the original scheme of providing a hash-table into the
+    list of base classes
+    (as is done e.g. in the HP aC++ compiler)
+    has been dropped.
+<p>
+<li> The GNU egcs development team has implemented an idea of this ABI
+    group to accelerate dynamic_cast operations by a-posteriori
+    checking a "likely outcome".
+    The interface of std::__dynamic_cast therefore keeps the
+    src2dst_offset hint.
+<p>
+<li> std::__extended_type_info is dropped.
+</ul>
+
+<p>
+<h5>Place of emission</h5>
+
+<p>
+It is probably desirable to minimize the number of places where a
+particular bit of RTTI is emitted.
+For polymorphic types, a similar problem occurs for virtual function tables,
+and hence the information can be appended at the end
+of the primary vtable for that type.
+For other types, they must presumably be emitted at the location
+where their use is implied:
+the object file containing the typeid, throw or catch.
+
+<p>
+Basic type information (such as for "int", "bool", etc.)
+can be kept in the run-time support library.
+Specifically, this proposal is to place in the
+run-time support library type_info objects for the following types:
+<ul>
+<li> void*, void const*; and
+<li> X, X* and X const*,
+    for every X in: bool, wchar_t, char, unsigned char, signed char,
+    short, unsigned short, int, unsigned int, long, unsigned long, long long,
+    unsigned long long, float, double, long double.
+</ul>
+(Note that various other type_info objects for class types may reside
+in the run-time support library by virtue of the preceding rules;
+e.g., that of std::bad_alloc.)
+
+
+<p>
+<h5>The typeid operator</h5>
+
+<p>
+The typeid operator produces a reference to a std::type_info structure
+with the following public interface:
+
+<pre><code>
+  struct std::type_info {
+     virtual ~type_info();
+     bool operator==(type_info const&) const;
+     bool operator!=(type_info const&) const;
+     bool before(type_info const&) const;
+     char const* name() const;
+  };
+</pre></code>
+
+<p>
+Assuming that after linking and loading only one type_info structure is
+active for any particular type symbol,
+the equality and inequality operators can be
+written as address comparisons:
+to type_info structures describe the same type
+if and only if they are the same structure (at the same address).
+In a flat address space
+(such as that of the IA-64 architecture),
+the before() member is also easily written in terms of an address comparison.
+The only additional piece of information that is required is the
+NTBS that encodes the name.
+The type_info structure itself can hold a pointer into a read-only segment
+that contains the text bytes.
+
+
+<p>
+<h5>Matching throw expressions with handlers</h5>
+
+<p>
+When an object is thrown a copy is made of it and the type of that copy
+is TT.
+A handler that catches type HT will match that throw if:
+<ul>
+  <li> HT is equal to TT except that HT may be a reference and that HT
+	may have top-level cv qualifiers
+	(i.e., HT can be "TT cv", "TT&" or "TT cv&"); or
+  <li> HT is a reference to a public and unambiguous base type of TT; or
+  <li> HT has a pointer type to which TT can be converted by a standard
+	pointer conversion (though only public,
+	unambiguous derived-to-base conversions are permitted)
+	and/or a qualification conversion.
+</ul>
+
+<p>
+This implies that the type information must keep a description of the public,
+unambiguous inheritance relationship of a type, as well as the const
+and volatile qualifications applied to types.
+
+
+<p>
+<h5>The dynamic_cast operator</h5>
+
+<p>
+Although dynamic_cast can work on pointers and references,
+from the point of view of representation we need only to worry
+about polymorphic class types.
+Also, some kinds of dynamic_cast operations are handled at compile time
+and do not need any RTTI.
+There are then three kinds of truly dynamic cast operations:
+<ul>
+<li> dynamic_cast<void cv*>, which returns a pointer to the complete lvalue,
+<li> dynamic_cast operation from a base class to a derived class, and
+<li> dynamic_cast across the hierarchy which can be seen as a cast to
+	the complete lvalue and back to a sibling base.
+</ul>
+
+<p>
+
+<h5>RTTI layout</h5>
+
+<ol type=1>
+
+<p>
+<li>
+The RTTI layout for a given type depends on whether a 32-bit or
+64-bit mode is in effect.
+
+<p>
+<li>
+Every vtable shall contain one entry describing the offset from a
+vptr for that vtable to the origin of the object containing that vptr
+(or equivalently: to the vptr for the primary vtable).
+This entry is directly useful to implement dynamic_cast<void cv*>,
+but is also needed for the other truly dynamic casts.
+This entry is located two words ahead of the location
+pointed to by the vptr (i.e., entry "-2").
+
+<p>
+<li>
+Every vtable shall contain one entry pointing to an object derived
+from std::type_info.
+This entry is located at the word preceding the location
+pointed to by the vptr (i.e., entry "-1").
+
+<p>
+std::type_info contains just two pointers:
+<ul>
+<li> its vptr
+<li> a pointer to a NTBS representing the name of the type
+</ul>
+
+<p>
+The possible derived types are:
+<ul>
+  <li> std::__fundamental_type_info
+  <li> std::__pointer_type_info
+  <li> std::__reference_type_info
+  <li> std::__array_type_info
+  <li> std::__function_type_info
+  <li> std::__enum_type_info
+  <li> std::__class_type_info
+  <li> std::__ptr_to_member_type_info
+</ul>
+
+<p>
+<li>
+std::fundamental_type_info adds no fields to std::type_info;
+
+<p>
+<li>
+std::__pointer_type_info adds two fields (in this order):
+<ul>
+  <p>
+  <li> a word describing the cv-qualification of what is pointed to
+    (e.g., "int volatile*" should have the "volatile" bit set in that word)
+  <p>
+  <li> a pointer to the std::type_info derivation for the unqualified type
+    being pointed to
+</ul>
+
+<p>
+Note that the first bits should not be folded into the pointer because
+we may eventually need more qualifier bits (e.g. for "restrict").
+The bit 0x1 encodes the "const" qualifier;
+the bit 0x2 encodes "volatile".
+
+<p>
+<li>
+std::__reference_type_info is similar to std::__pointer_type_info
+but describes references.
+
+<p>
+<li>
+std::__array_type_info and std::__function_type_info do not add fields
+to std::type_info
+(these types are only produced by the typeid operator;
+they decay in other contexts).
+std::__enum_type_info does not add fields either.
+
+<p>
+<li>
+std::__class_type_info introduces a variable length structure.
+The variable part that follows consists of a sequence of base class
+descriptions having the following structure:
+
+<pre><code>
+    struct std::__base_class_info {
+  
+       std::type_info *type; /* Null if unused. */
+       std::ptrdiff_t offset;
+       int is_direct: 1;
+       int is_floating: 1; /* I.e., virtual or base of virtual subobject. */
+       int is_virtual: 1; /* Implies is_floating. */
+       int is_shared: 1; /* Implies is_floating and the virtual subobject
+                            appears on multiple derivation paths. */
+       int is_accessible: 1;
+       int is_ambiguous: 1;
+    };
+</pre></code>
+
+<p>
+<font color=red><i>
+(Ed. note:  to avoid endianness confusion,
+the above should be defined in terms of a flags field and masks.)
+</i></font>
+
+<p>
+<li>
+The std::__ptr_to_member_type_info type adds two fields to std::type_info:
+<ul>
+<li> a pointer to a std::__class_type_info (e.g., the "A" in "int A::*")
+<li> a_pointer to a std::type_info corresponding to the member type
+    (e.g., the "int*" in "int A::*")
+</ul>
+
+</ol>
+
+
+<h5>std::type_info::name()</h5>
+<p>
+The NTBS returned by this routine is the mangled name of the type.
+
+
+<p>
+<h5>The dynamic_cast algorithm</h5>
+
+<p>
+Dynamic casts to "void cv*" are inserted inline at compile time.
+So are dynamic casts of null pointers and dynamic casts that are really
+static.
+
+<p>
+This leaves the following test to be implemented in the run-time
+library for truly dynamic casts of the form "dynamic_cast<T>(v)":
+(see [expr.dynamic_cast] 5.2.7/8)
+
+<ul>
+<p>
+<li>
+If, in the most derived object pointed (referred) to by v, v points
+(refers) to a public base class sub-object of a T object
+[note: this can be checked at compile time],
+and if only one object of type T is derived
+from the sub-object pointed (referred) to by v,
+the result is a pointer (an lvalue referring) to that T object.
+
+<p>
+<li>
+Otherwise, if v points (refers) to a public base class sub-object
+of the most derived object,
+and the type of the most derived object has an
+unambiguous public base class of type T,
+the result is a pointer
+(an lvalue referring)
+to the T sub-object of the most derived object. 
+
+<p>
+<li>
+Otherwise, the run-time check fails.
+</ul>
+
+<p>
+The first check corresponds to a "base-to-derived cast" and the second
+to a "cross cast".
+These tests are implemented by std::__dynamic_cast:
+
+<pre><code>
+   void* std::__dynamic_cast ( void *sub,
+			       std::__class_type_info *src,
+			       std::__class_type_info *dst,
+			       std::ptrdiff_t src2dst_offset);
+   /* sub: source address to be adjusted; nonnull, and since the
+    *      source object is polymoprhic, *(void**)sub is a vptr.
+    * src: static type of the source object.
+    * dst: destination type (the "T" in "dynamic_cast<T>(v)").
+    * src2dst_offset: a static hint about the adjustment needed
+    *    on sub; since this adjustment cannot be 1, 2 or 3,
+    *    those special values mean:
+    *       1: no hint
+    *       2: src is not a public base of dst
+    *       3: src is a multiple public base type but never a
+    *          virtual base type
+    *    otherwise, the src type is a unique public nonvirtual
+    *    base type of dst at offset -src2dst_offset from the
+    *    origin of dst.
+    */
+
+</pre></code>
+
+<p>
+<h5>The exception handler matching algorithm</h5>
+
+<p>
+Since the RTTI related exception handling routines are "personality specific",
+no interfaces need to be specified in this document
+(beyond the layout of the RTTI data).
+
+
+<p> <hr> <p>
+<a name=external-names>
 <h3> External Names (a.k.a. Mangling) </h3>
 
 <i>
 &lt;To be specified.>
+</i>
 
 <p>
 <hr>
