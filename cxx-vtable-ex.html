@@ -1,0 +1,396 @@
+<HTML>
+
+<HEAD>
+<title>C++ Vtable Example</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ Vtable Example
+</b></i></font>
+
+<p>
+<i>Revised 1 September 1999</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+<p>
+<hr>
+
+<p>
+This page is intended to illustrate issues with vtable layout by
+considering examples (as well as validating that I understand).
+
+<p>
+<hr>
+
+<h4> Example 1 (Christophe) </h4>
+
+<p>
+This example was provided by Christophe as an illustration of the
+problem with multiple occurrences of a virtual base.
+In successive tables below, I show
+(a) the class declarations, possible calls, and <i>this</i> adjustments;
+(b) the class object layout, as previously agreed; and
+(c) the vtable layouts, based on Christophe's original proposal.
+
+<p>
+
+<table align=center cellpadding=4 border=on>
+<caption> Table 1a: Example Code and Call Semantics </caption>
+
+<tr>
+<th> Declarations </th>
+<th> Call </th>
+<th> Callee </th>
+<th> Adjustment </th>
+</tr>
+
+<tr>
+<td rowspan=2><code><pre>
+
+struct A {
+  virtual void f ();
+  virtual void g ();
+  int ia;
+};
+
+A *pa;
+</pre></code></td>
+
+<td> <code>pa->f()</code> </td>
+    <td> A::f() </td> <td> none </td> </tr>
+<tr> <td> <code>pa->g()</code> </td>
+    <td> A::g() </td> <td> none </td> </tr>
+
+<tr>
+<td rowspan=6><code><pre>
+
+struct B: public virtual A {
+  void f ();
+  int ib;
+};
+
+B *pb;
+A *pa_in_b = pb;
+</pre></code></td>
+
+<td> <code>pb->f()</code> </td>
+    <td> B::f() </td> <td> none </td> </tr>
+<tr> <td> <code>pb->A::f()</code> </td>
+    <td> A::f() </td> <td> B => A </td> </tr>
+<tr> <td> <code>pb->g()</code> </td>
+    <td> A::g() </td> <td> B => A </td> </tr>
+<tr> <td> <code>pa_in_b->f()</code> </td>
+    <td> B::f() </td> <td> A => B </td> </tr>
+<tr> <td> <code>pa_in_b->g()</code> </td>
+    <td> A::g() </td> <td> none </td> </tr>
+<tr> <td> <code>pa_in_b->A::f()</code> </td>
+    <td> A::f() </td> <td> none </td> </tr>
+
+<tr>
+<td rowspan=6><code><pre>
+
+struct C: public virtual A {
+  void g ();
+  int ic;
+};
+
+C *pc;
+A *pa_in_c = pc;
+</pre></code></td>
+
+<td> <code>pc->f()</code> </td>
+    <td> A::f() </td> <td> C => A </td> </tr>
+<tr> <td> <code>pc->g()</code> </td>
+    <td> C::g() </td> <td> none </td> </tr>
+<tr> <td> <code>pc->A::g()</code> </td>
+    <td> A::g() </td> <td> C => A </td> </tr>
+<tr> <td> <code>pa_in_c->f()</code> </td>
+    <td> A::f() </td> <td> none </td> </tr>
+<tr> <td> <code>pa_in_c->g()</code> </td>
+    <td> C::g() </td> <td> A => C </td> </tr>
+<tr> <td> <code>pa_in_c->A::g()</code> </td>
+    <td> A::g() </td> <td> none </td> </tr>
+
+<tr>
+<td rowspan=14><code><pre>
+
+struct D: public B, public C {
+  int id;
+};
+
+D *pd;
+
+
+A *pa_in_d = pd;
+B *pb_in_d = pd;
+C *pc_in_d = pd;
+
+
+A *pa_in_b_in_d = pb_in_d;
+A *pa_in_c_in_d = pc_in_d;
+</pre></code></td>
+
+<td> <code>pd->f()</code> </td>
+    <td> B::f() </td> <td> D => B </td> </tr>
+<tr> <td> <code>pd->g()</code> </td>
+    <td> C::g() </td> <td> D => C </td> </tr>
+<tr> <td> <code>pa_in_d->f()</code> </td>
+    <td> B::f() </td> <td> A => D => B </td> </tr>
+<tr> <td> <code>pa_in_d->g()</code> </td>
+    <td> C::g() </td> <td> A => D => C </td> </tr>
+<tr> <td> <code>pb_in_d->f()</code> </td>
+    <td> B::f() </td> <td> none </td> </tr>
+<tr> <td> <code>pb_in_d->g()</code> </td>
+    <td> C::g() </td> <td> B => D => C </td> </tr>
+<tr> <td> <code>pc_in_d->f()</code> </td>
+    <td> B::f() </td> <td> C => D => B </td> </tr>
+<tr> <td> <code>pc_in_d->g()</code> </td>
+    <td> C::g() </td> <td> none </td> </tr>
+<tr> <td> <code>pa_in_b_in_d->f()</code> </td>
+    <td> B::f() </td> <td> A => D => B </td> </tr>
+<tr> <td> <code>pa_in_b_in_d->g()</code> </td>
+    <td> C::g() </td> <td> A => D => C </td> </tr>
+<tr> <td> <code>pa_in_c_in_d->f()</code> </td>
+    <td> B::f() </td> <td> A => D => B </td> </tr>
+<tr> <td> <code>pa_in_c_in_d->g()</code> </td>
+    <td> C::g() </td> <td> A => D => C </td> </tr>
+<tr> <td> <code>p...d->A::f()</code> </td>
+    <td> A::f() </td> <td> ... => A </td> </tr>
+<tr> <td> <code>p...d->A::g()</code> </td>
+    <td> A::g() </td> <td> ... => A </td> </tr>
+
+</table>
+
+
+<p>
+<hr>
+
+<table align=center cellpadding=4 border=on>
+<caption> Table 1b: Example Data Layout </caption>
+
+<tr>
+<th> Declarations </th>
+<th> Size </th>
+<th> Offset </th>
+<th> Member </th>
+</tr>
+
+<tr>
+<td rowspan=2><code><pre>
+
+struct A {
+  virtual void f ();
+  virtual void g ();
+  int ia;
+};
+</pre></code></td>
+
+<td rowspan=2> 16 </td>
+     <td> 0 </td> <td> <code><i>A::vptr</i></code> </td> </tr>
+<tr> <td> 8 </td> <td> <code>ia</code> </td> </tr>
+
+<tr>
+<td rowspan=4><code><pre>
+
+struct B: public virtual A {
+  void f ();
+  int ib;
+};
+</pre></code></td>
+
+<td rowspan=4> 32 </td>
+     <td> 0 </td> <td> <code><i>B::vptr</i></code> </td> </tr>
+<tr> <td> 8 </td> <td> <code>ib</code> </td> </tr>
+<tr> <td> 16 </td> <td> <code><i>A::vptr</i></code> </td> </tr>
+<tr> <td> 24 </td> <td> <code>ia</code> </td> </tr>
+
+<tr>
+<td rowspan=4><code><pre>
+
+struct C: public virtual A {
+  void g ();
+  int ic;
+};
+</pre></code></td>
+
+<td rowspan=4> 32 </td>
+     <td> 0 </td> <td> <code><i>C::vptr</i></code> </td> </tr>
+<tr> <td> 8 </td> <td> <code>ic</code> </td> </tr>
+<tr> <td> 16 </td> <td> <code><i>A::vptr</i></code> </td> </tr>
+<tr> <td> 24 </td> <td> <code>ia</code> </td> </tr>
+
+
+<tr>
+<td rowspan=7><code><pre>
+
+struct D: public B, public C {
+  int id;
+};
+</pre></code></td>
+
+<td rowspan=7> 48 </td>
+     <td> 0 </td> <td> <code><i>D/B::vptr</i></code> </td> </tr>
+<tr> <td> 8 </td> <td> <code>ib</code> </td> </tr>
+<tr> <td> 16 </td> <td> <code><i>C::vptr</i></code> </td> </tr>
+<tr> <td> 24 </td> <td> <code>ic</code> </td> </tr>
+<tr> <td> 28 </td> <td> <code>id</code> </td> </tr>
+<tr> <td> 32 </td> <td> <code><i>A::vptr</i></code> </td> </tr>
+<tr> <td> 40 </td> <td> <code>ia</code> </td> </tr>
+
+</table>
+
+<p>
+<hr>
+
+<table align=center cellpadding=4 border=on>
+<caption> Table 1c: Example Vtable Layout
+	<br>(Jim's interpretation of Christophe's proposal)
+</caption>
+
+<tr>
+<th> Declarations </th>
+<th> Vtable <sup>1,2,3</sup> </th>
+</tr>
+
+<tr>
+<td><code><pre>
+
+struct A {
+  virtual void f ();
+  virtual void g ();
+  int ia;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+-- A vtable address --
+A::offset_to_top (0)
+A::rtti
+A::f() [0]
+A::g() [0]
+</pre></code></td>
+
+</tr>
+
+<tr>
+<td><code><pre>
+
+struct B: public virtual A {
+  void f ();
+  int ib;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+B::offset_to_A (16)
+-- B vtable address --
+B::offset_to_top (0)
+B::rtti
+A::f() [16: offset_to_A]
+-- A-in-B vtable address --
+A::offset_to_top (-16)
+A::rtti
+B::f() [0]
+A::g() [16: offset_to_A]
+</pre></code></td>
+
+</tr>
+
+<tr>
+<td><code><pre>
+
+struct C: public virtual A {
+  void g ();
+  int ic;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+C::offset_to_A (16)
+-- C vtable address --
+C::offset_to_top (0)
+C::rtti
+A::g() [16: offset_to_A]
+-- A-in-C vtable address --
+A::offset_to_top (-16)
+A::rtti
+A::f() [16: offset_to_A]
+C::g() [0]
+</pre></code></td>
+
+</tr>
+
+
+<tr>
+<td><code><pre>
+
+struct D: public B, public C {
+  int id;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+D::offset_to_A (32)
+-- D, B-in-D vtable address --
+D::offset_to_top (0)
+D::rtti
+A::f() [32: offset_to_A]
+-- A-in-B-in-D vtable address --
+A::offset_to_top (-32)
+A::rtti
+B::f() [0]
+C::g() [16: offset_to_C]
+
+C::offset_to_A (16)
+-- C-in-D vtable address --
+C::offset_to_top (16)
+C::rtti
+A::g() [32: offset_to_A]
+-- A-in-C-in-D vtable address --
+A::offset_to_top (-32)
+A::rtti
+B::f() [0]
+C::g() [16: offset_to_C]
+</pre></code></td>
+
+</tr>
+
+<tr>
+<td colspan=2>
+<font size=-1>
+<ol>
+<li> Numbers in parentheses after offset_to_top entries are actual values.
+<li> Class prefixes for functions identify class where defined.
+<li> Information in square brackets after function pointer entries
+    is the offset which must be added to <i>this</i>
+    in the function (or thunk),
+    assuming that the caller has already added offset_to_top.
+</ol>
+</font>
+</td>
+</tr>
+
+</table>
+
+<p>
+<hr>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+
+</BODY>
+</HTML>
