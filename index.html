@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 17 February 2000</i>
+<i>Revised 28 February 2000</i>
 
 </center>
 
@@ -452,6 +452,14 @@ the same support runtimes.
 <td> 000217 </td>
 </tr>
 
+<tr class=small> <td> 37 </td>
+<td> Validate utility of has-public-base </td>
+<td> Nathan Sidwell </td>
+<td> open </td>
+<td> 000218 </td>
+<td> </td>
+</tr>
+
 
 </table>
 
@@ -744,6 +752,24 @@ The identifiers used are:
 <td> IBM </td>
 <td> 000204 </td>
 <td> 000217 </td>
+</tr>
+
+<tr class=small> <td> A-26 </td>
+<td> NULL pointers to member functions </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000221 </td>
+<td> </td>
+</tr>
+
+<tr class=small> <td> A-27 </td>
+<td> NULL pointers to data members </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000222 </td>
+<td> </td>
 </tr>
 
 
@@ -1166,8 +1192,7 @@ Virtual Function Handling  </th>
 </tr>
 
 <tr class=small> <td> F-3 </td>
-<td> Consistency checks
-</td>
+<td> Consistency checks </td>
 <td> call g </td>
 <td> open </td>
 <td> SGI </td>
@@ -1176,8 +1201,7 @@ Virtual Function Handling  </th>
 </tr>
 
 <tr class=small> <a name=F4></a> <td> F-4 </td>
-<td> Empty throw specs
-</td>
+<td> Empty throw specs </td>
 <td> call g </td>
 <td> open </td>
 <td> HP </td>
@@ -1186,8 +1210,7 @@ Virtual Function Handling  </th>
 </tr>
 
 <tr class=small> <a name=F5></a> <td> F-5 </td>
-<td> ILP32 vs. LP64
-</td>
+<td> ILP32 vs. LP64 </td>
 <td> call </td>
 <td> open </td>
 <td> HP </td>
@@ -1196,12 +1219,20 @@ Virtual Function Handling  </th>
 </tr>
 
 <tr class=small> <a name=F6></a> <td> F-6 </td>
-<td> Demangling
-</td>
-<td> call </td>
+<td> Demangling </td>
 <td> lib </td>
+<td> open </td>
 <td> Cygnus </td>
 <td> 000210 </td>
+<td> </td>
+</tr>
+
+<tr class=small> <a name=F7></a> <td> F-7 </td>
+<td> Mangling statics </td>
+<td> call </td>
+<td> open </td>
+<td> HP </td>
+<td> 000223 </td>
 <td> </td>
 </tr>
 
