@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 6 August 1999</i>
+<i>Revised 10 August 1999</i>
 
 </center>
 
@@ -25,6 +25,11 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990810]</font>
+New issue <a href=#G5>G-5</a>.
+Additions to <a href=#B6>B-6</a>, <a href=#C2>C-2</a>, <a href=#C3>C-3</a>.
 
 <p>
 <font color=blue>[990805]</font>
@@ -1702,6 +1707,12 @@ IBM's version is restricted to one symbol per section.
 Jim will look for Microsoft's PECOFF definition.
 Anyone else with a usable definition should send it.
 
+<p>
+<font color=blue>[990811 SGI -- Jim]</font>
+I've put a reworked version of Christophe's writeup in the
+<a href=abi-layout.html#vtable>data layout document</a>,
+along with a number of questions it raises.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -2080,6 +2091,45 @@ it becomes possible to avoid padding words in the ELF-64 format by
 separating the priority and address vectors.
 
 <p>
+<font color=blue>[990810 HU-B -- Martin]</font>
+Global destructor ordering must not only interleave with static locals,
+but also with atexit.
+This gives two problems:
+atexit is only guaranteed to support 32 functions;
+and dynamic unloading of DSOs break when functions are atexit registered.
+
+<p>
+<font color=blue>[990810 SGI -- Matt]</font>
+Yes, the interleaving is required by the C++ standard.
+It's a nuisance, and I don't think there's any good reason for it,
+but the requirement is quite explicit.
+
+<p>
+The relevant part of the C++ standard is section 3.6.3, paragraph 3:
+
+<p>
+<dl><dd>
+<cite>
+"If a function is registered with atexit (see <cstdlib>, 18.3) then
+following the call to exit, any objects with static storage duration
+initialized prior to the registration of that function shall not be
+destroyed until the registered function is called from the termination
+process and has completed. For an object with static storage duration
+constructed after a function is registered with atexit, then following
+the call to exit, the registered function is not called until the
+execution of the object's destructor has completed. If atexit is called
+during the construction of an object, the complete object to which it
+belongs shall be destroyed before the registered function is called."
+</cite>
+</dd></dl>
+
+<p>
+What this implies to me is that atexit, and the part of the runtime
+library that handles destructors for static objects, must know about
+each other.
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -2115,6 +2165,129 @@ requires a mechanism for early destruction of a subset.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990804 SGI -- Jim]</font>
+<h4> Proposal </h4>
+
+<p>
+My objectives are:
+<ul>
+<li> Simple library interface.
+<li> Efficient handling during construction.
+<li> Standard-conforming treatment during normal program exit.
+<li> Reasonable treatment during early DSO unload (e.g. dlclose).
+<li> Minimal dynamic and static linker impact.
+</ul>
+
+<p>
+<h5> Runtime Data Structure </h5>
+
+<p>
+The runtime library shall maintain a list of termination functions
+with the following information about each:
+
+<ul>
+<li> A function pointer (a pointer to a function descriptor on IA-64).
+<li> A void* operand to be passed to the function.
+<li> A void* handle for the <i>home DSO</i> of the entry (below).
+</ul>
+
+<p>
+The representation of this structure is implementation defined.
+All references are via the API described below.
+
+<p>
+<h5> Runtime API </h5>
+
+<ol type=A>
+<p>
+<li> Object construction:
+<p>
+When a global or local static object is constructed,
+which will require destruction on exit,
+a termination function is <i>registered</i> as follows:
+<center><code>
+int __cxx_atexit ( void (*f)(void *), void *p, dso_handle d );
+</code></center>
+This registration, e.g. <code>__cxx_atexit(f,p,d)</code>,
+is intended to cause the call <code>f(p)</code> when DSO d is unloaded,
+before all such termination calls registered before this one.
+It returns zero if registration is successful, nonzero on failure.
+<font color=red>Should we use exceptions instead?</font>
+
+<p>
+The registration function is called separate from the constructor.
+
+<p>
+<li> User atexit calls:
+<p>
+When the user registers exit functions with <code>atexit</code>,
+they should be registered with NULL parameter and DSO handle, i.e.
+<center><code>
+__cxx_atexit ( f, NULL, NULL );
+</code></center>
+<font color=red>
+Should we also allow user registration with a parameter?
+With a home DSO?
+</font>
+
+<p>
+<li> Termination:
+<p>
+When linking any DSO containing a call to <code>__cxx_atexit</code>,
+the linker should define a hidden symbol <code>__dso_handle</code>,
+with a value which is an address in one of the object's segments.
+(It doesn't matter what address,
+as long as they are different in different DSOs.)
+It should also include a call to the following function in the FINI
+list (to be executed first):
+<center><code>
+void __cxx_finalize ( dso_handle d );
+</code></center>
+The parameter passed should be <code>__dso_handle</code>.
+
+<p>
+Note that the above can be accomplished either by explicitly providing
+the symbol and call in the linker, or by implicitly including a
+relocatable object in the link with the necessary definitions,
+using a .fini_array section for the FINI call.
+Also, note that these can be omitted for an object with no calls to
+<code>__cxx_atexit</code>, but they can be safely included in all objects.
+
+<p>
+Finally, a main program should be linked with a FINI call to
+<code>__cxx_finalize</code> with NULL parameter.
+
+<p>
+When <code>__cxx_finalize(d)</code> is called,
+it should walk the termination function list,
+calling each in turn if <code>d</code> matches
+<code>__dso_handle</code> for the termination function entry.
+If <code>d == NULL</code>, it should call all of them.
+Multiple calls to <code>__cxx_finalize</code> should not result in
+calling termination function entries multiple times;
+the implementation may either remove entries or mark them finished.
+
+<p>
+<font color=red>
+Issue: By passing a NULL-terminated vector of DSO handles to
+<code>__cxx_finalize</code> instead of one,
+we could deal with unloading multiple DSOs at once.
+However, <code>dlclose</code> closes one at a time,
+so I'm not sure the extra complexity is worthwhile.
+</font>
+
+</ol>
+
+<p>
+Since <code>__cxx_atexit</code> and <code>__cxx_finalize</code>
+must both manipulate the same termination function list,
+they must be defined in the implementation's C++ runtime library,
+rather than in the individual linked objects.
+
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -3163,6 +3336,42 @@ And if they are really needed, they can be replaced with a file scope
 static constructor call plus an assignment.
 
 </ol>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=G5></a> <td> G-5 </td>
+<td> Varargs routine interface </td>
+<td> call </td>
+<td> open </td>
+<td> HU-B </td>
+<td> 990810 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The underlying C ABI defines conventions for calling varargs routines.
+Does C++ need, or would it benefit from, any modifications or special cases?
+How should we pass references or class objects?
+Is any runtime library support required?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990810 HU-B Martin]</font>
+I'd like to see an indirection in vararg lists,
+so they can be passed through thunks.
+This is necessary at least for the covariant returns,
+but might have other applications as well.
+
 
 
 
