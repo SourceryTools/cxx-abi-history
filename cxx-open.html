@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 28 July 1999</i>
+<i>Revised 4 August 1999</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990729]</font>
+Closed A-7.
+Additions to A-11, A-12, C-2.
+Summary added for A-12.
+New issue A-14.
 
 <p>
 <font color=blue>[990727]</font>
@@ -332,10 +339,10 @@ the group will discuss it on the 22nd.
 <tr> <td> A-7 </td>
 <td> Vptr sharing with primary base class </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990729 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -343,24 +350,13 @@ It is in general possible to share the virtual pointer with a
 polymorphic base class (the <i>primary</i> base class).
 Which base class do we use for this?
 </td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Share with the first non-virtual polymorphic base class,
+or if none with the first nearly empty virtual base class.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990617 All]</font>
-It will be shared with the first polymorphic non-virtual base class,
-or if none, with the first nearly empty polymorphic virtual base class.
-(See A-2 for the definition of <i>nearly empty</i>.)
-
-<p>
-<font color=blue>[990624 All]</font>
-HP noted that Taligent chooses a base class with virtual bases before
-one without as the primary base class),
-probably to avoid additional "this" pointer adjustments.
-SGI observed that such a rule would prevent users from controlling the
-choice by their ordering of the base classes in the declaration.
-The bias of the group remains the above resolution,
-but HP will attempt to find the Taligent rationale before this is decided.
 
 <p>
 <table border=on cellpadding=3>
@@ -470,7 +466,7 @@ except for cases with non-trivial copy constructors identified in C-7.
 </tr>
 
 <tr> <td> A-11 </td>
-<td> Representation of pointers to members </td>
+<td> Pointers to member functions </td>
 <td> data </td>
 <td> open </td>
 <td> Cygnus </td>
@@ -479,10 +475,28 @@ except for cases with non-trivial copy constructors identified in C-7.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Ian]
+How should pointers to member functions be represented?
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990729 All]</font>
+Jason described the g++ implementation, which is a three-member struct:
+<ol>
+<li> The adjustment to <i>this</i>.
+<li> The Vtable index plus one of the function, or -1.
+     (Zero is a NULL pointer.)
+<li> If (2) is an index, the offset from the full object to the member
+     function's Vtable.  If -1, a pointer to the function (non-virtual).
+</ol>
+
+<p>
+A concern about covariant returns was raised.
+It was observed that, given our decision to use distinct Vtable entries
+for distinct return types, no further concern is required here.
+Others will describe their representations.
+IBM has an alternative, but it is believed to be patented by Microsoft.
 
 <p>
 <table border=on cellpadding=3>
@@ -503,7 +517,11 @@ except for cases with non-trivial copy constructors identified in C-7.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Sun]
+Sun merges the secondary Vtables for a class (i.e. those for
+non-primary base classes) with the primary Vtable by appending them.
+This allows their reference via the primary Vtable entry symbol,
+minimizing the number of external symbols required in linking,
+in the GOT, etc.
 </td> </tr>
 
 </table>
@@ -511,6 +529,15 @@ except for cases with non-trivial copy constructors identified in C-7.
 <p>
 <font color=blue>[990701 Michael Lam]</font>
 Michael will check what the Sun ABI treatment is and report back.
+
+<p>
+<font color=blue>[990729 All]</font>
+A separate issue raised in conjunction with A-6 is whether to include
+Vfunc pointers in the primary Vtable for functions defined only in the
+base classes and not overridden.
+If the primary and secondary Vtables are concatenated,
+this is no longer an issue,
+since all can be referenced from the primary Vptr.
 
 <p>
 <table border=on cellpadding=3>
@@ -543,6 +570,36 @@ No special treatment will be specified by the ABI.
 </td> </tr>
 
 </table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <td> A-14 </td>
+<td> Pointers to data members </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990729 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should pointers to data members be represented?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990729 SGI]</font>
+We suggest an offset from the base address of the class,
+represented as a <code>ptrdiff_t</code>.
 
 <p> <hr> <p>
 <h3> Virtual Function Handling Issues </h3>
@@ -1565,6 +1622,8 @@ It was decided to follow the IBM approach, including:
 	The default will map to 0,
 	and larger numbers are lower priority.
 
+<li> Priorities MIN_INT .. MIN_INT+1000 are reserved to the implementation.
+
 <li> The object representation will use a 32-bit unsigned priority,
 	obtained from the source priority by subtracting INT_MIN.
 
@@ -1577,6 +1636,167 @@ It was decided to follow the IBM approach, including:
 To be resolved are the precise source pragma definition (possibly IBM's),
 and the ELF file representation.
 
+<p>
+<font color=blue>[990729 all]</font>
+SGI suggested an object representation involving (in relocatables)
+a new section type, containing pairs &lt;priority, entry address>.
+The linker would merge all such sections,
+include any initialization entries specified by other means,
+and leave one or more DT_INITARRAY entries for normal runtime
+initialization, either building a routine to call the entries,
+or referencing a standard runtime routine.
+
+<p>
+IBM noted that they combine their equivalent data structures in the
+linker, but don't sort them, leaving that to a runtime routine.
+This can be done without explicit linker support,
+but involves runtime overhead.
+
+<p>
+Cygnus suggested that if we are going to require linker sorting,
+we should make the facility more general.
+
+<p>
+Jim will write up a more precise proposal.
+
+<p>
+<font color=blue>[990804 SGI -- Jim]</font>
+<h4> Proposal </h4>
+
+<p>
+My objectives are:
+<ul>
+<li> Simple representation in relocatable objects.
+<li> No new representation in executable objects.
+<li> Simple static linker processing (general if possible).
+<li> Minimal unnecessary runtime cost.
+<li> Minimal library interface.
+<li> Integration with other initialization (at source priority zero).
+</ul>
+
+<p>
+<h5> Object File Representation </h5>
+
+<p>
+Define a new section type, e.g. <code><b>SHT_CXX_PRIORITY_INIT</b></code>.
+Its elements are structs:
+<code><pre>
+	typedef struct {
+	  ElfXX_Word	pi_pri;
+	  ElfXX_Addr	pi_addr;
+	} ElfXX_Cxx_Priority_Init;
+</pre></code>
+The semantics are that <code>pi_addr</code> is a function pointer,
+with an <code>unsigned int</code> priority parameter,
+which performs some initialization at priority <code>pi_pri</code>.
+Each of these functions will be called with the GP of the
+executable object containing the table.
+The section header field <code>sh_entsize</code> is 8 for ELF-32,
+or 16 for ELF-64.
+
+<p>
+<h5> Runtime Library Support </h5>
+
+<p>
+Each implementation shall provide a runtime library function with
+prototype:
+<code><center>
+void __cxx_priority_init ( ElfXX_Cxx_Priority_Init *pi, int cnt );
+</center></code>
+It will be called with the address of a <code>cnt</code>-element
+(sub-)vector of the priority initialization entries,
+and will call each of them in order.
+It will be called with the GP of the initialization entries.
+
+<p>
+<h5> Linker Processing </h5>
+
+<p>
+The linker must take the collection of SHT_CXX_PRIORITY_INIT section
+entries from the relocatable object files being linked,
+and other initialization tasks specified in other ways
+(and treated as source priority 0 or object priority -MIN_INT),
+and produce an executable object file which executes the initialization
+tasks in priority order using only <code>DT_INIT</code>,
+<code>DT_INIT_ARRAY</code>, and <code>__cxx_priority_init</code>.
+Priority order is first according to the priority of the task,
+and then according to the order of relocatable objects and options
+in the link command.
+The order of tasks specified by other methods,
+relative to SHT_CXX_PRIORITY_INIT tasks of priority zero,
+is implementation defined.
+There are several possible implementations.  Two extremes are:
+
+<ul>
+<p>
+<li>
+The linker sorts the SHT_CXX_PRIORITY_INIT sections together.
+If it inserts entries for initialization tasks specified in other ways,
+it may make a single DT_INIT_ARRAY entry pointing to __cxx_priority_init.
+If not, it must break it into subranges,
+interspersing DT_INIT_ARRAY entries for the other tasks with entries
+for the SHT_CXX_PRIORITY_INIT entries.
+(This implementation will minimize runtime overhead.)
+
+<p>
+<li>
+The linker simply appends the SHT_CXX_PRIORITY_INIT sections.
+It inserts DT_INIT_ARRAY entries before and after the entries for other
+initialization tasks which sort this vector and then execute the
+negative-priority calls on the first call,
+and the positive-priority ones on the second call.
+(I believe this is much like today's IBM implementation.)
+However, to be conforming, the routine which performs these tasks
+must be linked with the resulting executable object,
+or shippable with it as an associated DSO.
+
+</ul>
+
+<p>
+Note that if one is linking ELF-32 objects into a 64-bit program,
+the entries must be expanded as part of this process.
+
+<p>
+<h5> Sorting Sections </h5>
+
+<p>
+Jason suggested that if we base this feature on sorting sections,
+we should provide a general mechanism.
+Following is a proposal for that purpose.
+
+<p>
+Define a new section header flag, <code>SHF_SORT</code>.
+If present, the linker is required to sort the elements of the
+concatenated sections of the same type,
+where the elements are determined by <code>sh_entsize</code>.
+The sort is controlled by fields in <code>sh_info</code>:
+
+<dl>
+<p>
+<dt> <code>#define SH_INFO_KEYSIZE(info) (info & 0xff)</code>
+<br><dd>	The size of the sort key (bytes).
+<p>
+<dt> <code>#define SH_INFO_KEYSTART(info) ((info>>8) & 0xff)</code>
+<br><dd>	The start byte of the sort key within element, from 0.
+<p>
+<dt> <code>#define SH_INFO_SORTKIND(info) ((info>>16) & 0xf)</code>
+<br><dd>	The kind of sort data:
+		0 for unsigned integer, 1 for signed integer.
+
+</dl>
+
+<p>
+The sort must be stable.
+The sort key must be naturally aligned.
+
+<p>
+Other conceivable options would be to allow sorting strings
+(like SHF_MERGE, this would be indicated by setting SHF_STRING
+and putting the character size in <code>sh_entsize</code>),
+or floating point data.
+Also, note that if we don't anticipate using such a general mechanism,
+it becomes possible to avoid padding words in the ELF-64 format by
+separating the priority and address vectors.
 
 <p>
 <table border=on cellpadding=3>
@@ -1656,7 +1876,7 @@ some other means is required for accessing the correct vfunc.
 </tr>
 
 <tr> <td> C-5 </td>
-<td> Calling virtual destructors </td>
+<td> Calling destructors </td>
 <td> call </td>
 <td> open </td>
 <td> Sun </td>
@@ -1665,10 +1885,25 @@ some other means is required for accessing the correct vfunc.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Michael Lam]
+What is the calling convention for destructors?
+Do virtual destructors require special treatment?
+Is delete() integrated with the destructor call or separate?
+How is delete() handled when invoked on a base subobject?
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990729 all]</font>
+Some implementations combine destructors with deletion,
+checking a flag in the destructor to determine whether to delete.
+This produces somewhat less code,
+especially if there are many delete() calls.
+However, it adds overhead to any destructor which does not require
+deletion, e.g. base and member objects, automatic objects.
+There is some concern that a runtime test is sometimes required,
+but noone has yet identified why.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -1690,7 +1925,7 @@ some other means is required for accessing the correct vfunc.
 <tr> <td colspan=7>
 <b>Summary</b>:
 When calling constructors and destructors for classes with virtual bases,
-information obout the virtual base subobjects in the full class
+information about the virtual base subobjects in the full class
 must be transmitted somehow to the ctor/dtor.
 </td> </tr>
 
@@ -1731,6 +1966,12 @@ and there is an open defect report related to this question.
 For cases where the ctor may not be elided,
 we expect to perform the copy at the call site,
 and pass a reference.
+
+<p>
+<font color=blue>[990729 All]</font>
+Matt will produce a clear proposal for when the ABI will elide the
+constructor (and therefore pass the class object like a normal C struct),
+based on the Standard's exceptions.
 
 <p>
 <table border=on cellpadding=3>
