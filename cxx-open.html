@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 1 September 2000</i>
+<i>Revised 7 November 2000</i>
 
 </center>
 
@@ -25,6 +25,11 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[001107]</font>
+New issues <a href=#A30>A-30</a>, <a href=#A31>A-31</a>.
+<a href=#D18>D-18</a>.
 
 <p>
 <font color=blue>[000901]</font>
@@ -1130,6 +1135,238 @@ pointer-to-member is incomplete
 </table> 
 
 
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A30></a> <td> A-30 </td>
+<td> RTTI portability </td>
+<td> data </td>
+<td> open </td>
+<td> HUB </td>
+<td> 001012 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What must be specified to produce RTTI portability?
+Are member layouts specified?  Names?  Virtual functions?
+</td> </tr>
+<!--
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A30> Resolution</a></b>:
+
+</td> </tr>
+-->
+</table> 
+
+<p>
+<font color=blue>[001012 all -- Jim]</font>
+The issue here, raised originally by Martin, I will open as A-30.
+Implementations will generally need additional virtual functions
+associated with the type_info hierarchy to implement such functionality
+as dynamic cast.  Gcc for instance has functions __is_function_p,
+__do_catch, __pointer_catch, ...
+
+<p>  
+A program that is built from pieces from different compilers, where the
+pieces come from different implementations of the hierarchy, will see
+different structures, at least in the vtables, if we allow this extra
+material to be arbitrary, creating a problem if such programs actually
+make use of parts of the hierarchy.
+
+<p>
+We worked out the following possible solution:
+
+<ul>
+  <p>
+  <li>
+  First, observe that the vtables for the typeinfo derived classes will
+  be emitted where the key function (the virtual destructor, as
+  defined) is defined.  We require this to be in the implementation's
+  runtime library libcxa.so, so there is exactly one implementation of
+  them on any given target system.
+
+  <p>
+  <li>
+  We allow the implementation to define a collection of pseudo-virtual
+  functions to be associated with each class derived from
+  <code>std::type_info</code>:
+
+  <p>
+  <code><pre>
+        class __cxa_aux_typeinfo {
+          ... (*__is_function_p) (...);
+          ...
+        };
+  </pre></code>
+
+  <p>
+  The implementation will create one instance of this class for each of
+  the classes derived from std::type_info, and we will specify a
+  mangled name for it.
+
+  <p>
+  <li>
+  We add the following to the ABI definition of std::type_info:
+
+  <p>
+  <code><pre>
+        class std::type_info {
+          ...
+          protected:
+            __cxa_aux_typeinfo *__aux;
+            type_info (void) { /* set up __aux */ };
+        };
+  </pre></code>
+
+  <p>
+  <li>
+  Construction of one of the std::type_info derivatives can either call
+  the constructor or use the mangled name to initialize the __aux
+  member.
+
+  <p>
+  <li>
+  Use of __aux is reserved to the runtime implementation.
+</ul>
+
+<p>
+Now an implementation can add an arbitrary set of functions to
+__cxa_aux_typeinfo, specialized to the derived class like a virtual
+function, without changing the external interface (to the user) of
+the hierarchy.
+
+<p>
+<font color=blue>[001103 SGI -- Jim]</font>
+<p>
+[...leaving out much discussion...]
+<p>
+So, after all the above, I suggest the following actions:
+
+<ul>
+<li> Remove the statement that data member names are not normative.
+
+<li> Add a statement that the data members must be exactly as specified.
+
+<li> Leave the statement that the user may not reference the virtual
+  functions.  (Since the destructor is virtual, does this effectively
+  forbid deriving from the classes?)
+</ul>
+
+
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A31></a> <td> A-31 </td>
+<td> Overlaying tail padding </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 001019 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we change the decision to overlay tail padding in class layout?
+For volatile members?  In general?
+</td> </tr>
+<!--
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A31> Resolution</a></b>:
+
+</td> </tr>
+-->
+</table> 
+
+<p>
+<font color=blue>[001019 CodeSourcery -- Mark]</font>
+I think I recall that the committee was intentionally trying to use
+the tail padding of one object to save space.  For example, consider:
+
+  <code><pre>
+  struct A { short s; char c; };
+  struct B { A a; char d; };
+  </pre></code>
+
+<p>
+(These are PODs, but you can easily make an equivalent non-POD
+example).
+
+<p>
+Here, I think the comittee wanted to give `B' size 4, by packing `d'
+into the tail padding of `A'.
+
+<p>
+I think this is a mistake.  David Gross came up with the following
+example:
+
+<p>
+Code generator needs to copy dsize, not sizeof, unless it can prove
+that the object is in a context where tail padding isn't overlayed.
+Reason?  Tail padding might be overlayed by a volatile field.
+
+<p>
+Hence, a non-POD that looks like
+
+  <code><pre>
+      struct S { short sh; char ch; };
+  </pre></code>
+
+<p>
+requires ld2/st2/ld1/st1 for a copy instead of ld4/st4 because we
+might have
+
+  <code><pre>
+      struct T { S s; volatile char d; };
+  </pre></code>
+
+<p>
+Similarly, people using memcpy to copy around POD components of
+non-PODs will get burned.
+
+<p>
+This completely breaks user expectation since people routinely expect
+to be able to stick a function or two into a POD without changing its
+layout.
+
+<p>
+I think we should make the following changes:
+<ul>
+<li>
+Make nvsize a multiple of nvalign.  That ensures that we don't
+have odd sub-components that we can't copy around easily.
+
+<li>
+Allocate `sizeof' bytes for a data member, and `nvsize' bytes for
+a base class when laying out an object.
+</ul>
+
+<p>
+Note that this still permits the empty base optimization; nvsize will
+be zero, and sizeof will be 1.
+
+<p>
+There's an important different between using the tail padding in an
+empty base and the tail padding in a generic object: you know that you
+never have to copy an empty base.
+
+
+
 <p> <hr> <p>
 <h3> Virtual Function Handling Issues </h3>
 
@@ -2097,9 +2334,12 @@ structured results?
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#C18> Resolution</a></b>:
-In all cases where a result class object is returned in a buffer
-created by the caller,
-the buffer address will be passed in r8,
+All results with non-trivial copy constructors or destructors will be
+returned in buffers allocated by the caller,
+with their addresses passed as an implicit first parameter.
+Other structure results too large for the return registers are
+returned in a buffer created by the caller,
+with the buffer address passed in r8.
 </td> </tr>
 
 </table>
@@ -2890,6 +3130,66 @@ See <a href=abi-eh.html#cxx-aux>draft EH Specification</a>.
 </td> </tr>
 
 </table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#D18> <td> D-18 </td></a>
+<td> __cxa_throw_type_info </td>
+<td> lib </td>
+<td> open </td>
+<td> all </td>
+<td> 001012 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we replace the __cxa_throw_type_info pointer in the exception
+object by a pair of pointers to a <code>std::type_info</code> and a
+destructor?
+</td> </tr>
+<!--
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D17> Resolution</a></b>:
+</td> </tr>
+-->
+</table>
+
+<p>
+<font color=blue>[001012 all]</font>
+Making this type be a pair (type_info and destructor pointers)
+makes it necessary that a thrower or <code>__cxa_throw</code>
+construct one so that the exception object can point to it.
+This can't be done on the stack,
+since it's about to be unwound,
+and doing it on the heap when the
+exception might be out-of-memory doesn't seem ideal.
+
+<p>
+We propose that instead,
+we replace the <code>__cxa_throw_type_info</code> pointer
+in the exception object header by separate
+<code>std::type_info</code> and destructor pointers,
+and pass them as two parameters to <code>__cxa_throw</code>.
+
+<p>
+We also noticed that,
+if the thrown object is an array,
+the destructor passed will need to be a fabricated one which
+loops over the array elements.
+The alternative,
+to store the array bounds explicitly in the exception object,
+seems to be a lot of overhead for a very rare case.
+
+
+
 
 
 
