@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 7 November 2000</i>
+<i>Revised 17 November 2000</i>
 
 </center>
 
@@ -115,23 +115,22 @@ Note that the body of this document makes free use of a number of terms
 which are defined in the <i><b>Definitions</b></i> section below.
 </font>
 
+<!--
 <p>
 <h4> Outstanding Questions </h4>
 <font color=red>
-
 <ul>
-
 <p>
-
-<li> Should the data member names of
-<a href=#rtti-layout>RTTI classes</a>
-be normative?
-
+<li> 
 </ul>
 </font>
+-->
 
 <p>
 <h4> Recent Revisions </h4>
+
+<p>
+<font color=blue>[001110]</font>
 
 <p>
 <font color=blue>[001103]</font>
@@ -153,25 +152,6 @@ Mangling of names encodes byte count instead of character count (5.1.2).
 Mangling of vendor extended operator names encodes operand count (5.1.3).
 Remove redundant template-template-arg productions (5.1.5).
 Move mangling examples table to examples document (was 5.1.8).
-
-<p>
-<font color=blue>[000817]</font>
-Updates from 17 August meeting, email.
-
-<p>
-<font color=blue>[000807]</font>
-Added base document section (1.5).
-Further RTTI field name cleanup (2.9.5).
-Update proposed one-time construction API (3.3.2).
-Update proposed object construction priority API (3.3.4).
-Removed &lt;name> substitution (5.1.2).
-COMDAT not generally necessary for internal linkage (5.2).
-COMDAT for local static guard variables (5.2.2).
-
-<p>
-<font color=blue>[000727]</font>
-Updates from 20 July meeting.
-Added section on controlling object construction order (3.3.4).
 
 <p>
 <a href=#revisions>Revision History</a>
@@ -656,9 +636,7 @@ have been laid out, defining size, data size, non-virtual size,
 alignment, and non-virtual alignment.
 (See the description of these terms in
 <a href=#general><b>General</b></a> above.)
-<font color=red>
 Further, assume for data members that nvsize==size, and nvalign=align.
-</font>
 Layout (of type C) is done using the following procedure.
 
 <ol type=I>
@@ -715,7 +693,7 @@ calls to its virtual functions.
 </i>
 
 <p>
-<li> <h5> Non-Virtual-Base Allocation </h5>
+<li> <h5> Allocation of Members Other Than Virtual Bases </h5>
 <p>
 For each data component D (i.e. proper base or non-static data member)
 except virtual bases,
@@ -777,9 +755,7 @@ allocate as follows:
 	same offset.
 	If such a component type conflict occurs,
 	increment the candidate offset by nvalign(type(D))
-<font color=red>
 	for base classes or by align(type(D)) for data members
-</font>
 	and try again,
 	repeating until success occurs
 	(which will occur no later than sizeof(C) rounded up to the
@@ -789,16 +765,18 @@ allocate as follows:
 	If D is a base class, this step allocates only its non-virtual
 	part, i.e. excluding any direct or indirect virtual bases.
 
+<font color=red>
 	<p>
-	Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
+	If D is a base class, update sizeof(C) to max (sizeof(C),
+	offset(D)+nvsize(D)).  Otherwise, if D is a data member, 
+	update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
+
+	<p>
 	If D is a base class (not empty in this case),
 	update dsize(C) to offset(D)+nvsize(D),
-<font color=red>
 	and align(C) to max (align(C), nvalign(D)).
-</font>
 	If D is a data member,
-	update dsize(C) to max (offset(D)+dsize(D), offset(D)+1),
-<font color=red>
+	update dsize(C) to offset(D)+sizeof(D),
 	align(C) to max (align(C), align(D)).
 </font>
 
@@ -825,10 +803,15 @@ allocate as follows:
 
   </ol>
 
+<font color=red>
   <p>
   After all such components have been allocated,
-  set nvsize(C) = dsize(C) and nvalign(C) = align(C).
-  These values will not change during virtual base allocation.
+  set nvalign(C) = align(C),
+  and set nvsize(C) to the least multiple of nvalign(C)
+  that is greater than or equal to dsize(C).
+  The values of nvalign(C) and nvsize(C)
+  will not change during virtual base allocation.
+</font>
 
 <p><a name=a17>
 <li> <h5> Virtual Base Allocation </h5>
@@ -2096,9 +2079,7 @@ except for the Standard-specified member functions of the
 and do not imply anything about the member functions of these classes.
 Virtual member functions of these classes may only be used within the
 target systems' respective runtime libraries.
-<font color=red>
 The data members must be laid out exactly as specified.
-</font>
 
 <p>
 <li>
@@ -2586,41 +2567,35 @@ Specifically,
 <li>
 Space is allocated by the caller for the temporary.
 If there is no non-trivial copy constructor
-<font color=red>or destructor</font>,
+or destructor,
 it is in the normal parameter-passing space,
-i.e. in the parameter registers or on the stack.
+i.e. in the parameter registers or on the stack,
+<font color=red>
+and the constructor is called if necessary.
+</font>
 Otherwise, it is allocated on the stack or heap.
 
 <p>
 <li>
 The caller constructs the parameter in the space allocated,
 using a simple copy to the parameter space
-<font color=red>(parameter registers or stack)</font>
+(parameter registers or stack)
 if there is no non-trivial copy constructor
-<font color=red>or destructor</font>.
+or destructor.
 
 <p>
 <li>
 The function is called,
 passing the parameter value
 (if there is no non-trivial
-copy constructor <font color=red>or destructor</font>),
+copy constructor or destructor),
 or its address (if there is one).
-(Note that, if there is no non-trivial
-<font color=red>
-destructor,
-</font>
-the parameter will be passed in memory
-or may be copied out of registers on entry,
-so that the constructor can be called with <code> this </code> in memory.)
 
 <p>
 <li>
-<font color=red>
 The caller calls any non-trivial destructor
 for the parameter after returning
 (at the end of the containing expression).
-</font>
 
 <p>
 <li>
@@ -2641,24 +2616,34 @@ parameter.
 <h4> 3.1.3 Empty Parameters </h4>
 
 <p>
-A parameter of an empty class type will not normally occupy a position
-in the parameter sequence.
-There are two exceptions:
+<font color=red>
+A parameter of an empty class type will normally occupy a position
+in the parameter sequence as though it were a single-byte integer.
+There is one exception:
 <ul>
 
 <p>
 <li>
 If the type has a non-trivial copy constructor,
-it must be passed as described above.
+it must be passed by reference as described in Section 3.1.1 above.
 
 <p>
 <li>
+<strike>
 if the function being called has a varargs parameter list,
 in the empty parameter is in the variable part of the list,
 it must be passed as a normal parameter with size one byte.
 However, the content of the passed parameter is undefined.
+</strike>
 
 </ul>
+
+<p>
+The contents of the single byte parameter slot are unspecified,
+and the callee may not depend on any particular value.
+On IA-64, the associated NaT bit must not be set
+if the parameter slot is associated with a register.
+</font>
 
 
 <p>
@@ -2677,6 +2662,15 @@ The callee constructs the return value into this temporary.
 On IA-64, the pointer is passed in <code>out0</code>,
 different from other large class result buffer pointers,
 passed in <code>r8</code>.
+
+<p>
+<font color=red>
+A result of an empty class type will be returned as though it were
+a struct containing a single char,
+i.e. <code>struct S { char c; };</code>.
+The actual content of the return register is unspecified.
+On IA-64, the associated NaT bit must not be set.
+</font>
 
 
 <p>
@@ -3062,7 +3056,6 @@ A test program for this can be found in the
 </dl>
 
 
-<font color=purple>
 <p>
 <a name=once-ctor></a>
 <h4> 3.3.2 One-time Construction API </h4>
@@ -3101,7 +3094,7 @@ The two functions in the above sequence are defined as follows:
 <dl>
 
 <dt><code><pre>
-extern "C" int __cxa_guard_acquire ( <font color=red>__int64_t</font> *guard_object );
+extern "C" int __cxa_guard_acquire ( __int64_t *guard_object );
 </pre></code></dt>
 <dd>
 The <code>guard_object</code> argument is the guard variable
@@ -3118,7 +3111,7 @@ If not, return <code>true</code> (1) without releasing the lock.
 
 
 <dt><code><pre>
-extern "C" void __cxa_guard_release ( <font color=red>__int64_t</font> *guard_object );
+extern "C" void __cxa_guard_release ( __int64_t *guard_object );
 </pre></code></dt>
 <dd>
 The <code>guard_object</code> argument is the guard variable
@@ -3128,6 +3121,24 @@ Set it to indicate that initialization is complete,
 release the associated lock (in that order),
 and return.
 </dd>
+
+
+<font color=red>
+<dt><code><pre>
+extern "C" void __cxa_guard_abort ( __int64_t *guard_object );
+</pre></code></dt>
+<dd>
+The <code>guard_object</code> argument is the guard variable
+(see <a href=#guards>Section 2.8</a>)
+associated with an object being initialized.
+Set it to indicate that initialization is not complete,
+release the associated lock (in that order),
+and return.
+This routine is intended for use when the initialization raises an
+exception, which requires that initialization be attempted again by the
+next pass through the object's scope.
+</dd>
+</font>
 
 </dl>
 
@@ -3159,8 +3170,6 @@ the second word might be used for a mutex lock.
 On others, it might identify (as a pointer or index)
 a more complex lock structure to use.
 </i>
-
-</font>
 
 
 <p>
@@ -4096,10 +4105,16 @@ given a CV-qualified type,
 the base type is substitutible,
 and the type with all the C, V, and r qualifiers plus any vendor
 extended types in the same order-insensitive set is substitutible;
-any types with a subset of those qualifiers is not.
+any type with a subset of those qualifiers is not.
 That is, given a type <code>const volatile foo</code>,
 the fully qualified type or foo may be substituted,
-but not <code>const foo</code>.
+but not <code>volatile foo</code> nor <code>const foo</code>.
+<font color=red>
+Also, note that the grammar above is written with the assumption that
+vendor extended type qualifiers will be in the order-sensitive (not CV)
+set.  An appropriate grammar modification would be necessitated by an
+order-insensitive vendor extended type qualifier like const or volatile.
+</font>
 </i>
 
 <p>
@@ -4161,7 +4176,6 @@ For purposes of substitution
 delimited and undelimited function types are considered the same.
 
 <p>
-<font color=red>
 Whether the mangling of a function type includes the return type
 depends on the context and the nature of the function.
 The rules for deciding whether the return type is included are:
@@ -4180,7 +4194,6 @@ for which the return type is never included, are
 <li> Destructors.
 <li> Conversion operator functions, e.g. <code>operator int</code>.
 </ul>
-</font>
 
 <p>
 Empty parameter lists,
@@ -4436,6 +4449,14 @@ In any case, conflicts would arise only if different compilation units
 including the same code were compiled by different compilers,
 and multiple entities requiring mangling had the same name.
 </i>
+
+<p>
+<font color=red>
+For static objects in constructors and destructors,
+the mangling of the complete object constructor or destructor is used
+as the base function name, i.e. the C1 or D1 version.
+This yields mangled names that are consistent across the versions.
+</font>
 
 <p>
 Example:
@@ -4867,6 +4888,25 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[000817]</font>
+Updates from 17 August meeting, email.
+
+<p>
+<font color=blue>[000807]</font>
+Added base document section (1.5).
+Further RTTI field name cleanup (2.9.5).
+Update proposed one-time construction API (3.3.2).
+Update proposed object construction priority API (3.3.4).
+Removed &lt;name> substitution (5.1.2).
+COMDAT not generally necessary for internal linkage (5.2).
+COMDAT for local static guard variables (5.2.2).
+
+<p>
+<font color=blue>[000727]</font>
+Updates from 20 July meeting.
+Added section on controlling object construction order (3.3.4).
 
 <p>
 <font color=blue>[000707]</font>
