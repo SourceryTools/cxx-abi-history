@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 29 December 1999</i>
+<i>Revised 30 December 1999</i>
 
 </center>
 
@@ -39,7 +39,53 @@ C++ ABI for IA-64: Data Layout
 </ul>
 
 <p> <hr> <p>
+<h3> Outstanding Questions </h3>
+<font color=red>
+There are outstanding questions in the body of the document to be
+clarified:
+
+<ul>
+<p>
+<li> <a href=#q1>
+The vtable contains base offsets only for direct virtual base classes,
+correct?
+</a>
+
+<p>
+<li> <a href=#q2>
+Does a class vtable have offset-to-top and RTTI (typeinfo pointer)
+fields if it has virtual bases but not virtual functions?
+</a>
+
+<p>
+<li> <a href=#q3>A-16:
+Should a class containing only virtual bases be considered nearly empty?
+</a>
+
+<p>
+<li> <a href=#q4>A-17:
+Should a nearly empty virtual base class E that is the primary base
+class of another base class D of the class C being laid out,
+be re-allocated in C, or should its allocation as part of D in C be reused?
+</a>
+
+<p>
+<li> A-18:
+When allocating a base class D that has one or more virtual base classes,
+should we use its full standalone alignment (i.e. including the
+alignment constraints of the vitual base classes) as currently defined,
+or only the alignment constraint required by its non-virtual components?
+
+</ul>
+</font>
+
+<p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[991230]</font>
+Integrate proposed resolution of A-16, A-17 in base class layout.
+Add outstanding questions list, and clean up questions in text.
 
 <p>
 <font color=blue>[991229]</font>
@@ -126,17 +172,21 @@ no virtual functions, no virtual base classes,
 and no non-empty non-virtual base classes.
 
 <p>
+<a name=q3></a>
 <dt> <i>nearly empty class</i> </dt>
 <dd>
 A class that:
 <ul>
 <li> has no non-static data members other than zero-width bitfields,
-<li> has no base classes that are not either empty or nearly empty,
+<li> has no base classes that are not either empty, nearly empty,
+     <font color=blue>or virtual</font>,
 <li> has at most one nearly empty base class, and
 <li> has at least one virtual function, possibly inherited from a base class.
 </ul>
 
 Such a class contains only a Vptr.
+<p>
+<font color=blue>The blue text above is the proposed resolution of A-16.</font>
 
 <p>
 <dt> <i>polymorphic class</i> </dt>
@@ -302,15 +352,34 @@ allocate as follows:
   After all such components have been allocated,
   set nvsize(C) = dsize(C).
 
-<p>
+<p><a name=q4></a>
 <li> <h5> Virtual Base Allocation </h5>
 <p>
+<font color=green>
+The green text below is the proposed resolution of A-17.</font>
+
+<p>
 Finally allocate any direct or indirect virtual base classes
-(except one selected as the primary base class in I-2a, if any)
+(except <font color=green><s>one selected as the primary base class in I-2a</s>
+primary base classes as specified below</font>, if any)
 as we did non-virtual base classes in step II-1,
 in depth-first (in the inheritance graph) declaration order.
 Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
 If non-empty, also update align(C) and dsize(C) as in II-1.
+
+<p><font color=green>
+A nearly empty virtual base class E of the current class C that has
+been chosen as the primary base class has already been allocated in
+step I-2a, and is not allocated here.
+Furthermore, a nearly empty virtual base class E that has been chosen
+as the primary base class of another base F of the current class C,
+already allocated (i.e. as a non-virtual base in step II, or as a
+virtual base earlier in the depth-first left-to-right declaration order
+in step III),
+shall be treated as allocated as part of that class F
+(the first such in the allocation order if there is more than one),
+and not reallocated here.
+</font>
 
 <p>
 <li> <h5> Finalization </h5>
@@ -371,6 +440,7 @@ Each vtable consists of the following components:
 <ul>
 <p>
 <li>
+<a name=q1></a>
 <i>Base offsets</i> are used to access
 the virtual bases of an object,
 Such an entry is a displacement to a virtual base subobject from the
@@ -425,14 +495,14 @@ which points to such a two-component descriptor,
 a virtual function pointer entry is the descriptor.
 
 <p>
-<font color=red>
+<i>
 Note that the entries for virtual destructors are actually pairs of entries.
 The first performs the destruction without calling delete() on the object,
 while the second calls delete() after destroying the object.
 Both destroy any virtual bases;
 a separate, non-virtual entry performs destruction of the object but
 not its virtual base subobjects, and does not call delete().
-</font>
+</i>
 
 <p>
 <li>
@@ -468,6 +538,7 @@ they come next, with ordering as defined in categories 3 and 4 below.
 
 <p>
 <li>
+<a name=q2></a>
 The offset to top field is next.
 It is present if the class has virtual functions.
 <font color=red>
@@ -780,19 +851,6 @@ Another might use predication rather than branches to reach the main function.
 Another might emit a new copy of the function for each entry point;
 this is a quality of implementation issue.
 </ul>
-
-
-
-<i>
-<font color=red>
-<p>
-<h4> Issues: </h4>
-<ul>
-<li> A-6:  Duplicate base structure representation.
-<li> B-2:  Will contain one entry per return type for covariant returns.
-</ul>
-</font>
-</i>
 
 
 <p> <hr> <p>
