@@ -4330,13 +4330,13 @@ but also in types and scope identification.
 	       ::= &lt;<i>trinary</i> operator-name> &lt;expression> &lt;expression> &lt;expression>
                ::= st &lt;type&gt;
                ::= &lt;template-param>
+               ::= sr &lt;type> &lt;unqualified-name>                   # dependent name
+               ::= sr &lt;type> &lt;unqualified-name> &lt;template-args>   # dependent template-id
 	       ::= &lt;expr-primary>
 
   &lt;expr-primary> ::= L &lt;type> &lt;<i>value</i> number> E                   # integer literal
                  ::= L &lt;type &lt;<i>value</i> float> E                     # floating literal
                  ::= L &lt;mangled-name> E                           # external name
-                 ::= sr &lt;type> &lt;unqualified-name>                 # dependent name
-                 ::= sr &lt;type> &lt;unqualified-name> &lt;template-args> # dependent template-id
 
 </pre></code></font>
 
