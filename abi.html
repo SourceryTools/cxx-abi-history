@@ -2312,13 +2312,11 @@ It is derived from <code>abi::__class_type_info</code>:
       member points to the RTTI for the base type.
 
       <p>
-      The upper 56 bits of <code>__offset_flags</code> are a signed offset.
-      For a non-virtual base,
-      this is the offset in the object of the base subobject.
-      For a virtual base,
-      this is the offset in the virtual table of the
-      virtual base offset for the virtual base referenced
-      (negative).
+      All but the lower 8 bits of <code>__offset_flags</code> are a
+      signed offset.  For a non-virtual base, this is the offset in
+      the object of the base subobject.  For a virtual base, this is
+      the offset in the virtual table of the virtual base offset for
+      the virtual base referenced (negative).
 
       <p>
       The low-order byte of <code>__offset_flags</code> contains flags,
@@ -2328,14 +2326,6 @@ It is derived from <code>abi::__class_type_info</code>:
 	<li> 0x1: Base class is virtual
 	<li> 0x2: Base class is public
 	</ul>
-
-      <p>
-      <img src=warning.gif alt="<b>NOTE</b>:">
-      <i>
-      In an ABI for a machine with 32-bit addresses,
-      the offset becomes a 32-bit field,
-      and the flags are in the low-order byte of a second 32-bit field.
-      </i>
 
   </ul>
 
@@ -4930,6 +4920,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021204]</font>
+Remove note about 32-bit RTTI variation.
 
 <p>
 <font color=blue>[021125]</font>
