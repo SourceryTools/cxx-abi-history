@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 29 July 1999</i>
+<i>Revised 5 August 1999</i>
 
 </center>
 
@@ -453,6 +453,7 @@ The standard constrains ordering of class members in memory only if
 they are not separated by an access clause.
 Do we use an access clause as an opportunity to fill the gaps left by padding?
 </td> </tr>
+<tr> <td colspan=7>
 <b>Resolution</b>:
 See separate writeup of <a href=abi-layout.html>Data Layout</a>.
 </td> </tr>
@@ -592,6 +593,63 @@ class parameters will be passed using the underlying C struct protocol.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <td> A-12 </td>
+<td> Merging secondary vtables </td>
+<td> data </td>
+<td> closed </td>
+<td> Sun </td>
+<td> 990610 </td>
+<td> 990805 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Sun merges the secondary Vtables for a class (i.e. those for
+non-primary base classes) with the primary Vtable by appending them.
+This allows their reference via the primary Vtable entry symbol,
+minimizing the number of external symbols required in linking,
+in the GOT, etc.
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Concatenate the Vtables associated with a class in the same order
+that the corresponding base subobjects are allocated in the object.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990701 Michael Lam]</font>
+Michael will check what the Sun ABI treatment is and report back.
+
+<p>
+<font color=blue>[990729 All]</font>
+A separate issue raised in conjunction with A-7 is whether to include
+Vfunc pointers in the primary Vtable for functions defined only in the
+base classes and not overridden.
+If the primary and secondary Vtables are concatenated,
+this is no longer an issue,
+since all can be referenced from the primary Vptr.
+
+<p>
+<font color=blue>[990805 All]</font>
+All of the Vtables associated with a class will be concatenated,
+and a single external symbol used
+(to be identified as part of the mangling issue F-1).
+The order of the tables will be the same as the order of base class
+subobjects in an object of the class,
+i.e. first the primary Vtable,
+then the non-virtual base classes in declaration order,
+and finally the virtual base classes in depth-first declaration order.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <td> A-13 </td>
 <td> Parameter struct field promotion </td>
 <td> call </td>
@@ -619,6 +677,47 @@ No special treatment will be specified by the ABI.
 <font color=blue>[990701 all]</font>
 Define no special treatment for this case in the ABI.
 A translator with control over both caller and callee may choose to optimize.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <td> A-14 </td>
+<td> Pointers to data members </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990729 </td>
+<td> 990805 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should pointers to data members be represented?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Represented as one plus the offset from the base address.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990729 SGI]</font>
+We suggest an offset from the base address of the class,
+represented as a <code>ptrdiff_t</code>.
+
+<p>
+<font color=blue>[990805 All]</font>
+Such pointers are represented as one plus the offset from the base
+address of the class, as a <code>ptrdiff_t</code>.
+NULL pointers are zero.
 
 
 <p> <hr> <p>
@@ -787,8 +886,322 @@ and the ABI need not specify the choice.
 The location of the Vtable entries is part of the separate Vtable
 layout issue B-6.
 
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-3 </td>
+<td> Allowed caching of vtable contents </td>
+<td> call </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 990805 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The contents of the vtable can sometimes be modified,
+but the concensus is that it is nonetheless always allowed to "cache" elements,
+i.e. to retain them in registers and reuse them,
+whenever it is really useful.
+However, this may sometimes break "beyond the standard" code,
+such as code loading a shared library that replaces a virtual function.
+Can we all agree when caching is allowed? 
+</td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+Caching is allowed within a member function.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990604 HP -- Christophe]</font>
+Mike (Ball) gave me what I believe is an excellent definition of  
+when caching is allowed.  I'd like him to present it.
+
+<p>
+<font color=blue>[990805 All]</font>
+Christophe explained that the rule is simply that,
+within a call to a member function of the class,
+the class Vtable may not be modified.
+Between such calls, no assumption may be made.
+With this observation, the issue is closed.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-4 </td>
+<td> Function descriptors in vtable </td>
+<td> data </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 990805 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+For a runtime architecture where the caller is expected to load the GP
+of the callee (if it is in, or may be in, a different DSO), e.g. HP/UX,
+what should vtable entries contain?
+One possibility is to put a function address/GP pair in the vtable.
+Another is to include only the address of a thunk which loads the GP
+before doing the actual call.
+</td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+The Vtable will contain a function address/GP pair.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990624 All]</font>
+Note that putting GP in the Vtable prevents putting it in shared memory.
+See B-7.
+
+<p>
+<font color=blue>[990805 All]</font>
+It was decided that special representations to accomodate shared memory
+would be expensive and therefore undesirable.
+Therefore, the decision is to put the function address/GP pair in the
+vtable, avoiding the cost of an extra indirection in using it.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-7 </td>
+<td> Objects and Vtables in shared memory </td>
+<td> data </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990624 </td>
+<td> 990805 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Is it possible to allocate objects in shared memory?
+For polymorphic objects, this implies that the Vtable must also be
+in shared memory.
+</td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+No special representation is useful in support of shared memory.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990624 All]</font>
+Note that putting GP in the Vtable prevents putting it in shared memory.
+This interacts with B-4.
+
+<p>
+<font color=blue>[990624 HP -- Cary]</font>
+For a C++ object to be placed into shared memory,
+its vtable pointer must be valid in all processes
+that are sharing that object.
+
+<ol>
+<p>
+<li>
+If the vtable can be placed in text, that would be fine,
+but the vtable contains function pointers (or descriptors)
+that require runtime relocation, so it must be in data.
+
+<p>
+<li>
+We can place the vtables in shared memory,
+but only if the function pointers/descriptors are valid in all processes.
+The entry point addresses, which refer to shared text, should be shareable,
+but the gp values may not be identical for all processes.
+(RTTI pointers are also an issue,
+and could be solved by putting the RTTI information in shared memory as well.)
+
+<p>
+<li>
+We can place the vtables in private memory,
+provided they are at the same address in all processes.
+</ol>
+
+<p>
+One way or another,
+we need a way of ensuring that a pointer from shared 
+memory to private memory is valid in all processes,
+which means that we will need a means to ensure that certain shared
+library data segments can get mapped at the same address in all
+processes that load those certain libraries.
+
+<p>
+My wild idea a few years ago was to put the vtables in shared memory
+(by allocating and building them at load time, as Taligent did),
+and store a shared library index in place of the gp value
+in each function descriptor.
+Each process would have its own table of gp values,
+indexed by this shared library index,
+but the index space would be managed system-wide.
+The C++ runtime library would have been responsible for allocating
+a new index for each unique C++ shared library loaded on the system,
+then storing the process-local copy of the gp pointer in the 
+appropriate slot of the table.
+
+<p>
+<font color=blue>[990628 SGI -- Jim]</font>
+Note a further problem with vtables in shared memory (Cary's point 2).
+If a virtual function comes from another DSO,
+it may be pre-empted differently in different programs.
+Hence, the function pointer itself is a problem even if the GP isn't.
+
+<p>
+<font color=blue>[990701 All]</font>
+An extensive discussion boiled down to a few points:
+<ul>
+<p>
+<li> The primary issue is objects in shared memory --
+    vtables aren't interesting in themselves, but rather because
+    putting the object in shared memory implies having the vtable at
+    the same address in all sharing processes.
+
+<p>
+<li> Many of us have a few customers asking for this.
+    It is not clear just how extensive a facility they need,
+    or how automatic it needs to be.
+    We should attempt to gauge the need.
+
+<p>
+<li> Noone thinks we should penalize the non-shared case for
+    the rare instances of shared demand.
+
+<p>
+<li> It is questionable whether we can define an ABI mechanism
+    which will work on all of our systems,
+    but we'd like not to preclude OS-specific extensions to do
+    this if we can't.
+
+<p>
+<li> One possible approach would be an API allowing a user to
+    place an object in shared memory,
+    and then "install" it by setting its vtable pointers,
+    possibly to copies also placed in the same shared memory.
+
+<p>
+<li> A more automatic approach would be something which allocated
+    certain objects/vtables to shared memory,
+    gave up at link time if not all pointers were internal to the
+    object being linked,
+    attempted to place the relevant segments at the same runtime
+    addresses to allow sharing,
+    and gave up on sharing if this was not possible.
+    Such an approach would perhaps still require some care on the part
+    of the user to prevent problematic runtime situations.
+</ul>
+
+<p>
+These ideas are very fuzzy.
+Participants should think about the need and possibilities and attempt
+to identify more concrete approaches.
+
+<p>
+<font color=blue>[990805 All]</font>
+It was determined (largely based on consideration by Jason)
+that the only practical approach to putting objects in shared memory
+is to force the objects, Vtables, functions, etc. to the same addresses
+in the various processes involved.
+If this is done, data representation issues are irrelevant.
+Therefore, this issue is closed as moot.
+
+<p>
+Note that the base psABI defines a flag, EF_IA_64_ABSOLUTE,
+which forces an executable object to the addresses specified in ELF,
+so at least one method of representing this is already available.
+
+
 <p> <hr> <p>
 <h3> C.  Object Construction/Destruction Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-7 </td>
+<td> Passing value parameters by reference </td>
+<td> call </td>
+<td> closed </td>
+<td> All </td>
+<td> 990624 </td>
+<td> 990805 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+It may be desirable in some cases where a type has a non-trivial
+copy constructor to pass value parameters of that type by performing
+the copy at the call site and passing a reference.
+</td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+Whenever a class type has a non-trivial copy constructor,
+pass value parameters of that type by performing
+the copy at the call site and passing a reference.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990701 All]</font>
+Daveed and Matt will attempt to pin down the copy requirements with the
+Core committee, i.e. when a non-trivial copy constructor may be elided.
+The relevant Standard requirement is 12.8/15,
+and there is an open defect report related to this question.
+For cases where the ctor may not be elided,
+we expect to perform the copy at the call site,
+and pass a reference.
+
+<p>
+<font color=blue>[990729 All]</font>
+Matt will produce a clear proposal for when the ABI will elide the
+constructor (and therefore pass the class object like a normal C struct),
+based on the Standard's exceptions.
+
+<p>
+<font color=blue>[990805 All]</font>
+There are no cases where a non-trivial copy constructor can be simply
+elided for all instances of a particular parameter.
+Therefore, we shall use the consistent convention that,
+if a value parameter's (class) type has a non-trivial copy constructor,
+the caller will allocate space for it, perform the copy,
+and pass a reference.
+
+<p>
+Note that the standard does allow the caller,
+if the value being passed is a temporary,
+to construct the temporary directly into the parameter memory
+and elide the copy constructor call.
+
 
 <p>
 <table border=on cellpadding=3>
