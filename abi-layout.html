@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 19 October 1999</i>
+<i>Revised 5 November 1999</i>
 
 </center>
 
@@ -40,6 +40,10 @@ C++ ABI for IA-64: Data Layout
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[991104]</font>
+Noted pair of vtable entries for virtual destructors.
 
 <p>
 <font color=blue>[991019]</font>
@@ -378,6 +382,16 @@ the value of the target GP value and the actual function address.
 That is, rather than being a normal function pointer,
 which points to such a two-component descriptor,
 a virtual function pointer entry is the descriptor.
+
+<p>
+<font color=red>
+Note that the entries for virtual destructors are actually pairs of entries.
+The first performs the destruction without calling delete() on the object,
+while the second calls delete() after destroying the object.
+Both destroy any virtual bases;
+a separate, non-virtual entry performs destruction of the object but
+not its virtual base subobjects, and does not call delete().
+</font>
 
 <p>
 <li>
