@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 21 June 2000</i>
+<i>Revised 5 July 2000</i>
 
 </center>
 
@@ -51,6 +51,22 @@ Drafts:
 	<a href=abi-examples.pdf>(PDF)</a>
 <li> HP <a href=exceptions.pdf>exception handling</a> working paper,
 	8 December 1999.
+<p>
+<li> Sample GCC code:
+    <ul>
+    <li> <a href=gcc-typeinfo>typeinfo</a>:
+	class type_info declaration
+    <li> <a href=gcc-cxxabi.h>cxxabi.h</a>:
+	ABI support type_info classes and prototypes
+    <li> <a href=gcc-vec.cc>vec.cc</a>:
+	ABI vector new and delete helpers
+    <li> <a href=gcc-tinfo.h>tinfo.h</a>:
+	runtime header for tinfo.cc & tinfo2.cc
+    <li> <a href=gcc-tinfo.cc>tinfo.cc</a>:
+	ABI dynamic cast and catch matching routines
+    <li> <a href=gcc-tinfo2.cc>tinfo2.cc</a>:
+	ABI non-class type_info definitions
+    </ul>
 </ul>
 
 <p>
@@ -880,6 +896,15 @@ Virtual Function Handling  </th>
 <td> 000302 </td>
 </tr>
 
+<tr class=small> <td> B-10 </td>
+<td> Pure virtual runtime </td>
+<td> call </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000629 </td>
+<td> </td>
+</tr>
+
 
 
 <tr class=small> </tr>
@@ -1011,6 +1036,24 @@ Virtual Function Handling  </th>
 <td> all </td>
 <td> 000309 </td>
 <td> 000511 </td>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#C15> <td> C-15 </td></a>
+<td> Alternate array allocators </td>
+<td> call </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000628 </td>
+<td> </td>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#C16> <td> C-16 </td></a>
+<td> Copy constructor runtime </td>
+<td> call </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000628 </td>
+<td> </td>
 </tr>
 
 
@@ -1170,6 +1213,15 @@ Virtual Function Handling  </th>
 <td> all </td>
 <td> 991216 </td>
 <td> 000113 </td>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#D17> <td> D-17 </td></a>
+<td> bad_cast, bad_typeid runtime </td>
+<td> call </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000629 </td>
+<td> </td>
 </tr>
 
 
