@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 9 May 2000</i>
+<i>Revised 20 May 2000</i>
 
 </center>
 
@@ -33,6 +33,7 @@ C++ ABI for IA-64 (Draft)
   <li> <a href=#definitions>	1.1 Definitions </a>
   <li> <a href=#limits>		1.2 Limits </a>
   <li> <a href=#namespace>	1.3 Namespace and Header </a>
+  <li> <a href=#scope>		1.4 Scope of This ABI </a>
   </ul>
 <li> <a href=#layout> Chapter 2: Data Layout </a>
   <ul>
@@ -87,7 +88,6 @@ In general, this document is written as a generic specification,
 to be usable by C++ implementations on a variety of architectures.
 However, it does contain processor-specific material for the IA-64
 64-bit ABI, identified as such.
-<font color=red>
 Where structured data layout is described,
 we generally assume IA-64 psABI member sizes.
 An implementation for a 32-bit ABI would typically just change the
@@ -97,6 +97,7 @@ but sometimes an order change would be required for compactness,
 and we note more substantive changes.
 
 <p>
+<font color=red>
 This document is a work in progress,
 still being changed on a regular basis.
 In general, text appearing in this document in color is either
@@ -125,10 +126,6 @@ clarified:
 
 <ul>
 
-<a href=#guards>
-<li> Specify initialization guard variables.
-</a>
-
 <a href=#vmi>
 <li> Is there any useful purpose for the has-public-base flag in
     <code>vmi_flags</code> of <code>__vmi_class_type_info</code>?
@@ -140,6 +137,11 @@ clarified:
 
 <p>
 <h4> Recent Revisions </h4>
+
+<p>
+<font color=blue>[000511]</font>
+Specify 32-bit form of vmi_offset_flags.
+Add export template note.
 
 <p>
 <font color=blue>[000505]</font>
@@ -230,6 +232,7 @@ and arcs connecting each node with its direct bases.
 <dd>
 The ordering on a class object and all its subobjects obtained
 by a depth-first traversal of its inheritance graph,
+from the most-derived class object to base objects,
 where:
 
 <ul>
@@ -372,6 +375,99 @@ However, some (many?) are specified to be extern "C" if they:
      Note: this second exception has not yet been adopted.
 </ul>
 
+
+<p> <hr> <p>
+<a name=scope>
+<h3> 1.4 Scope of This ABI </h3>
+
+<font color=red>
+<a name=scope-library>
+<h3> 1.4.1 Runtime Libraries </h3>
+
+<i>
+
+<p>
+The objective of a full ABI is to allow arbitrary mixing of object
+files produced by conforming implementations,
+by fully specifying the <b>binary interface</b> of application programs.
+We do not fully achieve this objective.
+
+<p>
+There are two principal reasons for this:
+
+<ol type=I>
+<p>
+<li>
+We start from the IA-64 processor-specific ABI as the standard for the
+underlying C interfaces.
+At this time, however,
+the psABI does not attempt to specify the supported C library interfaces.
+
+<p>
+<li>
+More fundamental is the definition of the Standard C++ Library.
+As the standard interface makes heavy use of templates,
+most user object files will end up with embedded template
+instantiations.
+Vendors are allowed to use helper functions and data in their
+implementations of these templates,
+and quite reasonably do so,
+with the result that a typical user object file will contain references
+to such helper objects specific to the implementation where compiled.
+We have not attempted to constrain the interface at this level,
+because we do not consider doing so feasible at this time.
+</ol>
+
+<p>
+Notwithstanding these problems,
+because this ABI does completely specify the data model
+and certain library interfaces that inherently interact between objects
+(e.g. construction, destruction, and exceptions),
+it is our intent that interoperation of object files produced by
+different compilers be possible in the following cases:
+
+<ul>
+<p>
+<li>
+A program which uses only the standalone standard library interfaces
+(Chapter 18) does not depend on the problematic template features.
+
+<p>
+<li>
+Since the standard library headers for an implementation presumably
+match the interfaces of the standard library on that implementation,
+a program compiled with the target system's headers,
+even if a mixture of compilers is used,
+should function properly on that system.
+
+</ul>
+
+<p>
+Even these cases can fail if the compiler makes use of
+implementation-defined library interfaces to implement runtime
+functionality without explicit user reference,
+e.g. a software divide function.
+Therefore, we require that a compliant implementation place such
+runtime support (whether for support of standard features or extensions)
+in a library separate from the Standard Library implementation,
+with any external names chosen to avoid conflicts between vendors
+(e.g. by including a vendor identifier as part of the names).
+This allows a program to function properly if linked with the
+target's Standard Library implementation and the runtime support
+libraries from any implementations used to build components.
+
+<a name=scope-templates>
+<h3> 1.4.2 Export Templates </h3>
+
+<p>
+This ABI does not specify the treatment of export templates,
+as there are no working implementations to serve as models at this time.
+We hope to address this weakness in the future when implementation
+experience is available.
+
+
+</i>
+</font>
 
 
 <p> <hr> <p>
@@ -1085,6 +1181,7 @@ are in declaration order.
 </ul>
 
 <p>
+<font color=red>
 If the above listing of vcall offsets includes more than one
 for a particular virtual function signature,
 only the first one (closest to the vtable address point) is allocated.
@@ -1093,6 +1190,7 @@ eliminates any from A or its other bases,
 an offset from A eliminates any from the non-primary bases,
 and an offset from a non-primary base B of A eliminates any from the
 bases of B.
+</font>
 
 <p>
 <i>
@@ -1303,17 +1401,16 @@ between the declaration and D,
 the address of the secondary vtable for X-in-D.
 These include virtual and non-virtual, direct and indirect subobjects,
 <font color=red>
-in inheritance graph preorder.
+with the exception of primary non-virtual bases,
 </font>
+in inheritance graph preorder.
 (When constructing a sub-VTT for a subclass B of D in part 2 above,
 the relevant condition (b) for the inclusion of a secondary virtual
 pointer in the sub-VTT for B is the existence of a virtual function
 declaration overridden along a virtual path between the declaration and B,
 since otherwise the complete object virtual table for B is used.)
 The order of the virtual pointers is
-<font color=red>
 inheritance graph preorder.
-</font>
 
 <p>
 <i>
@@ -1329,11 +1426,9 @@ but is overridden in D (along a virtual path).
 <li>
 <i>Virtual VTTs</i>:
 The sub-VTTs for each virtual subobject in
-<font color=red>
 inheritance graph preorder),
-</font>
 i.e. the sub-VTT for virtual base W of virtual base V of D
-comes before the sub-VTT for V.
+comes after the sub-VTT for V.
 These sub-VTTs are constructed as in (2) above,
 including sub-VTTs for any non-virtual bases of the current virtual base.
 The virtual VTT addresses come last because they are only passed
@@ -1393,18 +1488,14 @@ complete object vtables are required.
   [1]  C1 * (has virtual base)
 
   [2]  C2 * (has virtual bases)
-<font color=red>
   [3]    V2-in-C2 in D (secondary vptr)
   [4]    V1-in-C2 in D (secondary vptr)
-</font>
 
   // 3. Secondary virtual pointers:
     // (no C1-in-D -- primary base)
-<font color=red>
   [5]  C2-in-D (preorder; has virtual bases)
   [6]    V2-in-D (V2::f overridden in D, has virtual base)
   [7]    V1-in-D (A2::f overridden in D)
-</font>
     // (For complete object D VTT, these can all point to the
     // secondary vtables in the D vtable.  In the sub-VTT for
     // D in a class derived from D, some might be construction
@@ -1598,9 +1689,12 @@ to allow distinct instances of the function
 (e.g. due to inlining) to use the same guard.
 
 <p>
-The size and content of the guard variable is not yet defined.
-The specification will depend partially on the chosen approach to
-threading support.
+<font color=red>
+The size of the guard variable is 64 bits.
+The low-order byte shall contain the value 0 prior to initialization of
+the associated variable, and 1 after initialization is complete.
+Usage of the other bytes of the guard variable is implementation-defined.
+</font>
 
 
 
@@ -1753,10 +1847,8 @@ inherited hierarchy.
 
 <p>
 <li>
-<font color=red>
 The class definitions below are to be interpreted as implying a memory
 layout following the class layout rules for the host ABI.
-</font>
 
 <p>
 <li>
@@ -1902,12 +1994,19 @@ It is derived from abi::__class_type_info, and adds data members:
       (negative).
 
       <p>
-      The lower byte of vmi_offset_flags contains flags,
+      The low-order byte of vmi_offset_flags contains flags,
       as given by the following masks:
 	<ul>
 	<li> 0x1: Base class is virtual
 	<li> 0x2: Base class is public
 	</ul>
+
+      <p>
+      <font color=red><i>
+      Note: In an ABI for a machine with 32-bit addresses,
+      the offset becomes a 32-bit field,
+      and the flags are in the low-order byte of a second 32-bit field.
+      </i></font>
 
   </ul>
 
@@ -2658,7 +2757,6 @@ no destructor call is to be made.
 </dl>
 
 
-<font color=red>
 <p>
 <a name=dso-dtor>
 <h3> 3.5 DSO Object Destruction API </h3>
@@ -2787,12 +2885,9 @@ must both manipulate the same termination function list,
 they must be defined in the implementation's runtime library,
 rather than in the individual linked objects.
 
-</font>
 
-
-<font color=red>
 <p>
-<a name=array-ctor>
+<a name=demangler>
 <h3> 3.6 Demangler API </h3>
 
 <p>
@@ -2853,7 +2948,6 @@ Meaning of error indications:
     <code>__cxa_demangle</code> may use realloc to increase its size.
     The new size will be stored in *n.
 </ul>
-</font>
 
 
 <p> <hr> <p>
@@ -2941,9 +3035,14 @@ The type is omitted for variables and static data members.
 
 <pre><font color=blue><code>
     &lt;name> ::= &lt;nested-name>
-	   ::= &lt;unqualified-name>
+	   ::= &lt;unqualified-name>	<font color=red>
+	   ::= &lt;unqualified-template-name> &lt;template-args> </font>
 	   ::= &lt;local-name>	# See <a href=#mangling-scope>Scope Encoding</a> below
 	   ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
+<font color=red>
+    &lt;unqualified-template-name> ::= &lt;template-name>
+				::= &lt;substitution>
+</font>
 </pre></font></code>
 
 Names of objects nested in namespaces or classes are identified as a
@@ -2955,7 +3054,7 @@ Note that if member function CV-qualifiers are required,
 the delimited form must be used even if the remainder of the name is
 a single substitution.
 
-<pre><font color=red><code>
+<pre><font color=blue><code>
     &lt;nested-name> ::= N [&lt;CV-qualifiers>] &lt;compound-name> E
     &lt;compound-name> ::= &lt;compound-name> &lt;component-name>
 		    ::= &lt;template-prefix> &lt;template-args>
@@ -2964,8 +3063,8 @@ a single substitution.
 		    ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
     &lt;template-prefix> ::= &lt;compound-name> &lt;template-name>
 		      ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
-    &lt;component-name> ::= &lt;template-name>
-		     ::= &lt;<i>namespace</i> source-name>
+    &lt;component-name> ::= &lt;template-name>	<font color=red>
+		     ::= &lt;source-name>	</font>
 		     ::= &lt;builtin-type>
 		     ::= &lt;function-type>
 		     ::= &lt;array-type>
@@ -2979,7 +3078,6 @@ a single substitution.
 		       ::= &lt;template-name> &lt;template-args>
 		       ::= &lt;operator-name>
 		       ::= &lt;special-name> # ctors, vtables, ...
-</font><font color=blue>
     &lt;source-name> ::= &lt;<i>length</i> number> &lt;identifier>
     &lt;number> ::= &lt;<i>decimal integer</i>>
     &lt;identifier> ::= &lt;<i>unqualified source code identifier</i>>
@@ -2993,14 +3091,6 @@ giving the character length of the following identifier.
 except for the value zero, represented as '0'.
 &lt;identifier> is a pseudo-terminal representing the unqualified
 identifier for the entity in the source code.
-
-<font color=red><strike>
-<p>
-&lt;type> is used to disambiguate overloaded functions,
-but also to distinguish the various virtual tables associated
-with a given complete class type.
-&lt;type> is omitted for variables and static data members.
-</strike></font>
 
 <p>
 Note that &lt;source-name> in the productions for &lt;unqualified-name>
@@ -3260,11 +3350,6 @@ Builtin types are represented by single-letter codes:
 </pre></font></code>
 
 <p>
-Note that the encodings of __int64 and __float80 are based on the
-assumption that the base psABI will treat them as typedefs,
-which is not yet confirmed.
-
-<p>
 Vendors who define builtin extended types shall encode them
 as a 'u' prefix followed by the name in &lt;length,ID> form.
 
@@ -3353,17 +3438,24 @@ Pointer-to-member types encode the class and member types.
 </pre></font></code>
 
 <p>
-<font color=red>
 When function and member function template instantiations reference
 the template parameters in their parameter/result types,
-the template parameter number is encoded.
+the template parameter number is encoded,
+<font color=red>
+with the sequence T_, T0_, ...
+</font>
 Class template parameter references are mangled using the standard
 mangling for the actual parameter type,
 typically a substitution.
+<font color=red>
+Note that a template parameter reference is a substitution candidate,
+distinct from the type (or other substitutible entity)
+that is the actual parameter.
 </font>
 
-<pre><font color=blue><code>
-  &lt;template-param> ::= T &lt;<i>parameter</i> number> _
+<pre><font color=red><code>
+  &lt;template-param> ::= T_	# first template parameter
+		   ::= T &lt;<i>parameter-2</i> number> _
 
 </pre></font></code>
 
@@ -3388,7 +3480,7 @@ For example, the template class "A&lt;char, float>" is encoded as "1AIcfE".
 A slightly more involved example is
 a dependent function parameter type "A&lt;T2>::X"
 (T2 is the second template parameter)
-which is encoded as "N1AIT2_E1XE",
+which is encoded as "N1AIT0_E1XE",
 where the "N...E" construct is used to describe a qualified name.
 
 <p>
@@ -3431,7 +3523,7 @@ An expression, e.g., "B&lt;(J+1)/2>",
 is encoded with a prefix traversal of the operators involved,
 delimited by "X...E".
 The operators are encoded using their two letter mangled names.
-For example, "B&lt;(J+1)/2>", if J is template parameter 1,
+For example, "B&lt;(J+1)/2>", if J is the third template parameter,
 becomes "1BI Xdv pl T1_ Li1E Li2E E E"
 (the blanks are present only to visualize the decomposition).
 Note that the expression is mangled without constant folding or other
@@ -3481,7 +3573,6 @@ The encoding for such entities is as follows:
 <code><pre>
   &lt;local-name> := Z &lt;<i>function</i> encoding> E &lt;<i>entity</i> name> [&lt;discriminator>]
                := Z &lt;<i>function</i> encoding> E s [&lt;discriminator>]
-               := Z &lt;<i>function</i> encoding> E c
 
   &lt;discriminator> := _ &lt;number> 
 </pre></code>
@@ -3523,10 +3614,6 @@ and multiple entities requiring mangling had the same name.
 </i>
 
 <p>
-The third production is used only to produce the name used for the
-COMDAT group containing the local objects.
-
-<p>
 Example:
 <code><pre>
    namespace N {
@@ -3562,13 +3649,17 @@ we use two mechanisms,
 a substitution encoding to eliminate repetition of name components,
 and abbreviations for certain common names.
 Each non-terminal in the grammar above for which &lt;substitution>
-appears on the RHS,
-<font color=red>
-types (except &lt;builtin-type> other than vendor extended types),
-</font>
-names, and qualified name prefixes,
+appears on the RHS, types, names, and qualified name prefixes,
 is both a source of future substitutions
 and a candidate for being substituted.
+<font color=red>
+There are two exceptions that appear to be substitution
+candidates from the grammar, but are explicitly excluded:
+<ul>
+<li> &lt;builtin-type> other than vendor extended types, and
+<li> function and operator names other than extern "C" functions.
+</ul>
+</font>
 
 <p>
 <i>
@@ -3582,6 +3673,13 @@ Similarly, we do not substitute for expressions,
 though names appearing in them might be substituted.
 The reason for this is to facilitate implementations that use the
 symbol table to keep track of components that might be substitutable.
+
+<p>
+<font color=red>
+Note that the above exclusion of function and operator names from
+consideration for substitution does <u>not</u> exclude the full
+function entity, i.e. its name plus its signature encoding.
+</font>
 </i>
 
 <p>
@@ -3610,54 +3708,39 @@ Substitution is according to the production:
 The &lt;seq-id> is a sequence number in base 36,
 using digits and upper case letters,
 and identifies the &lt;seq-id>-th
-<font color=red>
-<strike>most recently</strike>
 encoded component,
 in left-to-right order,
-</font>
 starting at "0".
 As a special case,
-the
-<font color=red>
-<strike>immediately preceding</strike> first
-</font>
-substitutable entity is encoded as "S_",
+the first substitutable entity is encoded as "S_",
 i.e. with no number,
-so the numbered entities are the second
-<font color=red>
-<strike>preceding</strike>
-</font>
-one as "S0_",
+so the numbered entities are the second one as "S0_",
 the third as "S1_", the twelfth as "SA_", the thirty-eighth as "S10_",
 etc.
 All substitutable components are so numbered,
 except those that have already been numbered for substitution.
-<font color=red>
-<strike> but the substitution occurs only if "S&lt;seq-id>_" (or "S_")
-is strictly shorter than the unsubstituted encoding,
-i.e. the encoding obtained if no substitution of its parts were done.
-</strike>
-</font>
-A component is
-<font color=red>
-<strike>less recent</strike>
-earlier in the substitution dictionary
-</font>
+A component is earlier in the substitution dictionary
 than the structure of which it is a part.
 For example:
 
-<font color=red>
 <code><pre>
    "_ZN1N1TIiiE2mfES0_IddE": Ret? N::T&lt;int, int>::mf(N::T&lt;double, double>)
 </pre></code>
 
 since at the point where S0_ appears:
 <code><pre>
-   "S2_" == N::T&lt;int, int>::mf
-   "S1_" == N::T&lt;int, int>
-	(int is builtin, and isn't considered)
-   "S0_" == N::T (template is less recent than template-id)
    "S_" == N (qualifier is less recent than qualified entity)
+   "S0_" == N::T (template-id comes before template)
+	(int is builtin, and isn't considered)
+   "S1_" == N::T&lt;int, int>
+
+</pre></code>
+
+<font color=red>
+After this point, the numbering continues:
+<code><pre>
+   "S2_" == N::T&lt;double, double>
+   "S3_" == N::T&lt;int, int>::mf(N::T&lt;double, double>)
 
 </pre></code>
 </font>
@@ -3733,16 +3816,16 @@ they are not part of the actual mangled name, and should be ignored.
 <tr class=small><td> _Z3foo3bar </td>
 <td> Ret? foo(bar); </td></tr>
 
-<tr class=small><td><font color=red> _Zrm1XS0_ </font></td>
+<tr class=small><td><font color=red> _Zrm1XS_ </font></td>
 <td> Ret? operator%(X, X); </td></tr>
 
-<tr class=small><td><font color=red> _ZplR1XRS1_ </font></td>
+<tr class=small><td><font color=red> _ZplR1XS0_ </font></td>
 <td> Ret? operator+(X&, X&); </td></tr>
 
-<tr class=small><td><font color=red> _ZlsRK1XS2_ </font></td>
+<tr class=small><td><font color=red> _ZlsRK1XS1_ </font></td>
 <td> Ret? operator&lt;&lt; (X const&, X const&);
 <font color=red>
-<br> (Note: operator&lt;&lt; is S_, X is S0_, X const is S1_)
+<br> (Note: X is S_, X const is S0_)
 </font>
 </td></tr>
 
@@ -3754,14 +3837,14 @@ they are not part of the actual mangled name, and should be ignored.
 <br> (Note: the return type is always explicitly encoded for template
 functions taking parameters.)</td></tr>
 
-<tr class=small><td><font color=red> _Z5firstI3DuoEvS0_ </font></td>
+<tr class=small><td><font color=red> _Z5firstI3DuoEvS_ </font></td>
 <td> void first&lt;Duo>(/*nondependent*/Duo);
 <font color=red>
-<br>(Note: first is S_, Duo is S1_, first<Duo> is S2_)
+<br>(Note: Duo is S_, first<Duo>(Duo) is S0_)
 </font>
 </td></tr>
 
-<tr class=small><td> _Z5firstI3DuoEvT1_ </td>
+<tr class=small><td><font color=red> _Z5firstI3DuoEvT_ </font></td>
 <td> void first&lt;Duo>(/*T1=*/Duo); </td></tr>
 
 <tr class=small><td> _Z3fooIiPFidEiEvv </td>
@@ -3780,18 +3863,23 @@ functions taking parameters.)</td></tr>
 <tr class=small><td> _ZN5StackIiiE5levelE </td>
 <td> Type? Stack&lt;int, int>::level; </td></tr>
 
-<tr class=small><td> _Z1fI1XE vPV N1AIT1_E1TE </td>
+<tr class=small><td><font color=red> _Z1fI1XE vPV N1AIT_E1TE </font></td>
 <td> void f&lt;X>(A&lt;/*T1=*/X>::T volatile*); </td></tr>
 
-<tr class=small><td> _ZngILi42EE vN1AIXplT1_Li2EE1TE </td>
+<tr class=small><td><font color=red>
+_ZngILi42EE v N1A I XplT_Li2EE E 1TE </font></td>
 <td> void operator-&lt;/*int J=*/42>(A&lt;J+2>::T); </td></tr>
 
 <tr class=small><td> _Z4makeI7FactoryiE T1_IT2_E </td>
 <td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
 <br> // T1 == template template parameter </td></tr>
 
-<tr class=small><td><font color=red> _Z3foo 5Hello5WorldS1_S0_ </font></td>
-<td> void foo(Hello,World,World,Hello) </td></tr>
+<tr class=small><td><font color=red> _Z3foo 5Hello5WorldS0_S_ </font></td>
+<td> void foo(Hello,World,World,Hello)
+<font color=red>
+<br> (Note: Hello is S_, World is S0_, foo(...) is S1_)
+</font>
+</td></tr>
 
 <tr class=small><td> _Z3fooPM2ABi </td>
 <td> foo(int AB::**)
@@ -3839,6 +3927,11 @@ the function is to be emitted in each object where its name is referenced.
 A COMDAT group is used to eliminate duplicates,
 with the mangled name of the function as the identifying symbol.
 
+
+<p>
+<a name=vague-static></a>
+<h4> 5.2.2 Static Data </h4>
+
 <p>
 Inline functions, whether or not declared as such,
 and whether they are inline or out-of-line copies,
@@ -3847,25 +3940,18 @@ that must be kept in common among all copies
 by using the local symbol mangling defined above.
 These objects are named according to the rules for local names in the
 <a href=#scope-encoding> Scope Encoding </a> section above,
-and their definitions are emitted in a single COMDAT group,
-the identifier of which is specified in the
-<a href=#scope-encoding> Scope Encoding </a> section above.
-This COMDAT group must be emitted in each object with references to the
-symbols for objects it contains, either inline or out-of-line.
-
-<p>
 <font color=red>
-Issue:  Different instances may require different subsets of the local
-objects defined, e.g. due to different optimization levels.
-In particular, the inlined copies might eliminate large parts of the code.
-So we must either require that each COMDAT contain all declared local objects,
-put them in different COMDATs,
-or otherwise guarantee that everything required is present.
+and the definition of each is emitted in a COMDAT group,
+identified by the symbol name described in the
+<a href=#scope-encoding> Scope Encoding </a> section above.
+Each COMDAT group must be emitted in any object with references
+to the symbol for the object it contains, whether inline or out-of-line.
 </font>
+
 
 <p>
 <a name=vague-vtable></a>
-<h4> 5.2.2 Virtual Tables</h4>
+<h4> 5.2.3 Virtual Tables</h4>
 
 <p>
 The virtual table for a class is emitted in the same object containing
@@ -3886,7 +3972,7 @@ it will be emitted in every object containing the definition.
 
 <p>
 <a name=vague-rtti></a>
-<h4> 5.2.3 Typeinfo</h4>
+<h4> 5.2.4 Typeinfo</h4>
 
 <p>
 The RTTI std::type_info structure for a complete class type is
@@ -3912,7 +3998,7 @@ identified by the NTBS mangled names.
 
 <p>
 <a name=vague-ctor></a>
-<h4> 5.2.4 Constructors and Destructors</h4>
+<h4> 5.2.5 Constructors and Destructors</h4>
 
 <p>
 Constructors and destructors for a class,
@@ -3932,36 +4018,42 @@ destructor name.
 
 <p>
 <a name=vague-itemplate></a>
-<h4> 5.2.5 Instantiated Templates</h4>
+<h4> 5.2.6 Instantiated Templates</h4>
 
-<font color=red>
 <p>
 An instantiation of a class template requires:
+
+<font color=red>
 <ul>
 <p>
 <li> In the object where instantiated,
     the virtual table, any subobject construction vtables, and the VTT,
-    along with any static member data,
     are emitted in a COMDAT identified by the virtual table mangled name.
 <p>
+<li> 
+    Any static member data object is emitted in a COMDAT identified by
+    its mangled name,
+    in any object file with a reference to its name symbol.
+<p>
 <li> In the object where instantiated,
-    non-inline virtual member functions are emitted in COMDAT groups
+    virtual member functions are emitted in COMDAT groups
     identified by the function name.
 <p>
-<li> Non-virtual member functions are emitted in any object where
-    referenced (non-inline),
-    in COMDAT groups identified by the function name.
+<li> A non-inline, non-virtual member function is emitted in any object
+    where its symbol is referenced
+    (i.e. if the function is called without inlining,
+    or its name is referenced without calling it),
+    in a COMDAT group identified by the function name.
 </ul>
+</font>
 
 <p>
 An instantiation of a function template or member function template
-is emitted in any object where it is referenced (non-inline),
+is emitted in any object where its symbol is referenced (non-inline),
 in a COMDAT group identified by the function name.
-</font>
 
 
 <p> <hr> <p>
-<font color=red>
 <a name=unwind>
 <h3> 5.3 Unwind Table Location </h3>
 
@@ -3976,7 +4068,6 @@ the unwind information table,
 and the associated code in a single text segment,
 with a <code>PT_IA_64_UNWIND</code> program table entry identifying the
 unwind table location.
-</font>
 
 
 <p>
