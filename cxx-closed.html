@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 17 August 1999</i>
+<i>Revised 11 October 1999</i>
 
 </center>
 
@@ -1066,6 +1066,19 @@ would be expensive and therefore undesirable.
 Therefore, the decision is to put the function address/GP pair in the
 vtable, avoiding the cost of an extra indirection in using it.
 
+<p>
+<font color=blue>[991007 IBM -- Brian]</font>
+A while ago Jason was worried about COM compatibility.
+Part of that is to ensure that vtables can be expressed in C.
+But the resolution of issue B-4 says that a vtable contains
+function descriptors rather than function descriptor pointers.
+
+<p>
+From the standpoint of call performance that is a good thing,
+but the result can't be built in C.
+I know that we at least will also have to rewrite parts of our
+C++ runtime that hand-build vtables.
+Neither of these are critical for IBM but may be for others.
 
 <p>
 <table border=on cellpadding=3>
@@ -1321,6 +1334,132 @@ and passes a pointer as an implicit first parameter
 
 <p> <hr> <p>
 <h3> D.  Exception Handling Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D5></a> <td> D-5 </td>
+<td> Interaction with other languages (e.g. Java) </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 991007 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The IA64 exceptions handling framework is largely language independent.
+What is the behaviour of a C++ runtime receiving, for instance,
+an exception thrown from Java?
+Does it call terminate()?
+Does it allow the exception to pass through C++ code with destructors
+if there is no catch clause?
+Does it allow the exception to be caught in a catch(...) provided this
+catch(...) ends with a rethrow?
+Does it allow even more?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+In general, foreign exceptions will cause normal destructor invocation
+and other cleanup in C++ code, and will pass through C++ frames except
+where explicit exception specifications do not allow them.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990908 SGI -- Jim]</font>
+We propose that this be resolved by identifying the source language in
+the exception descriptor and specifying that the personality routine be
+able to perform cleanup actions during handling of foreign-language
+exceptions, but not attempt to catch them.
+
+<p>
+<font color=blue>[991006 All]</font>
+The concensus of the group,
+from the discussion of the low-level exception API, is:
+<ul>
+<p>
+<li>
+A foreign-language exception,
+passing through a C++ frame,
+will cause normal destructor invocations exactly as a C++ exception would.
+<p>
+<li>
+Since catch(...) is commonly used as a cleanup mechanism (with a rethrow)
+rather than as a true catch,
+it is appropriate to catch and rethrow even foreign-language exceptions.
+<p>
+<li>
+Function exception specifications present a more complex issue.
+A foreign exception will generally not match any of the specified
+allowed exceptions
+(though implementations might deal with special cases).
+For consistency, it is expected that a foreign exception will be
+caught by a throw specification and not passed through,
+i.e. that unexpected() will be called.
+
+</ul>
+
+<p>
+<font color=blue>[991007 All]</font>
+In addition to the above,
+Christophe will define an exception __foreign_exception to be used
+by foreign-language code which wants to raise an exception that C++ can
+catch.
+<p>
+Close this issue.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D6></a> <td> D-6 </td>
+<td> Allow resumption in other languages? </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 991007 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The exception handling framework requires the interaction of the
+runtime of all the languages "on the stack" during exception processing.
+Some of these languages may have very different exception handling semantics.
+What are the constraints we impose on the C++ exception handling runtime
+to preserve the relative language neutrality of the EH framework?
+Example: do we allow a handler to cleanup and resume at the point
+where the exception was thrown?
+</td> </tr>
+<b>Resolution</b>:
+Moot -- resume-type exceptions are more appropriately handled by
+registering trap handlers and processing them in place.
+No interaction with stack traceback should be necessary.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990908 SGI -- Jim]</font>
+The typical case of cleanup and resume is floating point trap handling,
+which is normally handled entirely in the original FP trap handler.
+Is there an example where stack walkback must occur to identify the
+handler, but resumption at the point-of-exception is required?
+I can't think of any, and I think the model of registering a trap
+handler is preferable for such purposes.
+
 
 <p> <hr> <p>
 <h3> E.  Template Instantiation Model Issues </h3>
