@@ -276,8 +276,10 @@ virtual bases.  In particular, it:
 <ul>
 <li> has no non-static data members other than zero-width bitfields,
 <li> has no proper base classes that are not either empty, nearly empty,
-     or virtual, and
-<li> has at most one non-virtual, nearly empty proper base class.
+     or virtual,
+<li> has at most one non-virtual, nearly empty proper base class, and
+<li> has no proper non-virtual empty base class at an offset other
+     than zero.
 </ul>
 Such classes may be primary base classes even if virtual,
 sharing a virtual pointer with the derived class.
