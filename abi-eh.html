@@ -15,7 +15,7 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 31 January 2000.
+<i>Revised 7 July 2000.
 <a href=#revisions>Revision history</a> at end of document.
 </i>
 
@@ -27,7 +27,43 @@ C++ ABI for IA-64: Exception Handling
 
 
 <p> <hr> <p>
-<h3> General </h3>
+<h3> Contents </h3>
+
+<ul>
+<li> <a href=#intro> Introduction </a>
+  <ul>
+  <li> <a href=#defs> Definitions </a>
+  </ul>
+<li> <a href=#layout> Level I: Base ABI </a>
+  <ul>
+  <li> <a href=#base-framework>	1.1 Exception Handler Framework </a>
+  <li> <a href=#base-data>	1.2 Data Structures </a>
+  <li> <a href=#base-throw>	1.3 Throwing an Exception </a>
+  <li> <a href=#base-om>	1.4 Exception Object Management </a>
+  <li> <a href=#base-context>	1.5 Context Management </a>
+  <li> <a href=#base-personality> 1.6 Personality Routine </a>
+  </ul>
+<li> <a href=#cxx-abi> Level II: C++ ABI </a>
+  <ul>
+  <li> <a href=#cxx-intro>	2.1 Introduction </a>
+  <li> <a href=#cxx-data>	2.2 Data Structures </a>
+  <li> <a href=#cxx-init>	2.3 Standard Runtime Initialization </a>
+  <li> <a href=#cxx-throw>	2.4 Throwing an Exception</a>
+  <li> <a href=#cxx-catch>	2.5 Catching an Exception</a>
+  <li> <a href=#cxx-aux>	2.6 Auxiliary Runtime APIs</a>
+  </ul>
+<li> <a href=#cxx-abi> Level III: Implementation </a>
+  <ul>
+  <li> <a href=#imp-intro>	3.1 Introduction </a>
+  <li> <a href=#imp-data>	3.2 Data Structures </a>
+  </ul>
+<li> <a href=#revisions> Appendix R: Revision History</a>
+</ul>
+
+
+<p> <hr> <p>
+<a name=intro></a>
+<h3> Introduction </h3>
 
 In this document, we define the C++ exception handling ABI,
 at three levels:
@@ -72,6 +108,7 @@ completed at this time.</i>
 
 
 <p> <hr> <p>
+<a name=defs></a>
 <h3> Definitions </h3>
 
 <p>
@@ -93,7 +130,7 @@ or raising a new exception.
 
 <p> <hr> <p>
 <a name=base-abi></a>
-<h3> I. Base ABI </h3>
+<h3> Level I. Base ABI </h3>
 
 <p>
 This section defines the Unwind Library interface,
@@ -144,7 +181,8 @@ language-specific tasks such as identifying the frame handling a
 particular exception.
 
 <p>
-<h4> Exception Handler Framework </h4>
+<a name=base-framework></a>
+<h4> 1.1  Exception Handler Framework </h4>
 
 <p>
 <h5> Reasons for Unwinding </h5>
@@ -297,7 +335,8 @@ described in the following sections.
 
 
 <p>
-<h4> Data Structures </h4>
+<a name=base-data></a>
+<h4> 1.2  Data Structures </h4>
 
 <p>
 <b> Reason Codes </b>
@@ -419,7 +458,8 @@ and passed to the personality routine during unwinding.
 
 
 <p>
-<h4> Throwing an Exception </h4>
+<a name=base-throw></a>
+<h4> 1.3  Throwing an Exception </h4>
 
 <p>
 <h5> _Unwind_RaiseException </h5>
@@ -606,7 +646,8 @@ it will be called at the end of a landing pad in a "landing-pad" model.
 
 
 <p>
-<h4> Exception Object Management </h4>
+<a name=base-om></a>
+<h4> 1.4  Exception Object Management </h4>
 
 <p>
 <h5> _Unwind_DeleteException </h5>
@@ -628,7 +669,8 @@ to by the <code>exception_cleanup</code> field of the exception header.
 
 
 <p>
-<h4> Context Management </h4>
+<a name=base-context></a>
+<h4> 1.5  Context Management </h4>
 
 These functions are used for communicating information about the unwind
 context (i.e. the unwind descriptors and the user register state)
@@ -767,7 +809,9 @@ During unwinding, the function returns the start of the procedure
 fragment containing the call site in the current stack frame.
 
 
-<h4> Personality Routine </h4>
+<p>
+<a name=base-personality></a>
+<h4> 1.6  Personality Routine </h4>
 
 <p>
 <code><pre>
@@ -1068,7 +1112,12 @@ by C++ runtimes compatible with the common C++ ABI.
 
 <p> <hr> <p>
 <a name=cxx-abi></a>
-<h3> II. C++ ABI </h3>
+<h3> Level II: C++ ABI </h3>
+
+
+<p>
+<a name=cxx-intro></a>
+<h4> 2.1  Introduction </h4>
 
 <p>
 The second level of specification is the minimum required to allow
@@ -1110,24 +1159,66 @@ or will it return information to the runtime allowing the latter to do so?
 
 <p>
 <li>
-Standard runtime initialization,
-e.g. pre-allocation of space for out-of-memory exceptions.
-
-<p>
-<li>
 Multithreading behavior.
 
 </ul>
 
 
+<p>
+<a name=cxx-data></a>
+<h4> 2.1  Data Structures </h4>
+
+<p>
+
+
+<p>
+<a name=cxx-aux></a>
+<h4> 2.5  Auxiliary Runtime APIs </h4>
+
+<font color=red>
+<p>
+The C++ ABI includes the APIs of a number of runtime routines to
+facilitate code generation for recurring situations that need not
+always produce inline code.
+
+<dl>
+
+<dt><code><pre>
+extern "C" void __cxa_bad_cast ();
+</pre></code></dt>
+<dd>
+Raise a bad_cast exception (lib.bad.cast, 18.5.2).
+Does not return (normally),
+and implementations may note this fact, e.g. with pragmas.
+</dd>
+
+<dt><code><pre>
+extern "C" void __cxa_bad_typeid ();
+</pre></code></dt>
+<dd>
+Raise a bad_typeid exception (lib.bad.typeid, 18.5.3).
+Does not return (normally),
+and implementations may note this fact, e.g. with pragmas.
+</dd>
+
+
+</dl>
+
+</font>
+
 <p> <hr> <p>
 <a name=cxx-rt></a>
-<h3> III. Common C++ Runtime Implementation </h3>
+<h3> Level III. Implementation </h3>
+
+
+<p>
+<a name=imp-intro></a>
+<h4> 3.1  Introduction </h4>
 
 <p>
 The third level is a specification sufficient to allow all compliant
 C++ systems to share the relevant runtime implementation.
-It includes, in addition to the above:
+It includes, in addition to the Level II specification:
 
 <ul>
 <p>
@@ -1160,8 +1251,25 @@ a second-level specification must be part of the ABI.
 &lt;To be specified.>
 
 
+
+<p>
+<a name=cxx-data></a>
+<h4> 2.1  Data Structures </h4>
+
+<p>
+
+
+
 <p><a name=revisions></a> <hr> <p>
-<h3> Revisions </h3>
+<h3> Appendix R:  Revisions </h3>
+
+<p>
+<font color=blue>[000707]</font>
+Add auxiliary runtime APIs (2.5).
+
+<p>
+<font color=blue>[000502]</font>
+Begin integration of Level 2/3 specifications.
 
 <p>
 <font color=blue>[000131]</font>
