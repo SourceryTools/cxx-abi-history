@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 28 February 2000</i>
+<i>Revised 8 March 2000</i>
 
 </center>
 
@@ -33,6 +33,12 @@ including both predefined and user-defined data types,
 as well as internal compiler generated objects such as virtual tables.
 
 <p>
+In general, text appearing in this document in red is either
+tentative wording of agreements,
+or proposals not yet agreed upon,
+and should be taken as more subject to change than black material.
+
+<p>
 <font color=blue>
 Note that the body of this document makes free use of a number of terms
 which are defined in the <i><b>Definitions</b></i> section below.
@@ -44,6 +50,7 @@ which are defined in the <i><b>Definitions</b></i> section below.
 <ul>
 <li> <a href=#general> General </a>
 <li> <a href=#definitions> Definitions </a>
+<li> <a href=#limits> Limits </a>
 <li> <a href=#namespace> Namespace and Header </a>
 <li> <a href=#pod> POD Data Types </a>
 <li> <a href=#member-pointers> Member Pointers </a>
@@ -51,7 +58,7 @@ which are defined in the <i><b>Definitions</b></i> section below.
 <li> <a href=#vtable> Virtual Table Layout </a>
 <li> <a href=#vcall> Virtual Function Calling Conventions </a>
 <li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
-<li> <a href=#array-new> Array Operator new Cookies </a>
+<li> <a href=#array-ctor> Array Constructors and Destructors </a>
 <li> <a href=#rtti> Run-Time Type Information (RTTI) </a>
 <li> <a href=#mangling> External Names (a.k.a. Mangling)</a>
 <li> <a href=#revisions> Revision History</a>
@@ -130,7 +137,6 @@ A class with no non-static data members other than zero-width bitfields,
 no virtual functions, no virtual base classes,
 and no non-empty non-virtual base classes.
 
-<font color=red>
 <p>
 <dt> <i>inheritance graph</i> </dt>
 <dd>
@@ -159,7 +165,6 @@ A is walked first,
 then B and its subobjects,
 and then C and its subobjects.)
 </ul>
-</font>
 
 <p>
 <a name=q3></a>
@@ -251,6 +256,27 @@ It is always equal to <i>align</i>(O) for types without virtual bases.
 
 </ul>
 
+<font color=red>
+<p> <hr> <p>
+<a name=limits>
+<h3> Limits </h3>
+
+<p>
+Various representations specified by this ABI impose limitations on
+conforming user programs.
+These include, for the 64-bit IA-64 ABI:
+
+<ul>
+<p>
+<li>
+The offset of a non-virtual base subobject in the full object containing
+it must be representable by a 56-bit signed integer
+(due to RTTI implementation).
+</font>
+
+</ul>
+
+
 <p> <hr> <p>
 <a name=namespace>
 <h3> Namespace and Header </h3>
@@ -288,6 +314,9 @@ A pointer to data member is an offset from the base
 address of the class object containing it,
 represented as a <code>ptrdiff_t</code>.
 It has the size and alignment attributes of a <code>ptrdiff_t</code>.
+<font color=red>
+A NULL pointer is represented as -1.
+</font>
 
 <p>
 A pointer to member function is a pair <ptr, adj> as follows:
@@ -298,11 +327,12 @@ A pointer to member function is a pair <ptr, adj> as follows:
 <dd> For a non-virtual function, this field is a simple function pointer.
      (Under current base IA-64 psABI conventions,
      that is a pointer to a GP/function address pair.)
-<font color=red>
      For a virtual function,
      it is 1 plus the Vtable offset (in bytes) of the function,
      represented as a <code>ptrdiff_t</code>.
-     The value zero is a NULL pointer.
+     The value zero represents a NULL pointer,
+<font color=red>
+     independent of the adjustment field value below.
 </font>
 
 <p>
@@ -381,7 +411,6 @@ allocate as follows:
 
   <ol type=1>
 
-<font color=red>
   <p>
   <li> If D is a bitfield, i.e. declared as "<code>T [b]: n;"</code>,
        for some integral POD type T and bit count n,
@@ -420,7 +449,6 @@ allocate as follows:
        In either case,
        update sizeof(C) and dsize(C) to include the last byte
        containing (part of) the bitfield.
-</font>
 
   <p>
   <li> Otherwise, if D is not an empty base class,
@@ -563,12 +591,9 @@ Each vtable consists of the following components:
 Such an entry is added to the derived class object address
 (i.e. the address of its vtable pointer)
 to get the address of a virtual base class.
-These entries are required for:
-  <ul>
-  <li>direct virtual base classes, or
-  <li>indirect virtual base classes inherited from a direct virtual base
-  class.
-  </ul>
+<font color=red>
+Such an entry is required for each virtual base class.
+</font>
 The values can be positive or negative.
 
 <p>
@@ -609,9 +634,11 @@ and is zero for non-polymorphic classes.
 <p>
 <li>
 <i>Virtual function pointers</i> are used for virtual function dispatch.
-Each pointer holds either the address of a virtual function of the class
-(or the address of a secondary entry point that performs certain
-adjustments before transferring control to a virtual function.)
+Each pointer holds either the address of a virtual function of the class,
+or the address of a secondary entry point that performs certain
+adjustments before transferring control to a virtual function.
+
+<p>
 In the case of shared library builds,
 a virtual function pointer entry contains a pair of components
 (each 64 bits in the 64-bit IA-64 ABI):
@@ -661,6 +688,17 @@ with ordering as defined in categories 3 and 4 below.
 <li>
 If virtual base offsets are required,
 they come next, with ordering as defined in categories 3 and 4 below.
+
+<br>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+<font color=red>
+However, in classes sharing a vtable with a primary base class,
+the vcall and vbase offsets added by the derived class all come before
+the vcall and vbase offsets required by the base class and laid out as
+required by the base class without regard to the derived class(es).
+</font>
+</i>
 
 <p>
 <li>
@@ -932,7 +970,6 @@ nor for S because it is already present as a virtual base of T.
 <p>
 This section sketches the calling convention for virtual functions,
 based on the above virtual table layout.
-<font color=red>
 <i>See also the <a href=abi-examples.html#vcall>ABI examples</a>
 document for motivating examples and potential implementations.</i>
 
@@ -1149,8 +1186,6 @@ this is a quality of implementation issue.
 <a href=abi-examples.html#vcall-impl>ABI examples</a> document.</i>
 </ul>
 
-</font>
-
 
 <p> <hr> <p>
 <a name=vtable-ctor>
@@ -1209,124 +1244,161 @@ destructors.
 <p>
 An array of vtable addresses, called the VTT, is declared for each class
 type that needs a construction vtable.&nbsp; A class needs a construction
-vtable if it has:
-<ol>
-<li>
-indirect or direct virtual base classes, or</li>
-
-<li>
-a virtual function that is overridden along a virtual path (to provide
-correct vcall offset in most derived object).</li>
-</ol>
+vtable if it has
+<font color=purple>
+indirect or direct virtual base classes.
+</font>
 
 <p>
 The elements of the VTT&nbsp;array are in this order:
 <ol>
 <li>
 Address of the vtable for the complete object, which includes subobject
-vtables appended to it in the order which the base classes are allocated
-in the complete object,</li>
+vtables appended to it
+<font color=purple>
+as described in "Virtual Table Layout" above.
+</font>
 
 <p>
 <li>
 Addresses of construction vtables for each non-virtual subobject that needs
-a construction vtable.</li>
+a construction vtable.
 
-<br>This step is recursive, the addresses of construction vtables for each
+<p>This step is recursive: the addresses of construction vtables for each
 subobject include the addresses in 1 and 2 for each subobject class that
 has non-virtual subobjects that need construction vtables.
+
+<p>
 <li>
 Addresses of construction vtables for each virtual subobject in initialization
-(DFS) order.&nbsp; These addresses are as in #2 above, and can be recursive
-for non-virtual bases within the virtual base subobjects.&nbsp; The virtual
+(DFS) order. These addresses are as in #2 above, and can be recursive
+for non-virtual bases within the virtual base subobjects. The virtual
 VTT&nbsp;addresses are on the end because they are only passed to the virtual
-base class constructors for the complete object.</li>
+base class constructors for the complete object.
 </ol>
-All vtable addresses in the VTT&nbsp;point to the beginning address of
+
+All vtable addresses in the VTT point to the beginning address of
 the vtable, not the address that is assigned to the vptr.
 
 <p>
-<h4> VTABLE Layout</h4>
+<h4> Construction VTABLE Layout</h4>
 The construction vtables for a complete object are appended to the vtable
-in the order of their appearance in the VTT array.&nbsp;&nbsp; So the vtable
-for a complete object of class C has these components:
+in the order of their appearance in the VTT array.
+So the vtable for a complete object of class C has these components:
+
 <ol>
 <li>
-vtable that the primary vptr (the offset 0 one) points to</li>
+vtable to which the primary vptr (at offset 0) points;
 
 <li>
-base class subobject vtables in order of allocation, including virtual
-base class subobject vtables</li>
+base class subobject vtables in order of allocation,
+including virtual base class subobject vtables;
 
 <li>
 nonvirtual and virtual construction vtables in order of appearance in the
-VTT</li>
+VTT; and
 
 <li>
-VTT&nbsp;array for C</li>
+VTT array for C.
 </ol>
-We could separate the VTT&nbsp;array out of the vtable, and provide a new
-VTT data item.&nbsp; We could also make the VTT static so it has no linkage
+
+<p>
+<font color=purple>
+Issues:
+</font>
+<ul>
+<li>
+We could separate the VTT array from the vtable,
+and provide a new VTT data item.
+<li>
+We could also make the VTT static so it has no linkage
 and is created in the modules that define the constructors and destructor
-of a class.&nbsp;&nbsp; I don't think they would take that much space.
-<br>&nbsp;
+of a class.  I don't think they would take that much space.
+<font color=purple>
+<li>
+The subobject construction vtables do not need to be contiguous to the
+normal vtable, since they will be accessed via the VTT.
+</font>
+</ul>
 
 <p>
 <h4> Construction VTABLE entries</h4>
-The construction vtables for base class subobject B, has the same entries
-in the same order as the vtable for the complete object, B.&nbsp; The entries
-of the construction vtable have the following values:
+
+<p>
+The construction vtables for base class subobject B (of derived class D)
+have the same entries in the same order as the vtable for a complete object B,
+<font color=purple>
+as described in "Virtual Table Layout" above.
+</font>
+The entries of the construction vtable have the following values:
+
 <ol>
 <li>
-Virtual base class offsets relative to the complete object from B</li>
+virtual base class offsets relative to the complete object D from B,
 
 <li>
-VCALL&nbsp;offsets relative to the complete object</li>
+VCALL offsets relative to the complete object D,
 
 <li>
-offset to top of B in B, should be 0.</li>
+offset to top of B (will be 0),
 
 <li>
-pointer to RTTI&nbsp;for B</li>
+pointer to RTTI for B, and
 
 <li>
-overridden virtual functions for B.</li>
+overridden virtual functions for B.
 </ol>
-Within the construction vtable for a subobject B, the base class subobject
-construction vtable for base class V of B in derived class D, has the following
-entries:
+
+<p>
+Within the construction vtable for a subobject B (of derived class D),
+the base class subobject construction vtable for base class V of B,
+has the following entries:
 <ol>
 <li>
-Virtual base class offsets relative to complete object from V to D</li>
+virtual base class offsets relative to complete object from V to D,
 
 <li>
-VCALL&nbsp;offsets relative to a V&nbsp;in B in a complete object D</li>
+VCALL offsets relative to a V in B in a complete object D,
 
 <li>
-offset to the B base class subobject from V in D (may not be the same as
-offset of B in D)</li>
+offset to the B base class subobject from V in D
+(may not be the same as offset of B in D),
 
 <li>
-pointer to RTTI&nbsp;for B</li>
+pointer to RTTI for B, and
 
 <li>
-overridden virtual functions for V</li>
+overridden virtual functions for V.
 </ol>
 
 <p>
 <h4> Subobject Construction and Destruction</h4>
-The complete object constructors and destructors call the subobject constructors
-and destructors by passing the address of the subobject entry in the VTT
-as the second parameter.&nbsp; The subobject ctor/dtors use the addresses
-passed to initialize the primary vptr and vptrs that point to the classes
-which either have virtual bases or override virtual functions with a virtual
-step (have vcall offsets needing adjustment).
-<p>Note: The EDG&nbsp;compiler passes the ctorvtbls by assigning them to
-the subobject vptr and the subobject constructors get the array address
-from the vptr.&nbsp; This didn't work when an exception is raised during
-construction and the destructor didn't have the ctorvtbls address anymore.&nbsp;
-There may be a way to make this work with the landing pad model, but I
-haven't worked that out.
+
+<p>
+The complete object (in-charge) constructors and destructors
+<font color=purple>
+find the VTT via its mangled name.
+They pass the address of the subobject
+entry in the VTT as a second parameter when calling
+the subobject (not-in-charge)
+constructors and destructors.
+</font>
+The subobject ctor/dtors use the addresses passed to initialize
+the primary vptr and vptrs that point to the classes which either have
+virtual bases or override virtual functions with a virtual step
+(have vcall offsets needing adjustment).
+
+<p>
+<i>
+Note: The EDG compiler passes the constructor vtables
+by assigning them to the subobject vptr
+and the subobject constructors get the array address from the vptr.
+This doesn't work when an exception is raised during construction,
+and the destructor didn't have the ctorvtbls address anymore.
+There may be a way to make this work with the landing pad model,
+but I haven't worked that out.
+</i>
+
 <p>Therefore the code for subobject constructor D which needs a construction
 vtable with one base class subobject B that needs a construction vtable
 would look like the following:
@@ -1360,8 +1432,12 @@ A test program for this can be found in the
 
 
 <p> <hr> <p>
-<a name=array-new>
-<h3> Operator <code>new</code> for Arrays </h3>
+<a name=array-ctor>
+<h3> Array Constructors and Destructors </h3>
+
+<p>
+<a name=array-cookies>
+<h4> Operator <code>new</code> Cookies </h4>
 
 <p>
 When operator <code>new</code> is used to create a new dynamic-length array,
@@ -1374,7 +1450,20 @@ Specifically:
 <ul>
 <p>
 <li> No cookie is required if the array element type T has a trivial
-    destructor (C++ standard, 12.4/3).
+    destructor ([class.dtor])
+<font color=red>
+    and the usual (array) deallocation function
+    ([basic.stc.dynamic.deallocation])
+    function does not take two arguments.
+
+    <p>
+    (Note: if the usual array deallocation functions takes two arguments,
+    then its second argument is of type size_t.
+    The standard guarantees that this function will be passed the
+    number of bytes allocated with the previous array new expression.
+    See [class.free] for details.)
+</font>
+
 <p>
 <li> No cookie is required if the <code>new</code> operator being used
     is <code>::operator new[](size_t, void*)</code>.
@@ -1433,6 +1522,114 @@ Given the above, the following is pseudocode for processing
   return p1
 </pre></code>
 
+<p>
+<font color=red>
+<a name=array-runtime>
+<h4> Constructor/Destructor Runtime Support </h4>
+
+<p>
+An ABI-compliant system shall provide several runtime routines for use
+in array construction and destruction.
+They may be used by compilers, but their use is not required.
+The required APIs are:
+
+<dl>
+
+<dt><code><pre>
+void * abi::__cxa_vec_new (
+		size_t element_count,
+		size_t element_size,
+		size_t padding_size,
+		void (*constructor) ( void *this ),
+		void (*destructor) ( void *this ) );
+</pre></code></dt>
+<dd>
+Given the number and size of elements for an array,
+and the size of prefix padding for a cookie,
+allocate space for the array preceded by the specified padding,
+initialize the cookie if the padding is non-zero,
+and call the given constructor on each element.
+Return the address of the array proper,
+after the padding.
+If allocation throws, rethrow.
+If the constructor throws an exception,
+call the given destructor for any already-constructed elements,
+delete the space,
+and rethrow the exception.
+If the destructor throws an exception...
+</dd>
+
+<dt><code><pre>
+void abi::__cxa_vec_ctor (
+		void *array_address,
+		size_t element_count,
+		size_t element_size,
+		void (*constructor) ( void *this ),
+		void (*destructor) ( void *this ) );
+</pre></code></dt>
+<dd>
+Given the address of space for an array,
+not including any cookie padding,
+and the number and size of its elements,
+call the given constructor on each element.
+If the constructor throws an exception,
+call the given destructor for any already-constructed elements,
+and rethrow the exception.
+If the destructor throws an exception...
+If the constructor (destructor) pointer is NULL,
+no constructor (destructor) call is to be made.
+</dd>
+
+<dt><code><pre>
+void abi::__cxa_vec_dtor (
+		void *array_address,
+		size_t element_count,
+		size_t element_size,
+		void (*destructor) ( void *this ) );
+</pre></code></dt>
+<dd>
+Given space for an array,
+the number of elements,
+and the size of its elements,
+call the given destructor on each element.
+If the destructor throws an exception,
+rethrow after destroying the remaining elements if possible.
+If the destructor throws a second exception, call terminate.
+If padding_size is 0, the destructor pointer must be NULL.
+If the destructor pointer is NULL,
+no destructor call is to be made.
+
+<p>
+Alternate proposal:
+Pass an element count instead of padding_size,
+allowing use for non-heap arrays.
+</dd>
+
+<dt><code><pre>
+void abi::__cxa_vec_delete (
+		void *array_address,
+		size_t element_size,
+		size_t padding_size,
+		void (*destructor) ( void *this ) );
+</pre></code></dt>
+<dd>
+Given space for an array,
+the size of prefix padding for the cookie,
+and the size of its elements,
+call the given destructor on each element,
+using the cookie to determine the number of elements,
+and then delete the space.
+If the destructor throws an exception,
+rethrow after destroying the remaining elements if possible.
+If the destructor throws a second exception, call terminate.
+If padding_size is 0, the destructor pointer must be NULL.
+If the destructor pointer is NULL,
+no destructor call is to be made.
+</dd>
+
+</dl>
+
+</font>
 
 
 <p> <hr> <p>
@@ -1695,6 +1892,8 @@ It is derived from abi::__class_type_info, and adds fields:
 	<li> 0x02: class is diamond shaped
 	<li> 0x04: class has non-publicly inherited base(s)
 	<li> 0x08: class has publicly inherited base(s)
+	      <font color=red> (See action item #37.) </font>
+
 	</ul>
       All of these flags refer to both direct and indirect bases.
       The type of the _VMI_flags field is defined by each psABI,
@@ -1900,10 +2099,12 @@ no interfaces need to be specified in this document
         to ensure one-time initialization and thread protection, ...
 <li> Virtual call thunk names.
 <li> ILP-32 conventions?
+<li> Template argument numbering
 <li> Complete glossary of Sx abbreviations.
 <li> Escape mechanism for extended operator like __alignof?
 <li> Proof of nonambiguity
 <li> 80-bit vs. 128-bit long doubles?
+<li> Are long and __int64 the same type?
 </ul>
 
 <p>
@@ -1944,6 +2145,10 @@ For template functions,
 &lt;type> is omitted for variables and static data members.
 
 </ul>
+
+<p>
+See the separate <a href=abi-mangling.html>table</a>
+summarizing the encoding characters used.
 
 <p>
 <h4> Operator encodings </h4>
@@ -2322,6 +2527,9 @@ For example:
 <li> "_Z4makeI7FactoryiET1_IT2_E":
 		/*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
 		<br> // T1 == template template parameter
+
+<li> "_Z3foo5Hello5WorldS1_S3_": void foo(Hello,World,World,Hello)
+		<br> // S1_ counts as a type in numbering
 
 </ul>
 
