@@ -1711,7 +1711,7 @@ For example, suppose we have the following hierarchy:
 	// V2 has no primary base, V1 is secondary base
   class V3 {virtual void g(); };
   class C1 : public virtual V1 { int i; };
-	// C1 has no primary base, V2 is secondary base
+	// C1 has no primary base, V1 is secondary base
   class C2 : public virtual V3, virtual V2 { int i; };
 	// C2 has V3 primary (nearly-empty virtual) base, V2 is secondary base
   class X1 { int i; };
@@ -1733,18 +1733,19 @@ complete object virtual tables are required.
 
   // 2. Secondary VTTs:
   [1]  C1 * (has virtual base)
+  [2]     V1-in-C1 in D (secondary vptr)
 
-  [2]  C2 * (has virtual bases)
-  [3]    V3-in-C2 in D (primary vptr)
-  [4]    V2-in-C2 in D (secondary vptr)
-  [5]    V1-in-C2 in D (secondary vptr)
+  [3]  C2 * (has virtual bases)
+  [4]    V3-in-C2 in D (primary vptr)
+  [5]    V2-in-C2 in D (secondary vptr)
+  [6]    V1-in-C2 in D (secondary vptr)
 
   // 3. Secondary virtual pointers:
     // (no C1-in-D -- primary base)
-  [6]    V1-in-D (V1 is virtual)
-  [7]  C2-in-D (preorder; has virtual bases)
-  [8]    V3-in-D (V3 is virtual)
-  [9]    V2-in-D (V2 is virtual)
+  [7]    V1-in-D (V1 is virtual)
+  [8]  C2-in-D (preorder; has virtual bases)
+  [9]    V3-in-D (V3 is virtual)
+  [10]    V2-in-D (V2 is virtual)
     // (For complete object D VTT, these all can point to the
     // secondary vtables in the D vtable, the V3-in-D entry
     // will be the same as the C2-in-D entry, as that is the active
@@ -1754,8 +1755,8 @@ complete object virtual tables are required.
 
   // 4. Virtual VTTs:
     // (V1 has no virtual bases).
-  [10] V2 * (V2 has virtual bases)
-  [11]   V1-in-V2 in D * (secondary vptr, V1 is virtual)
+  [11] V2 * (V2 has virtual bases)
+  [12]   V1-in-V2 in D * (secondary vptr, V1 is virtual)
 	   (A2 is primary base of V1)
     // (V3 has no virtual bases)
 
