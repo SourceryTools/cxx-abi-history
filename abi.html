@@ -1955,7 +1955,7 @@ the associated variable, and 1 after initialization is complete.
 Usage of the other bytes of the guard variable is implementation-defined.
 
 <p>
-See <a href=once-ctor>Section 3.3.2</a>
+See <a href=#once-ctor>Section 3.3.2</a>
 for the API for references to this guard variable.
 
 
@@ -3093,22 +3093,7 @@ a non-zero value.
 However, an implementation intending to support
 automatically thread-safe, one-time initialization
 (as opposed to requiring explicit user control for thread safety)
-requires more control,
-and should use the following API to achieve interoperability with other
-such implementations.
-<code><pre>
-	if ( <i>obj_guard.first_byte</i> == false ) {
-	  if ( __cxa_guard_acquire (<i>&amp;obj_guard</i>) ) {
-	    <i>... initialize the object ...</i>;
-	    <i>... queue object destructor with __cxa_atexit() ...</i>;
-	    __cxa_guard_release (<i>&amp;obj_guard</i>);
-	  }
-	}
-
-</pre></code>
-
-<p>
-The two functions in the above sequence are defined as follows:
+may make use of the following API functions:
 
 <dl>
 
@@ -3116,52 +3101,83 @@ The two functions in the above sequence are defined as follows:
 extern "C" int __cxa_guard_acquire ( __int64_t *guard_object );
 </pre></code></dt>
 <dd>
-The <code>guard_object</code> argument is the guard variable
-(see <a href=#guards>Section 2.8</a>)
-associated with the object to be initialized.
-If it indicates that the object has been initialized already,
-return <code>false</code> (0) immediately.
-Otherwise, acquire a lock associated with the guard variable
-(possibly part of it, but unspecified by this ABI).
-If the object has now been initialized,
-release the lock and return <code>false</code> (0).
-If not, return <code>true</code> (1) without releasing the lock.
-</dd>
+<p>
+Returns 1 if the initialization is not yet complete; 0 otherwise.
+This function is called before initialization takes place.  If this
+function returns 1, either <code>__cxa_guard_release</code> or
+<code>__cxa_guard_abort</code> must be called with the same argument.
+The first byte of the <code>guard_object</code> is not modified by this 
+function.
 
+<p>
+A thread-safe implementation will probably guard access to the first
+byte of the <code>guard_object</code> with a mutex.  If this function
+returns 1, the mutex will have been acquired by the calling thread.
+</p>
+
+</dd>
 
 <dt><code><pre>
 extern "C" void __cxa_guard_release ( __int64_t *guard_object );
 </pre></code></dt>
 <dd>
-The <code>guard_object</code> argument is the guard variable
-(see <a href=#guards>Section 2.8</a>)
-associated with the object being initialized.
-Set it to indicate that initialization is complete,
-release the associated lock (in that order),
-and return.
-</dd>
+<p>
+Sets the first byte of the guard object to a non-zero value.  This
+function is called after initialization is complete.
+</p>
 
+<p> 
+A thread-safe implementation will release the mutex acquired by
+<code>__cxa_guard_acquire</code> after setting the first byte of the
+guard object.
+</p>
+
+</dd>
 
 <dt><code><pre>
 extern "C" void __cxa_guard_abort ( __int64_t *guard_object );
 </pre></code></dt>
 <dd>
-The <code>guard_object</code> argument is the guard variable
-(see <a href=#guards>Section 2.8</a>)
-associated with an object being initialized.
-Set it to indicate that initialization is not complete,
-release the associated lock (in that order),
-and return.
-This routine is intended for use when the initialization raises an
-exception, which requires that initialization be attempted again by the
-next pass through the object's scope.
+
+<p>
+This function is called if the initialization terminates by throwing
+an exception.
+</p>
+
+<p> 
+A thread-safe implementation will release the mutex acquired by
+<code>__cxa_guard_acquire</code>.
+</p>
+
 </dd>
 
 </dl>
 
+</pre></code>
+
+
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
+
+<p>
+The following is pseudo-code showing how these functions can be used:
+<blockquote><code><pre>
+  if (<i>obj_guard.first_byte</i> == 0) {
+    if ( __cxa_guard_acquire (<i>&amp;obj_guard</i>) ) {
+      try {
+	<i>... initialize the object ...</i>;
+      } catch (...) {
+        __cxa_guard_abort (<i>&amp;obj_guard</i>);
+        throw;
+      }
+      <i>... queue object destructor with __cxa_atexit() ...</i>;
+      __cxa_guard_release (<i>&amp;obj_guard</i>);
+    }
+  }
+</pre></code></blockquote>
+
+<p>
 An implementation need not include the simple inline test of the
 initialization flag in the guard variable around the above sequence.
 If it does so,
@@ -4908,6 +4924,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021125]</font>
+Clarify guard functions.
 
 <p>
 <font color=blue>[021110]</font>
