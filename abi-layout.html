@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 17 August 1999</i>
+<i>Revised 9 September 1999</i>
 
 </center>
 
@@ -212,6 +212,11 @@ allocate as follows:
 	First, attempt to place D at offset zero.
 	If unsuccessful (due to a component type conflict),
 	proceed with attempts at dsize(C) as for non-empty bases.
+	As for that case, if there is a type conflict at dsize(C)
+	(with alignment updated as necessary),
+	increment the candidate offset by align(type(D)),
+	and try again,
+	repeating until success occurs.
 
 	<p>
 	Once offset(D) has been chosen,
