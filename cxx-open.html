@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 19 April 2000</i>
+<i>Revised 24 April 2000</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000424]</font>
+Additions to <a href=#F3>F-3</a>, <a href=#F6>F-6</a>.
 
 <p>
 <font color=blue>[000419]</font>
@@ -4614,6 +4618,18 @@ Ask Daveed about rumoured necessary mangling changes,
 and about where virtual/non-virtual member functions must be emitted.
 
 <p>
+<font color=blue>[000423 EDG -- Daveed]</font>
+I cannot say much yet, since we're still very actively working on this.
+There are at least two ABI issues.
+First, as you note, the location of template emission
+(which is somewhat more flexible with COMDATs).
+Second, there is potential for a whole bunch of previously
+internally linked items to need to be promoted to external linkage,
+while maintaining the general impression of not colliding with
+other "static" entities.
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -5509,6 +5525,73 @@ Discussion centered around how to handle memory allocation
 and whether options like gcc's (e.g. list parameters or not)
 are desirable.
 Matt will consider these and modify his proposal.
+
+<p>
+<font color=blue><hr><p>[000427 SGI -- Matt]</font>
+One thing I promised to do and didn't, though, was to come up with a
+revised demangler interface.  Here it is.  It's more complicated than
+I like, but the complexity does serve a real purpose.  Motivation:
+<ul>
+<li>allow returning an error code
+<li>interface callable from C
+<li>allow reusing a buffer between multiple invocations
+<li>allow resizing a buffer, since there is no way, even in principle,
+   to know how large a buffer to provide.
+</ul>
+
+<code><pre>
+namespace abi {
+
+  char* __cxa_demangle(const char* mangled_name,
+                       char* buf,
+                       size_t* n,
+                       int* status);
+
+}
+
+</code></pre>
+
+<p>
+<code>mangled-name</code>
+is a pointer to a null-terminated array of characters.
+
+<p>
+<code>buf</code> may be null.
+If it is non-null, then <code>n</code> must also be nonnull,
+and buf is a pointer to an array, of at least *n characters,
+that was allocated using malloc.
+
+<p>
+<code>status</code> points to an int that's used as an error indicator.
+It is permitted to be null,
+in which case the user just doesn't get any detailed error information.
+
+<p>
+<b>Behavior</b>:
+the return value is a pointer to a null-terminated array 
+of characters, the demangled name.
+If there is an error in demangling, the return value is a null pointer.
+The user can examine *status to find out what kind of error it is.
+Meaning of error indications:
+<ul>
+<li> 0:  success
+<li> -1: memory allocation failure
+<li> -2: invalid mangled name
+<li> -3: invalid arguments (e.g. buf nonnull and n null)
+</ul>
+
+<p>
+<b>Memory management</b>: 
+<ul>
+<li> If buf is a null pointer,
+    __cxa_demangle allocates a new buffer with malloc.
+    It stores the size of the buffer in *n, if n is nonnull.
+<li> If buf is not a null pointer,
+    it must have been allocated with malloc.
+    If the array turns out to be too small,
+    __cxa_demangle may use realloc to increase its size.
+    The new size will be stored in *n.
+</ul>
 
 
 <p>
