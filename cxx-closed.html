@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 19 January 2000</i>
+<i>Revised 26 January 2000</i>
 
 </center>
 
@@ -391,7 +391,7 @@ which address would then be a suitable identifier for comparisons.
 <p>
 <font color=blue>[990812 Sun -- Michael]</font>
 Sun has provided a description,
-<a href=Sun-RTTI-990812.html>in a separate page</a>,
+in a separate page,
 describing their implementation.
 They are filing for a patent on the algorithms described.
 
@@ -1237,6 +1237,146 @@ we use its <i>non-virtual</i> allignment,
 i.e. ignoring its virtual bases' contributions.
 
 
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A19></a> <td> A-19 </td>
+<td> Primary indirect virtual base choice </td>
+<td> data </td>
+<td> closed </td>
+<td> All </td>
+<td> 000106 </td>
+<td> 000120 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+In allocating class C,
+when the first nearly empty virtual base class A is allocated as the
+primary base class of a later nearly empty virtual base class B,
+should A or B become the primary base class of C?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A19> Resolution</a></b>:
+Do not use a virtual base as primary if it is already a primary base of
+some other direct or indirect base,
+unless such are the only candidates.
+In either case, use the first candidate in depth-first, left-to-right
+order in the inheritance graph.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000106 All]</font>
+This issue was initially confused in the discussion with A-17,
+but is independent.
+Recall that non-virtual bases have priority over virtual bases for
+selection as the primary base.
+Assuming that no non-virtual base is suitable,
+this issue involves which virtual base should be selected.
+Our original decision was to use the first in left-to-right order.
+
+<p>
+The proposal here is that,
+if this initial candidate A is itself already a primary base class of
+a later virtual base B,
+then B will be used instead, unless it is already a primary base class
+of a later virtual base, and so on.
+See <a href=abi-layout.html#a19>proposed wording</a>
+in the ABI layout document.
+
+<p>
+Noone can identify a case in which this approach is worse than the
+original definition.
+
+<p>
+<font color=blue>[000113 All]</font>
+The proposed resolution on the table is to use the following priority
+to choose the primary base class:
+<ol>
+<li> The first (left-to-right declaration order)
+    super-polymorphic non-virtual base class.
+<li> The first (left-to-right declaration order)
+    nearly empty virtual base class that is not a primary base class of
+    any other base, direct or indirect.
+<li> The first (left-to-right declaration order)
+    nearly empty virtual base class.
+</ol>
+
+<p>
+<font color=blue>[000113 All]</font>
+Modify the above to use any virtual base in the inheritance graph,
+first one that is not already primary to some base if possible,
+or then any candidate,
+chosen as the first in a depth-first, left-to-right inheritance graph walk.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A20></a> <td> A-20 </td>
+<td> Operator new array cookies </td>
+<td> data </td>
+<td> closed </td>
+<td> All </td>
+<td> 000113 </td>
+<td> 000120 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+When operator new is used to create a new dynamic-length array,
+a cookie must be stored to remember the allocated length
+so that it can be deallocated correctly.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A20> Resolution</a></b>:
+Place cookie immediately before array, aligned naturally.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000113 All]</font>
+The proposed resolution is as follows:
+<ul>
+<li> The cookie will have size <code>sizeof(size_t)</code>.
+<li> Let <code>align</code> be the maximum alignment of
+<code>size_t</code> and an element of the array to be allocated.
+<li> The space allocated for the array will be the space required
+by the array itself plus <code>align</code> bytes.
+<li> The alignment of the space allocated for the array will be
+<code>align</code> bytes.
+<li> The array data will begin at an offset of <code>align</code> bytes
+from the space allocated for the array.
+<li> The cookie will be stored in the <code>sizeof(size_t)</code> bytes
+immediately preceding the array data.
+</ul>
+
+This resolution has the following consequences:
+<ul>
+<li> The array elements and the cookie are all aligned correctly.
+<li> Padding will be required if <code>sizeof(size_t)</code>
+is smaller than the array element alignment,
+and if present will precede the cookie.
+</ul>
+
+<p>
+<font color=blue>[000120 All]</font>
+Accept the above.
+
+
 <p> <hr> <p>
 <h3> B.  Virtual Function Handling Issues </h3>
 
@@ -1270,7 +1410,7 @@ to perform the adjustment may actually prove interesting.
 </td> </tr>
 <tr> <td colspan=7>
 <b>Resolution</b>:
-See the <a href=abi-layout#vcall>writeup in the ABI data layout
+See the <a href=abi-layout.html#vcall>writeup in the ABI data layout
 specification.
 </td> </tr>
 
@@ -3452,7 +3592,7 @@ by the 15th (action #13); the group will discuss it on the 22nd.
 <p>
 <font color=blue>[990812 Sun -- Michael]</font>
 Sun has provided a description,
-<a href=Sun-RTTI-990812.html>in a separate page</a>,
+in a separate page,
 describing their implementation.
 They are filing for a patent on the algorithms described.
 
@@ -4177,8 +4317,8 @@ For reference, we have design information as follows:
 
 <p>
 <li>
-<font color=blue>[990818 HP -- Christophe]</font>
-<a href=HP-exception-990818.pdf> (PDF document) </a>
+<font color=blue>[991208 HP -- Christophe]</font>
+<a href=exceptions.pdf> (PDF document) </a>
 
 </ul>
 
@@ -5138,7 +5278,7 @@ exceptions must be caught in the thread where raised,
 and queries about them (e.g. <code>uncaught_exception()</code>)
 are answered only with respect to the thread doing the query.
 The only global exception behavior is handler registration --
-see <a href=cxx-closed#D15>issue D-15</a>.
+see <a href=cxx-closed.html#D15>issue D-15</a>.
 </td> </tr>
 
 </table>
@@ -5340,6 +5480,93 @@ Therefore, for this issue, we have a prototype in <code>cxxabi.h</code>:
 <p>
 <font color=blue>[000113 All]</font>
 Accept as described and close.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D10></a> <td> D-10 </td>
+<td> psABI proposal </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> all </td>
+<td> 991216 </td>
+<td> 000120 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Solidify the Level I (psABI) specification and submit it to the base
+ABI group.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D13> Resolution</a></b>:
+See the <a href=abi-eh.html#forced>exception handling specification</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+This is essentially Section 8 of the HP working paper.
+SGI has reworked it into the
+<a href=abi-eh.html>draft exception handling specification</a>.
+This group needs to approve the reworked version,
+at which time it can be submitted to the base ABI group.
+
+<p>
+The draft needs to clarify that the unwinder will detect uncaught
+exceptions in Phase 1, and call <code>terminate()</code> before Phase 2.
+Issues D-11 through D-14 below are also relevant to the Level I
+specification.
+
+<p>
+<font color=blue>[000120 All]</font>
+Close with minor modifications.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D13></a> <td> D-13 </td>
+<td> _Unwind_ForcedUnwind </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> all </td>
+<td> 991216 </td>
+<td> 000120 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define the interface of _Unwind_ForcedUnwind.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D13> Resolution</a></b>:
+See the <a href=abi-eh.html#forced>exception handling specification</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000106 All]</font>
+Coleen will send a description of their thread cancellation mechanism.
+
+<p>
+<font color=blue>[000120 All]</font>
+Close with minor modifications.
+Christophe will send a thread cancellation example writeup.
 
 
 <p>
