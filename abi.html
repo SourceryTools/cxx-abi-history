@@ -851,7 +851,7 @@ follows:
 Finally allocate any direct or indirect virtual base classes
 (except the primary base class or any indirect primary base classes)
 as we did non-virtual base classes
-in step II-2 (if empty) or II-3 (if non-empty),
+in step II-2 (if not empty) or II-3 (if empty),
 in inheritance graph order.
 Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
 If non-empty, also update align(C) and dsize(C) as in II-2.
