@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 30 March 2000</i>
+<i>Revised 11 April 2000</i>
 
 </center>
 
@@ -62,6 +62,7 @@ Proposals and auxiliary information:
 	removing limitations on <a href=../abi/prop-74-sindex.html>
 	section indices</a>
 	(<a href=../abi/prop-74-sindex.pdf>PDF</a>).
+<li> <a href=prop-42-interface.html>SGI Interface Section</a> description
 <li> <a href=cxx-vtable-ex.html>Vtable layout</a> examples
 	<a href=cxx-vtable-ex.pdf>(PDF)</a>
 </ul>
@@ -754,7 +755,7 @@ The identifiers used are:
 <td> 000217 </td>
 </tr>
 
-<tr class=small> <td> A-26 </td>
+<tr class=small> <a href=cxx-open.html#A26><td> A-26 </td></a>
 <td> NULL pointers to member functions </td>
 <td> data </td>
 <td> closed </td>
@@ -763,13 +764,31 @@ The identifiers used are:
 <td> 000302 </td>
 </tr>
 
-<tr class=small> <td> A-27 </td>
+<tr class=small> <a href=cxx-open.html#A27><td> A-27 </td></a>
 <td> NULL pointers to data members </td>
 <td> data </td>
 <td> closed </td>
 <td> CodeSourcery </td>
 <td> 000222 </td>
 <td> 000302 </td>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#A28><td> A-28 </td></a>
+<td> RTTI equality testing </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000406 </td>
+<td> </td>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#A29><td> A-29 </td></a>
+<td> RTTI pointer-to-member </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000407 </td>
+<td> </td>
 </tr>
 
 
@@ -1212,7 +1231,7 @@ Virtual Function Handling  </th>
 <tr class=small> <td> F-3 </td>
 <td> Consistency checks </td>
 <td> call g </td>
-<td> open </td>
+<td> tabled </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
