@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 8 March 2000</i>
+<i>Revised 13 March 2000</i>
 
 </center>
 
@@ -5315,6 +5315,87 @@ The decision was made not to do so,
 on grounds that the situation is rare,
 and virtual bases are often empty besides,
 so that the solution is not worth the resulting code bloat.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C11></a> <td> C-11 </td>
+<td> Array constructors/destructors </td>
+<td> call </td>
+<td> closed </td>
+<td> Cygnus </td>
+<td> 000130 </td>
+<td> 000309 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How are constructors/destructors run for arrays?
+Many compilers use a <code>__vec_new</code> function;
+g++ doesn't, to allow for inlining of constructors.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C11> Resolution</a></b>:
+Define standard library entries for array construction/destruction.
+See the <a href=abi-layout.html#array-ctor>ABI Layout</a> document.
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C12></a> <td> C-12 </td>
+<td> Constructor return values </td>
+<td> call </td>
+<td> closed </td>
+<td> Cygnus </td>
+<td> 000130 </td>
+<td> 000309 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What is the return value of a constructor?
+Void, this, ...?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C11> Resolution</a></b>:
+Void.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000130 Cygnus -- Jason]</font>
+I don't see any reason to return a value from constructors,
+since we will always pass in the address of the object.
+g++ currently returns that address, for historical reasons
+(previously, to support assignment to 'this').
+
+<p>
+<font color=blue>[000131 IBM -- Mark]</font>
+Currently, we use the returned value from the ctor for cases like S().i.
+It wouldn't be hard to change the compiler,
+but we do need a decision one way or another.
+
+<p>
+<font color=blue>[000308 All]</font>
+Decided to return void.
+Open another issue (C-13) to consider alternate allocating constructors
+(low priority).
 
 <p> <hr> <p>
 <h3> D.  Exception Handling Issues </h3>
