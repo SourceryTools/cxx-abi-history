@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 11 October 1999</i>
+<i>Revised 19 October 1999</i>
 
 </center>
 
@@ -1234,6 +1234,58 @@ Note that the base psABI defines a flag, EF_IA_64_ABSOLUTE,
 which forces an executable object to the addresses specified in ELF,
 so at least one method of representing this is already available.
 
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=B8></a> <td> B-8 </td>
+<td> dynamic_cast </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990628 </td>
+<td> 991014 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What information to we put in the vtable to enable (a) dynamic_cast
+from pointer-to-base to pointer-to-derived (including detection of
+ambiguous base classes) and (b) dynamic_cast to void*?
+</td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+The vtable will contain an offset to the beginning of the complete object,
+and an offset to the typeinfo object.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990701 All]</font>
+This should be part of the proposal Daveed will put together
+by the 15th (action #13); the group will discuss it on the 22nd.
+
+<p>
+<font color=blue>[990812 Sun -- Michael]</font>
+Sun has provided a description,
+<a href=Sun-RTTI-990812.html>in a separate page</a>,
+describing their implementation.
+They are filing for a patent on the algorithms described.
+
+<p>
+<font color=blue>[991014 All]</font>
+This is closely related to issues A-6 and B-6.
+It is agreed that what we need is an offset to the beginning of
+the complete object, and a pointer or offset to the typeinfo object.
+We choose to have an offset to the typeinfo object instead of a pointer,
+which effectively means that the typeinfo object is part of the vtable.
+We will put it at the very beginning, at a negative offset from the vptr.
+
 
 <p> <hr> <p>
 <h3> C.  Object Construction/Destruction Issues </h3>
@@ -1469,6 +1521,97 @@ handler is preferable for such purposes.
 
 <p> <hr> <p>
 <h3> G.  Miscellaneous Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=G5></a> <td> G-5 </td>
+<td> Varargs routine interface </td>
+<td> call </td>
+<td> open </td>
+<td> HU-B </td>
+<td> 990810 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The underlying C ABI defines conventions for calling varargs routines.
+Does C++ need, or would it benefit from, any modifications or special cases?
+How should we pass references or class objects?
+Is any runtime library support required?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+No special cases required -- C++ will follow the C varargs ABI.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990810 HU-B Martin]</font>
+I'd like to see an indirection in vararg lists,
+so they can be passed through thunks.
+This is necessary at least for the covariant returns,
+but might have other applications as well.
+
+<p>
+<font color=blue>[990810 HU-B Martin]</font>
+Since there already was the decision not to return a list of
+pointers from a covariant method,
+the only alternative to real thunks
+is code duplication (as done in Sun Workshop 5).
+<i>(Or alternate entrypoints...  Jim)</i>
+
+<p>
+With real thunks, you have to copy the argument list.
+That is not possible for a varargs list,
+so here is my proposal for varargs in C++:
+
+<p>
+In the place of the ellipsis, a pointer to the first argument is passed.
+In case of a thunk for covariant returns,
+this pointer can be copied to the destination function.
+The variable arguments are put on the stack as they normally would.
+
+<p>
+With that, the issue is in which cases to use such a calling
+convention:
+<ol>
+<li> only for vararg calls to virtual methods, or
+<li> only for vararg calls to functions with C++ linkage, or
+<li> for all vararg calls.
+     That would probably require a change to the C ABI
+</ol>
+<p>
+Option (1) could be further restricted to methods returning a pointer
+or reference to class type. 
+
+<p>
+<font color=blue>[990812 All]</font>
+In response to a question,
+it was observed that passing one variant of a class hierarchy in a
+varargs list and referencing another variant in the va_arg macro is undefined,
+and we don't need to worry about a mechanism for doing the conversion.
+
+<p>
+<font color=blue>[991014 All]</font>
+We would want to reject option (3),
+even if it were still possible to change the base ABI.
+The present scheme is compatible with K&R C methods,
+the proposed change would not be.
+
+<p>
+Decision: Close with no action.
+We're using multiple entry points for covariant return types, not thunks,
+so there's no need for doing anything different for varargs functions
+with covariant return types than for any other varargs functions.
+
 
 <p> <hr> <p>
 <h3> H.  Library Interface Issues </h3>
