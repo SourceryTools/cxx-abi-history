@@ -273,6 +273,13 @@ Unless otherwise specified,
 preorder (derived classes before their bases) is intended.
 
 <p>
+<dt> <i>morally virtual</i> </dt>
+<dd>
+A subobject X is a <i>morally virtual</i> base of Y if X is either a
+virtual base of Y, or the direct or indirect base of a virtual base of
+Y.
+
+<p>
 <a name=q3></a>
 <dt> <i>nearly empty class</i> </dt>
 <dd>
@@ -280,11 +287,11 @@ A class that contains no data except its virtual pointer (if any) or
 virtual bases.  In particular, it:
 <ul>
 <li> has no non-static data members other than zero-width bitfields,
-<li> has no proper base classes that are not either empty, nearly empty,
+<li> has no direct base classes that are not either empty, nearly empty,
      or virtual,
-<li> has at most one non-virtual, nearly empty proper base class, and
-<li> has no proper non-virtual empty base class at an offset other
-     than zero.
+<li> has at most one non-virtual, nearly empty direct base class, and
+<li> has no proper base class that is empty, not morally virtual, and
+     at an offset other than zero.
 </ul>
 Such classes may be primary base classes even if virtual,
 sharing a virtual pointer with the derived class.
@@ -587,20 +594,18 @@ we also specify:
 
 <ul>
 <li> <i>dsize</i>(O):
-the <i>data size</i> of an object,
-which intuitively is sizeof(O) minus the size of tail padding.
+the <i>data size</i> of an object, which is the size of O without tail
+padding.
 
 <p>
 <li> <i>nvsize</i>(O):
-the <i>non-virtual size</i> of an object,
-which intuitively is dsize(O) minus the size of virtual bases.
-It is always equal to <i>dsize</i>(O) for types without virtual bases.
+the <i>non-virtual size</i> of an object, which is the size of O
+without virtual bases.
 
 <p>
 <li> <i>nvalign</i>(O):
-the <i>non-virtual alignment</i> of an object,
-which intuitively is the alignment determined by ignoring virtual bases.
-It is always equal to <i>align</i>(O) for types without virtual bases.
+the <i>non-virtual alignment</i> of an object, which is the alignment of O
+without virtual bases.
 
 </ul>
 
@@ -695,17 +700,11 @@ Layout (of type C) is done using the following procedure.
 	   is not an indirect primary base class if any exist,
 	   or just the first one if they are all indirect primaries.
 
-	   <p>
-	   Allocate the chosen primary base at offset zero, and set
-	   sizeof(C) to sizeof(B), align(C) to nvalign(B),
-	   dsize(C) to nvsize(B).
-	   This step allocates only B's non-virtual part,
-	   i.e. excluding any direct or indirect bases.
-
       <p>
-      <li> Otherwise, allocate the virtual table pointer for C at offset zero,
-	   and set sizeof(C), align(C), and dsize(C) to the appropriate
-	   values for a pointer (all 8 bytes for Itanium 64-bit ABI).
+      <li> If C has no primary base class, allocate the virtual table
+           pointer for C at offset zero, and set sizeof(C), align(C),
+           and dsize(C) to the appropriate values for a pointer (all 8
+           bytes for Itanium 64-bit ABI).
       </ol>
   </ol>
 
@@ -758,11 +757,10 @@ is not necessary.
 <p>
 <li> <h5> Allocation of Members Other Than Virtual Bases </h5>
 <p>
-For each data component D (i.e. proper base or non-static data member)
-except virtual bases,
-first the non-virtual proper base classes in declaration order
-and then the non-static data members in declaration order,
-allocate as follows:
+For each data component D (first the primary base of C, if any, then
+the non-primary, non-virtual direct base classes in declaration order,
+then the non-static data members in declaration order), allocate as
+follows:
 
   <ol type=1>
 
@@ -780,11 +778,17 @@ allocate as follows:
        That is, it will be placed in the next available n bits,
        subject to the constraint that it does not cross an alignment
        boundary for type <code>T</code>.
-       The next available n bits are at offset dsize(C),
-       unless the preceding byte is only partially filled by a bitfield,
-       in which case the bitfield allocation can begin in that byte.
-	<p>
-	Update align(C) to max (align(C), align(T)).
+
+       <p>
+       If dsize(C) > 0, and the byte at offset dsize(C) - 1 is
+       partially filled by a bitfield, and that bitfield is also a
+       data member declared in C (but not in one of C's proper base
+       classes), the next available bits are the unfilled bits at
+       offset dsize(C) - 1.  Otherwise, the next available bits at
+       offset dsize(C).
+       
+       <p>
+       Update align(C) to max (align(C), align(T)).
 
        <p>
        <li>
@@ -811,14 +815,14 @@ allocate as follows:
 	(including all data members),
 	start at offset dsize(C),
 	incremented if necessary for alignment
-	to nvalign(type(D)) for base classes or
-	to align(type(D)) for data members.
+	to nvalign(D) for base classes or
+	to align(D) for data members.
 	Place D at this offset unless doing so would result in two
 	components (direct or indirect) of the same type having the
 	same offset.
 	If such a component type conflict occurs,
-	increment the candidate offset by nvalign(type(D))
-	for base classes or by align(type(D)) for data members
+	increment the candidate offset by nvalign(D)
+	for base classes or by align(D) for data members
 	and try again,
 	repeating until success occurs
 	(which will occur no later than sizeof(C) rounded up to the
@@ -852,7 +856,7 @@ allocate as follows:
 	proceed with attempts at dsize(C) as for non-empty bases.
 	As for that case, if there is a type conflict at dsize(C)
 	(with alignment updated as necessary),
-	increment the candidate offset by nvalign(type(D)),
+	increment the candidate offset by nvalign(D),
 	and try again,
 	repeating until success occurs.
 
@@ -866,12 +870,10 @@ allocate as follows:
   </ol>
 
   <p>
-  After all such components have been allocated,
-  set nvalign(C) = align(C),
-  and set nvsize(C) to the least multiple of nvalign(C)
-  that is greater than or equal to dsize(C).
-  The values of nvalign(C) and nvsize(C)
-  will not change during virtual base allocation.
+  After all such components have been allocated, set nvalign(C) =
+  align(C) and nvsize(C) = sizeof(C).  The values of nvalign(C) and
+  nvsize(C) will not change during virtual base allocation.  Note that
+  nvsize(C) need not be a multiple of nvalign(C).
 
 <p><a name=a17>
 <li> <h5> Virtual Base Allocation </h5>
@@ -2859,12 +2861,6 @@ function expects the `this' pointer to point to an instance of the
 class in which the virtual function is defined.
 In other words, the non-adjusting entry point for C::f will expect
 that its `this' pointer points to a C object.
-
-<p>
-We say that a subobject X is a <i>morally virtual</i> base of Y
-if X is either a virtual base of Y,
-or the direct or indirect base of a virtual base of Y.
-
 
 <p>
 <h4> 3.2.2 Virtual Table Components </h4>
@@ -5047,6 +5043,14 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=bule>[020827]</font>
+Clarify definition of nearly empty class, dsize, nvsize, nvalign.
+
+<p>
+<font color=bule>[020827]</font>
+Clarify handling of tail-padding.
 
 <p>
 <font color=blue>[020326]</font>
