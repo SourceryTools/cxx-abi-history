@@ -3,50 +3,22 @@
 <HTML>
 
 <HEAD>
-<title>C++ ABI for Itanium (Draft) </title>
+<title>Itanium C++ ABI</title>
 
-<link rel=stylesheet href=small-table.css type="text/css">
 <link rel=stylesheet href=code.css type="text/css">
-
-<hr>
-
-<font size=6><i><b>
-<p>
-C++ ABI for Itanium (Draft)
-</b></i></font>
-
-</center>
 
 </HEAD>
 
 <BODY>
 
-
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-	   INSTRUCTIONS FOR MAKING REVISIONS TO THIS DOCUMENT
-
-  Recent revisions are marked with <div class="change"> or 
-  <span class="change"> elements.  Deleted text is placed in a
-  <strike> element.
-
-   1. Find previous recent revisions by searching for class="change".
-      Remove <div> and <span> tags, and entire <strike> elements.
-
-   2. Merge revisions.  Place new text in <div> and <span> elements. 
-      Place deleted text in <strike> elements rather than deleting
-      it outright.
-
-   3. Add a summary of the revision to the revision history at the
-      end of the document.
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-
+<hr />
+<h1>Itanium C++ ABI</h1>
 <p> <hr> <p>
+
 <h2> Contents </h2>
 
 <ul>
+<li><a href="#acknowledgements">Acknowledgements</a></li>
 <li> <a href=#intro> Chapter 1: Introduction </a>
   <ul>
   <li> <a href=#definitions>	1.1 Definitions </a>
@@ -85,6 +57,16 @@ C++ ABI for Itanium (Draft)
 </ul>
 
 <p> <hr> <p>
+<a name="acknowledgements">
+<h2> Acknowledgements</h2>
+<p> <hr> <p>
+
+<p>This document was developed jointly by an informal industry
+coalition consisting of (in alphabetical order) CodeSourcery, Compaq,
+EDG, HP, Intel, Red Hat, IBM and SGI.  Additional contributions were
+provided by a variety of individuals.</p>
+
+<p> <hr> <p>
 <a name=intro>
 <h2> Chapter 1: Introduction </h2>
 <p> <hr> <p>
@@ -113,26 +95,6 @@ sizes of members as appropriate
 (i.e. pointers and long ints would become 32 bits),
 but sometimes an order change would be required for compactness,
 and we note more substantive changes.
-
-<p>
-This document is a work in progress,
-still being changed on a regular basis.
-In general, text appearing in this document in color is either
-tentative wording of agreements,
-or proposals not yet agreed upon,
-and should be taken as more subject to change than black material.
-Red text will generally remain red until the next group meeting
-provides an opportunity to comment.
-If problems are noticed,
-they should be reported to the
-<a href=mailto:cxx-abi@corp.sgi.com>C++ ABI Group</a>
-as soon as possible.
-
-<p>
-<font color=blue>
-Note that the body of this document makes free use of a number of terms
-which are defined in the <i><b>Definitions</b></i> section below.
-</font>
 
 <p> <hr> <p>
 <a name=definitions>
@@ -375,8 +337,6 @@ However, some (many?) are specified to be extern "C" if they:
 <a name=scope-library>
 <h3> 1.4.1 Runtime Libraries </h3>
 
-<i>
-
 <p>
 The objective of a full ABI is to allow arbitrary mixing of object
 files produced by conforming implementations,
@@ -471,10 +431,6 @@ This ABI does not specify the treatment of export templates,
 as there are no working implementations to serve as models at this time.
 We hope to address this weakness in the future when implementation
 experience is available.
-
-
-</i>
-
 
 <p> <hr> <p>
 <a name=docs>
@@ -4939,6 +4895,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[030316]</font>
+Add acknowledgements section.
 
 <p>
 <font color=blue>[030313]</font>
