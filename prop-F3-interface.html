@@ -16,7 +16,7 @@ SGI Proposal for F-3: Interface Section
 
 <font size=-1>
 <p>
-<i>Last updated 25 April 2000</i>
+<i>Last updated 2 May 2000</i>
 
 </center>
 
@@ -259,6 +259,12 @@ the following bits.
 </TR>
 
 <TR>
+<TD><b> <font color=purple> SA_SPECIALIZATION </font></b></TD>
+<TD><tt> 0x1000 </tt></TD>
+<TD> Is this a template specialization?</TD>
+</TR>
+
+<TR>
 <TD><b> SA_FUNCTION </b></TD>
 <TD><tt> 0x0400 </tt></TD>
 <TD> Does subprogram return a result? </TD>
@@ -312,6 +318,15 @@ Notes:
 <dt> SA_INSTANTIATION </dt>
 <dd>
 This function was produced as the result of C++ template instantiation.
+If it matches another interface descriptor without this flag set,
+there is a conflict between an instantiation and a specialization.
+</dd>
+
+<p>
+<dt> SA_SPECIALIZATION </dt>
+<dd>
+This function was produced as the result of C++ template specialization,
+full or partial.
 If it matches another interface descriptor without this flag set,
 there is a conflict between an instantiation and a specialization.
 </dd>
