@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 1 September 2000</i>
+<i>Revised 7 November 2000</i>
 
 </center>
 
@@ -7597,9 +7597,12 @@ structured results?
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#C18> Resolution</a></b>:
-In all cases where a result class object is returned in a buffer
-created by the caller,
-the buffer address will be passed in r8,
+All results with non-trivial copy constructors or destructors will be
+returned in buffers allocated by the caller,
+with their addresses passed as an implicit first parameter.
+Other structure results too large for the return registers are
+returned in a buffer created by the caller,
+with the buffer address passed in r8.
 </td> </tr>
 
 </table>
