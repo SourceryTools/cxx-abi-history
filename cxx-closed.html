@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 4 February 2000</i>
+<i>Revised 17 February 2000</i>
 
 </center>
 
@@ -1343,7 +1343,8 @@ so that it can be deallocated correctly.
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#A20> Resolution</a></b>:
 In principle, place cookie immediately before array, aligned naturally.
-Defer to A-21 solution.
+Use no cookie for array element types without destructors.
+See the <a href=abi-layout.html#array-new>ABI Layout</a> document.
 </td> </tr>
 
 </table>
@@ -1376,6 +1377,213 @@ and if present will precede the cookie.
 <p>
 <font color=blue>[000120 All]</font>
 Accept the above.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A21></a> <td> A-21 </td>
+<td> Placement new array cookies </td>
+<td> data </td>
+<td> closed </td>
+<td> All </td>
+<td> 000113 </td>
+<td> 000217 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Same issue as A-20, except that for placement new,
+the user supplies already-allocated space.
+Therefore, there is a conflict between wanting to make delete()
+work on arrays created in this way,
+and wanting to avoid surprising users who haven't allocated enough
+space for the cookie.
+Also, are cookies allocated if there is no destructor?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A21> Resolution</a></b>:
+Use no cookie for element types with no destructors,
+nor for <code>::operator new(size_t, void*)</code>.
+Otherwise, use a cookie as in issue A-20.
+See the <a href=abi-layout.html#array-new>ABI Layout</a> document.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000119 SGI -- Matt]</font>
+
+<p>
+<b> What the standard says</b> (3.7.3.1, 5.3.4, and 18.4.1.3)
+
+<p>
+Array placement new has the form "new(ARGS) T[n]".
+The "(ARGS)" part is optional.
+If it's present then this is a placement new-expression,
+and we use a version of operator new[] with two or more arguments,
+otherwise it's an ordinary new-expression,
+and we use a version of operator new[] with one argument.
+For the purposes of this proposal,
+the distinction isn't all that important.
+
+<p>
+After finding the appropriate operation new,
+a new-expression obtains storage with
+<center><code>
+    void* p = operator new[](n1, ARGS),
+</code></center>
+where n1 >= n * sizeof(T).
+It then constructs n objects of type T starting at position p1,
+where p1 = p + delta.
+The return value is p1.
+
+<p>
+It is required (3.7.3.1/2) that the return value of any operator new[],
+whether it's built-in or provided by the user,
+must be suitably aligned for objects of any type.
+
+<p>
+If T is "char" or "unsigned char" the standard requires that delta is
+a nonnegative multiple of the most stringent alignment constraint
+for objects of size less than or equal to n (5.3.4/10).
+Otherwise the only restriction is that delta is nonnegative.
+
+<p>
+Some implementations store the number of elements in the array at
+a negative offset from p1.
+The standard neither requires nor forbids it.
+
+<p>
+There's a predefined placement version of array operator new,
+<center><code>
+    ::operator new[](size_t n1, void* p),
+</code></center>
+that does nothing but return p.
+p must be a pointer to the beginning of some array of size at least n1.
+The standard doesn't tell users how large an array they need.
+Many users probably assume that it's sufficient for
+the array to be of size n * sizeof(T),
+but there's no basis in the standard for that assumption.
+
+<p>
+<b>IA-64 Specifics</b>
+<p>
+On IA-64 long double is 80 bits.
+long double has 128-bit alignment,
+as do classes and unions containing long double,
+so sizeof(long double) is 16.
+All other types have at most 64-bit alignment.
+
+<p>
+<b>What the abi needs to specify</b>
+
+<ol type=1>
+<p>
+<li>
+Given n, T, sizeof(T), and alignof(T), what are n1 and delta?
+  <ol type=a>
+  <li> Are T=char and T=unsigned char special cases?
+       (Or, perhaps, is sizeof(T)=1 a special case?)
+  <li> Is ::operator new[](size_t, void*) a special case?
+  <li> Is ::operator new[](size_t),
+       which is used for non-placement new,
+       a special case?
+  <li> Is ::operator new[](size_t, const nothrow_t&) a special case?
+       I can't find anything in the standard guaranteeing that you can
+       delete an array allocated with nothrow array new using an
+       ordinary array delete-expression,
+       but users probably expect it, and legitimately so.
+  </ol>
+
+<p>
+<li>
+Do we store n at a negative offset from the return value of
+operator new[]? (This affects the answer to question 1.)
+If so, we need to specify precisely what that offset is.
+
+</ol>
+
+<p>
+<b>Proposal A</b>
+
+<p>
+No version of operator new[] is a special case.  For any array
+new-expression we store the number of elements in the array,
+as a size_t, at an offset of -sizeof(size_t) from the pointer
+returned by the new-expression.  For any type T other than char,
+unsigned char, long double, or a type containing a long double,
+n1 = n * sizeof(T) + sizeof(size_t).   For those three types,
+since we need to preserve long double alignment, n1 = n * sizeof(T) +
+sizeof(long double).
+
+<p>
+Pseudocode for new(ARGS) T[n] under this proposal:
+<code><pre>
+    if T = char or unsigned char, or if it has long double alignment,
+      padding = sizeof(long double)
+    else
+      padding = sizeof(size_t)
+
+    p = operator new[](n * sizeof(T) + padding, ARGS)
+
+    p1 = (T*) (p + padding)
+    ((unsigned long*) p1 - 1) = n
+
+    for i = [0, n)
+      create a T, using the default constructor, at p1[i]
+
+    return p1
+</pre></code>
+
+
+<p>
+<b>Proposal B</b>
+
+<p>
+::operator new[](size_t, void*) is a special case.  For that
+version of operator new[] only, n1 = n * sizeof(T).  We do not
+store the number of elements in such an array anywhere.
+
+<p>
+Pseudocode for new(ARGS) T[n] under this proposal:
+<code><pre>
+    If the expression is new(p) T[n], and if overload resolution
+    determines we're using ::operator new[](size_t, void*), then
+      p1 = (T*) p
+
+      for i = [0, n)
+        create a T, using the default constructor, at p1[i]
+
+      return p1
+</pre></code>
+
+<p>
+For all other cases, same as proposal A.
+
+<p>
+Proposal A is simpler, but proposal B probably conforms more
+closely to user expectations.
+
+<p>
+<font color=blue><hr><p>[000210 All -- Matt]</font>
+We agreed that Proposal B, where
+<code>::operator new(size_t, void*)</code>
+is a special case with no cookie,
+is preferable to Proposal A,
+where all versions of array new get cookies.
+
+<p>
+We also agreed to the variation where we don't reserve space for a
+cookie if the type has no destructor.
+We're calling it Proposal C.
+We need a writeup,
+but we should be able to close this issue next week.
 
 
 <p>
@@ -1436,6 +1644,95 @@ Based on that, I definitely think reference type_info can go away.
 <p>
 <font color=blue>[000203 All]</font>
 Remove __ref_type_info.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A25></a> <td> A-25 </td>
+<td> Excess-width bitfields </td>
+<td> data </td>
+<td> closed </td>
+<td> IBM </td>
+<td> 000204 </td>
+<td> 000217 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+C++ allows bitfields with a larger size specified than that required by
+the declared type, e.g. <code>int f: 64</code>.
+How should they be allocated?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A25> Resolution</a></b>:
+Allocate the field with alignment determined as though it were the
+largest integer type that fits in the specified size,
+and use the first bits available in the field
+(lowest order for little endian IA-64)
+for the actual data.
+</td> </tr>
+
+</table>
+
+<p>
+When the specified width of a bitfield exceeds the size of the declared type,
+the standard specifies that the accessible field is
+to be padded to the specified width,
+with the location of the padding implementation-defined.
+That is, the accessible field could be placed at the beginning,
+at the end, or in the middle of the specified bits.
+(Note that such declarations are explicitly disallowed by the C 2000
+draft, so this is not a C ABI issue.)
+
+<p>
+<font color=blue>[000204 SGI -- Jim]</font>
+It seems to me that the situation that makes it interesting is the
+following:
+<code><pre>
+        struct s {
+          short s1;
+          int i: 64;
+          short s2;
+        }
+</pre></code>
+In this case, I don't want the accessible part of i at the beginning or
+the end -- I want it in the middle.  Doing otherwise yields either a
+badly aligned i, or wasted space.
+
+<p>
+One could express this by the following rule:
+<dl><dd>
+        Place the accessible part of the bitfield object as if
+        it were a non-bitfield member of the declared type, i.e.
+        at the next available offset of the appropriate alignment.
+        Allocate the full bitfield at the earliest available
+        offset where it will include the accessible part.
+</dd></dl>
+
+<font color=blue>[000204 IBM -- Mark]</font>
+I disagree.
+If the user wants the bitfield to be aligned in a certain place,
+he has the tools to do so.
+He can certainly pick a different size bitfield.
+I think that this should be aligned as if it is the same size as the type,
+and then the extra bits put somewhere.
+Putting them afterwards is probably simpler than before,
+or splitting it in the middle.
+
+<font color=blue>[000217 All]</font>
+The rationale for the solution chosen is that the most likely reason
+for using this feature is to achieve a known allocation for an enum
+type when the user does not know how big compilers will make it.
+Thus, we want "<code>enum ... e : 32;</code>" to behave as though
+the compiler allocated a 32-bit int,
+even if it actually uses only 8 bits for the enum value.
 
 
 <p> <hr> <p>
