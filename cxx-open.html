@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 27 July 1999</i>
+<i>Revised 28 July 1999</i>
 
 </center>
 
@@ -30,6 +30,7 @@ C++ ABI Open Issues
 <font color=blue>[990727]</font>
 Closed B-2, C-8.
 Additions to A-9 (closed), C-2.
+Summaries added for C-4, C-6, D-1 to D-4.
 
 <p>
 <font color=blue>[990720]</font>
@@ -1633,7 +1634,14 @@ requires a mechanism for early destruction of a subset.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Michael Lam]
+When calling a virtual function from the constructor/destructor of a
+base subobject,
+the version specific to the base type is required,
+unlike the typical case when calling such a vfunc for the full object
+from some other context.
+Since the pointer for that vfunc in the full object's vtable
+(or even the subobject's sub-vtable) is the full object version,
+some other means is required for accessing the correct vfunc.
 </td> </tr>
 
 </table>
@@ -1681,7 +1689,9 @@ requires a mechanism for early destruction of a subset.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Michael Lam]
+When calling constructors and destructors for classes with virtual bases,
+information obout the virtual base subobjects in the full class
+must be transmitted somehow to the ctor/dtor.
 </td> </tr>
 
 </table>
@@ -1774,7 +1784,13 @@ and passes a pointer as an implicit first parameter
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+The IA-64 runtime conventions describe language-independent descriptors
+for restoring registers when unwinding the stack.
+The do not specify how C++ performs language-specific unwinding for
+exception handling, i.e. locating a handler and destroying automatic
+objects.
+Note that this can be handled by agreeing on common descriptors,
+or by agreeing on per-frame personality routines with common APIs.
 </td> </tr>
 
 </table>
@@ -1824,7 +1840,13 @@ called to compare the types of the exception and handler.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+The IA-64 runtime conventions provide for a personality routine
+pointer for language-specific actions when unwinding the stack.
+They do not specify its interface.
+There are typically two required actions for C++:
+locating a handler (non-destructively)
+and destroying automatic objects while unwinding.
+This issue involves specification of the API (see also D-3).
 </td> </tr>
 
 </table>
@@ -1848,7 +1870,10 @@ called to compare the types of the exception and handler.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+The IA-64 runtime conventions provide for a personality routine
+pointer for language-specific actions when unwinding the stack.
+However, they are quite muddy about the precise sequence of calls.
+This issue involves specification of unwind process (see also D-2).
 </td> </tr>
 
 </table>
@@ -1872,7 +1897,9 @@ called to compare the types of the exception and handler.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+The IA-64 runtime conventions call for the unwind personality routine
+to behave like a routine nested in the routine raising an exception.
+Is that the preferred definition?
 </td> </tr>
 
 </table>
