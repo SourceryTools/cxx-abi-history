@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 19 October 1999</i>
+<i>Revised 27 October 1999</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990926]</font>
+Additions to <a href=#F1>F-1</a>.
 
 <p>
 <font color=blue>[990912]</font>
@@ -1936,6 +1940,7 @@ but we place no requirement on the name.
 </dd>
 
 </ul>
+</i>
 
 <p>
 <font color=blue><hr><p>[revised 991012 SGI]</font>
@@ -2534,7 +2539,7 @@ ambiguous base classes) and (b) dynamic_cast to void*?
 <tr> <td colspan=7>
 <b> Resolution </b>:
 The vtable will contain an offset to the beginning of the complete object,
-and an offset to the typeinfo object.
+and a pointer to the typeinfo object.
 </td> </tr>
 
 </table>
@@ -4378,16 +4383,138 @@ name necessary to resolve overloading?
 </table>
 
 <p>
-<font color=blue>[990806 SGI -- Jim]</font>
-Naming to be resolved under this issue includes:
+<font color=blue>[991019 various]</font>
+The following is assembled from several mail messages on the subject.
+
+<p>
+<h5> Entities with linkable names to be resolved include:</h5>
+<p>
 <ul>
 <li> Global and member operator names
 <li> Global and member function names
-<li> Vtable names (primary and initialization)
-<li> RTTI struct names
-<li> Template instance names
-<li> Namespace effects
+<li> Namespace scope variables
+<li> Static local variables
+<li> Static data members
+<li> Virtual function table names (primary and initialization)
+<li> RTTI structures (std::type_info derivations)
+<li> Template instances of the above
+<li> Namespace effects on the above (including anonymous namespaces)
+<li> Possibly exception handling structures
+<li> Possibly string constants
 </ul>
+
+<p>
+For entities with C name linkage,
+the entity's linkable name is identical to its base name (as usual).
+
+<p>
+Note that linkable names include not only names with
+C++ global scope semantics,
+but also "local" names which for some reason end up
+requiring linker resolution
+(e.g. static local variables declared in inline functions).
+Note also that inlining requirements apply equally to functions
+declared inline and those chosen to be inlined by the compiler.
+
+<p>
+<h5> Name decomposition for function-like entities:</h5>
+<p>
+For function-like entities with C++ name linkage,
+the following components MUST be part of the of the name:
+<ul>
+<li> encoding of the base name (presumably, the base name itself)
+<li> encoding of the declarative scope (classes and namespaces),
+    when applicable
+<li> encoding of each parameter type (with known positions)
+<li> encoding of each template argument
+    and the parameter with which it is associated, when applicable
+</ul>
+
+<p>
+[ For the last item, consider: <code>
+<pre>    template<typename T1, typename T2> void f(T1, T2);
+    template<typename T1, typename T2> void f(T2, T1);
+</pre></code>
+The encoding of each of these templates instantiated for <char, char>
+should be distinct. ]
+
+<p>
+In addition, it may be desirable to encode the following components:
+<ul>
+<li> the function's return type
+<li> the function's exception specifications
+</ul>
+(Combined with the parameter types,
+this encodes the type of the function.
+Note that even though exception specifications are not
+considered part of the function type in the C++ standard;
+they actually are.)
+
+<p>
+<h5> Name decomposition for data entities:</h5>
+<p>
+Namespace scope variables and static data members have
+linkable names that must include at least:
+<ul>
+<li> encoding of the base name (presumably, the base name itself)
+<li> encoding of the declarative scope (classes and namespaces),
+    when applicable
+</ul>
+
+In addition, it may be desirable to encode:
+<ul>
+<li> the variable's type (possibly including exception specifications)
+</ul>
+<p>
+Note that although there are benefits to encoding array size,
+and therefore being able to catch mismatches,
+the ability to declare <code>a[]</code> makes this problematic.
+
+<p>
+<h5> Fundamental types and type operators:</h5>
+
+<p>
+fundamental types:
+<ul>
+<li> void
+<li> [signed|unsigned] {
+<li> char, short, int, long} (long long?, int<n>_t)
+<li> bool
+<li> float, double, (long double?)
+<li> wchar_t
+<li> ellipsis (not strictly a type)
+<li> complex
+</ul>
+
+<p>
+type modifiers/constructors:
+<ul>
+<li> const, volatile (restrict?)
+<li> array (with size?) of type
+<li> pointer to type
+<li> reference to type
+<li> function expecting type*, returning type
+<li> pointer to member function of type, expecting type*, returning type
+<li> pointer to member of type T, having type U (i.e. "U T::*")
+</ul>
+
+<p>
+The types in parentheses are available in C99,
+but not in standard C++.
+
+ 
+
+
+<p>
+<font color=blue><hr><p>[991021 all]</font>
+It was observed in the meeting that it might be better to deal with
+non-essential type information
+(e.g. exception specifications, array sizes)
+as a separate construct to allow error detection,
+rather than as a required part of the mangled name.
+This allows it to be elided or removed if unneeded.
+
+
 
 <p>
 <table border=on cellpadding=3>
