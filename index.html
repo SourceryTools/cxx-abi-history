@@ -3,6 +3,13 @@
 <HEAD>
 <title>C++ ABI Summary</title>
 
+<style type="text/css">
+<!--
+ TT {font-size: 10pt; font-weight: bold}
+ TD {font-size: 10pt}
+-->
+</style>
+
 <hr>
 
 <font size=6><i><b>
@@ -10,22 +17,15 @@
 C++ ABI Summary
 </b></i></font>
 
-<font size=-1>
+<!-- font size=-1 -->
 <p>
-<i>Revised 3 June 1999</i>
+<i>Revised 8 June 1999</i>
 
 </center>
 
 </HEAD>
 
 <BODY>
-
-<style type="text/css">
-<!--
- TD (font-size: smaller)
- TT (font-size: smaller)
--->
-</style>
 
 <p>
 <hr>
@@ -45,33 +45,96 @@ C++ ABI Summary
 </tr>
 
 <tr>
-<td> 3 June </td>
-<td> 11:00-13:00 </td>
-<td> completed </td>
-<td> </td>
-<td>  </td>
-<td>  </td>
+<td> 3 June </td> <td> 11:00-13:00 </td>
+<td align=left colspan=4> completed </td>
 </tr>
 
 <tr>
 <td> 10 June </td>
 <td> 10:00-12:00 </td>
-<td> SGI </td>
-<td> ? </td>
-<td> ? </td>
-<td> ? </td>
+<td> SGI Sapphire 20L </td>
+<td> 916-356-9200 </td>
+<td> 6-136000 </td>
+<td> 822-6418 </td>
 </tr>
 
 <tr>
 <td> 17 June </td>
 <td> 10:00-12:00 </td>
-<td> SGI </td>
-<td> ? </td>
-<td> ? </td>
-<td> ? </td>
+<td> SGI Garnet 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 24 June </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 1 July </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 8 July </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 15 July </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 22 July </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 29 July </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 5 August </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 12 August </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
+</tr>
+
+<tr>
+<td> 19 August </td>
+<td> 10:00-12:00 </td>
+<td> SGI Sapphire 20L </td>
+<td> 650-933-7976 </td> <td> </td> <td> </td>
 </tr>
 
 </table>
+
+<p>
+Note:  When calling the SGI telephone bridges (starting 17 June),
+the first caller continues to ring until the second party joins.
+To get rid of it, you can call from a second phone,
+and I believe you can hang it up right away.
 
 <p>
 <hr>
@@ -244,6 +307,10 @@ The identifiers used are:
 <td> Potential psABI impact </td>
 </tr>
 
+<tr> <td> source </td>
+<td> Source code conventions (i.e. API, not ABI) </td>
+</tr>
+
 <tr> <td> tools </td>
 <td> May affect how program construction tools interact </td>
 </tr>
@@ -395,7 +462,7 @@ Virtual Function Handling </a> </th>
 </tr>
 
 <tr> <td> B-3 </td>
-<td> Optimizing for unchanged vptr </td>
+<td> Allowed caching of vtable contents </td>
 <td> call </td>
 <td> open </td>
 <td> HP </td>
@@ -559,7 +626,7 @@ Virtual Function Handling </a> </th>
 <td> </td>
 </tr>
 
-<tr> <td> D-7 </td>
+<tr> <td> D-8 </td>
 <td> Interaction with threads packages </td>
 <td> lib ps </td>
 <td> open </td>
@@ -665,6 +732,15 @@ Virtual Function Handling </a> </th>
 <td> open </td>
 <td> Sun </td>
 <td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> G-4 </td>
+<td> Dynamic init of local static objects and multithreading </td>
+<td> call </td>
+<td> open </td>
+<td> SCO </td>
+<td> 990607 </td>
 <td> </td>
 </tr>
 
