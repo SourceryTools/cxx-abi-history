@@ -15,7 +15,7 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 3 January 2000</i>
+<i>Revised 12 January 2000</i>
 
 </center>
 
@@ -25,6 +25,11 @@ C++ ABI for IA-64: Exception Handling
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000112]</font>
+Integrate comments from 6 January meeting.
+See in particular <a href=#forced><code>_Unwind_ForcedUnwind</code></a>.
 
 <p>
 <font color=blue>[991230]</font>
@@ -39,9 +44,6 @@ Original version.
 <h3> Outstanding Questions </h3>
 
 <ul>
-<p>
-<li> Specify <a href=#forced><code>_Unwind_ForcedUnwind</code></a>.
-
 <p>
 <li> W.r.t. <a href=#lsda><code>_Unwind_GetLanguageSpecificData</code></a>,
 I thought we agreed that
@@ -102,6 +104,19 @@ IA-64 C++ ABI.
 
 <p>
 The descriptions below make use of the following definitions:
+
+<dl>
+<p>
+<dt><b><i>landing pad</i></b></dt>:
+<dd> 
+A section of user code intended to catch, or otherwise clean up after,
+an exception.
+It gains control from the exception runtime via the personality routine,
+and after doing the appropriate processing either merges into the
+normal user code or returns to the runtime by resuming
+or raising a new exception.
+
+</dl>
 
 
 <p> <hr> <p>
@@ -245,6 +260,10 @@ It does not actually restore the unwound state,
 and the personality routine must access the state through the API.
 <p>
 <li>
+If the search phase reports failure,
+e.g. because no handler was found,
+it will call <code>terminate()</code> rather than commence phase 2.
+<p>
 If the search phase reports success,
 the framework restarts in the <i>cleanup</i> phase.
 Again, it repeatedly calls the personality routine,
@@ -331,6 +350,8 @@ defined as follows:
 
 <p>
 An <code>_Unwind_Exception</code> object must be double-word aligned.
+The first two fields are set by user code prior to raising the exception,
+and the latter two should never be touched except by the runtime.
 
 <p>
 The <code>exception_class</code> field is a language- and
@@ -407,13 +428,14 @@ and passed to the personality routine during unwinding.
 
 <code><pre>
     uint64 _Unwind_RaiseException
-	      (uint64 exception_class,
-	       struct _Unwind_Exception *exception_object);
+	      ( struct _Unwind_Exception *exception_object );
 </pre></code>
 
 <p>
 Raise an exception,
-passing along the given exception class and exception object.
+passing along the given exception object,
+which should have its <code>exception_class</code> and
+<code>exception_cleanup</code> fields set.
 The exception object has been allocated by the language-specific runtime,
 and has a language-specific format,
 except that it must contain an <code>_Unwind_Exception</code> struct
@@ -430,8 +452,61 @@ if <code>_Unwind_RaiseException</code> returns,
 <a name=forced></a>
 <h5> _Unwind_ForcedUnwind </h5>
 
+<code><pre>
+    typedef bool (*_Unwind_Stop_Fn)
+		(int version,
+		 int actions,
+		 Uint64 exceptionClass,
+		 struct _Unwind_Exception *exceptionObject,
+		 struct _Unwind_Context *context,
+		 void *stop_parameter );
+
+    uint64 _Unwind_ForcedUnwind
+	      ( struct _Unwind_Exception *exception_object,
+		_Unwind_Stop_Fn stop,
+		void *stop_parameter );
+</pre></code>
+
 <p>
-<i>&lt;To Be Specified></i>
+Raise an exception for forced unwinding,
+passing along the given exception object,
+which should have its <code>exception_class</code> and
+<code>exception_cleanup</code> fields set.
+The exception object has been allocated by the language-specific runtime,
+and has a language-specific format,
+except that it must contain an <code>_Unwind_Exception</code> struct
+(see <i>Exception Header</i> above).
+
+<p>
+Forced unwinding is a single-phase process.
+The <code>stop</code> and <code>stop_parameter</code> parameters
+control the termination of the unwind process,
+instead of the usual personality routine query.
+If <code>stop</code> is non-NULL,
+it is called for each unwind frame,
+with the usual personality routine parameters (see below)
+plus an additional <code>stop_parameter</code>.
+If it returns, always with a false result meaning don't stop,
+the frame's personality routine is called with the
+<code>EH_FORCE_UNWIND</code> and <code>EH_CLEANUP_PHASE</code> flags
+set in <code>actions</code>,
+and then unwinding proceeds to the next frame.
+
+<p>
+<code>_Unwind_ForcedUnwind</code> does not return,
+unless an error condition is found
+(such as no handler accepting to handle the exception,
+bad stack format, etc.).
+In the case of C++,
+if <code>_Unwind_ForcedUnwind</code> returns,
+<code>terminate()</code> should be called.
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>If a future requirement for two-phase forced unwinding were identified,
+an alternate routine could be defined to request it,
+and an <code>actions</code> parameter flag defined to support it.
+</i>
 
 <p>
 <h5> _Unwind_Resume </h5>
@@ -491,7 +566,7 @@ to by the <code>exception_cleanup</code> field of the exception header.
 These functions are used for communicating information about the unwind
 context (i.e. the unwind descriptors and the user register state)
 between the unwind library and the personality routine and landing pad.
-They include routines to read or set the
+They include routines to read or set the context record images of
 registers in the stack frame corresponding to a given unwind context,
 and to identify the location of the current unwind descriptors
 and unwind frame.
