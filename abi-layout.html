@@ -1,0 +1,239 @@
+<HTML>
+
+<HEAD>
+<title>C++ ABI for IA-64: Data Layout</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+<link rel=stylesheet href=code.css type="text/css">
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ ABI for IA-64: Data Layout
+</b></i></font>
+
+<font size=-1>
+<p>
+<i>Revised 27 July 1999</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+<p> <hr> <p>
+<h3> General </h3>
+
+In what follows, we define the memory layout for C++ data objects.
+Specifically, for each type, we specify the following information about
+an object O of that type:
+<ul>
+<li> the <i>size</i> of an object, <i>sizeof</i>(O);
+<li> the <i>alignment</i> of an object, <i>align</i>(O); and
+<li> the <i>offset</i> within O, <i>offset</i>(C),
+     of each data component C, i.e. base or member.
+</ul>
+
+<p> For purposes internal to the specification,
+we also specify the <i>data size</i> of an object, <i>dsize</i>(O),
+which intuitively is sizeof(O) minus the size of tail padding.
+
+<p> <hr> <p>
+<h3> Definitions </h3>
+
+<p>
+The descriptions below make use of the following definitions:
+
+<dl>
+
+<p>
+<dt> <i>alignment</i> of a type T (or object X)</dt>
+<dd>
+A value A such that any object X of type T has an address satisfying
+the constraint that &X modulo A == 0.
+
+<p>
+<dt> <i>empty class</i> </dt>
+<dd>
+A class with no non-static data members,
+no virtual functions, no virtual base classes,
+and no non-empty non-virtual base classes.
+
+<p>
+<dt> <i>nearly empty class</i> </dt>
+<dd>
+A class, the objects of which contain only a Vptr.
+
+<p>
+<dt> <i>polymorphic class</i> </dt>
+<dd>
+A class requiring a virtual table pointer
+(because it or its bases have one or more virtual member functions or
+virtual base classes).
+
+<p>
+<dt> <i>primary base class</i> </dt>
+<dd>
+For a polymorphic class,
+the unique base class (if any) with which it shares the Vptr at offset 0.
+
+</dl>
+
+<p> <hr> <p>
+<h3> POD Data Types </h3>
+
+The size and alignment of POD types is as specified by the base (C) ABI.
+Type bool has size and alignment 1.
+All of these types have data size equal to their size.
+(We ignore tail padding for PODs because the Standard does not allow us
+to use it for anything else.)
+
+
+<p> <hr> <p>
+<h3> Non-POD Class Types </h3>
+
+For non-POD class types C, assume that all component types
+(i.e. base classes and non-static data member types)
+have been laid out, defining size, data size, and alignment.
+Layout (of type C) is done using the following procedure.
+
+<ol type=I>
+<p>
+<li> <h5> Initialization </h5>
+  <ol type=1>
+  <p>
+  <li> Initialize sizeof(C) to zero, align(C) to one, dsize(C) to zero.
+  <p>
+  <li> If C is a polymorphic type:
+      <ol type=a>
+      <p>
+      <li> If C has a polymorphic base class,
+	   attempt to choose a primary base class B.
+	   It is the first non-virtual polymorphic base class, if any,
+	   or else the first nearly empty virtual base class.
+	   Allocate it at offset zero, and set
+	   sizeof(C) to sizeof(B), align(C) to align(B), dsize(C) to dsize(B).
+      <p>
+      <li> Otherwise, allocate the Vtable pointer for C at offset zero,
+	   and set sizeof(C), align(C), and dsize(C) to the appropriate
+	   values for a pointer (all 8 bytes for IA-64 64-bit ABI).
+      </ol>
+  </ol>
+
+<p>
+<li> <h5> Non-Virtual-Base Allocation </h5>
+<p>
+For each data component D (i.e. base or non-static data member)
+except virtual bases,
+first the non-virtual base classes in declaration order
+and then the non-static data members in declaration order,
+allocate as follows:
+
+  <ol type=1>
+
+  <p>
+  <li> If D is not an empty base class,
+	start at offset dsize(C),
+	incremented if necessary to alignment align(type(D)).
+	Place D at this offset unless doing so would result in two
+	components (direct or indirect) of the same type having the
+	same offset.
+	If such a component type conflict occurs,
+	increment the candidate offset by align(type(D)),
+	and try again,
+	repeating until success occurs
+	(which will occur no later than sizeof(C) incremented to the
+	required alignment).
+
+	<p>
+	Update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
+	Update align(C) to max (align(C), align(D)).
+	If D is a base class (not empty in this case),
+	update dsize(C) to offset(D)+dsize(D).
+	If D is a data member,
+	update dsize(C) to max (offset(D)+dsize(D), offset(D)+1).
+
+  <p>
+  <li> If D is an empty base class,
+	its allocation is similar to the first case above,
+	except that additional candidate offsets are considered before
+	starting at dsize(C):
+
+      <ol type=a>
+      <p>
+      <li> First variant:
+	   Attempt to place D at offset zero.
+	   If unsuccessful (due to a component type conflict),
+	   proceed with attempts at dsize(C) as for non-empty bases.
+      <p>
+      <li> Second variant:
+	   Suppose non-empty bases B1, B2, B3, ..., Bn,
+	   have already been placed.
+	   Attempt to place D at 0 (=offset(B1)), at offset(B2),
+	   at offset(B3), ...,
+	   before finally attempting offsets starting at dsize(C) as above.
+      <p>
+      <li> Third variant:
+	   Suppose non-empty bases B1, B2, B3, ..., Bn,
+	   have already been placed as in the second variant.
+	   Attempt to place D at 0 (=offset(B1)),
+	   at offsets dsize(B1) through offset(B2),
+	   at offsets offset(B2)+dsize(B2) through offset(B3), ...,
+	   before finally attempting offsets starting at dsize(C) as above.
+      </ol>
+
+	<p>
+	For all variants, once offset(D) has been chosen,
+	update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
+	Note that align(D) is 1, so no update of align(C) is needed.
+	Similarly, since D is an empty base class,
+	no update of dsize(C) is needed.
+
+  </ol>
+
+<p>
+<li> <h5> Virtual Base Allocation </h5>
+<p>
+Finally allocate any virtual base classes
+(except one selected as the primary base class in I-2a, if any)
+as we did non-virtual base classes in step II-1,
+in declaration order.
+Update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
+If non-empty, also update align(C) and dsize(C) as in II-1.
+
+<p>
+<li> <h5> Finalization </h5>
+<p>
+Round sizeof(C) up to a non-zero multiple of align(C).
+
+</ol>
+
+
+<p> <hr> <p>
+<h3> Virtual Table Layout </h3>
+
+<i>
+&lt;To be defined.>
+
+<p>
+Issues:
+<ul>
+<li> A-2:  Contains offset of each virtual base class.
+<li> A-6:  RTTI representation (TBD).
+<li> A-12: Merging secondary vtables.
+<li> B-2:  Will contain one entry per return type for covariant returns.
+<li> B-4:  Function descriptors vs. function pointers in Vtable.
+<li> B-7:  Possible to allocate in shared memory?
+</ul>
+</i>
+
+<p>
+<hr>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+</BODY>
+</HTML>
