@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 3 January 2000</i>
+<i>Revised 5 January 2000</i>
 
 </center>
 
@@ -24,7 +24,8 @@ C++ ABI Summary
 <p>
 <h4>Links</h4>
 
-<p>Status pages:
+<p>
+Status pages:
 <ul>
 <li> <a href=http://reality.sgi.com/dehnert_engr/cxx/cxx-summary.html>
 	http://reality.sgi.com/dehnert_engr/cxx/cxx-summary.html</a>:
@@ -37,12 +38,21 @@ C++ ABI Summary
 	<a href=cxx-open.pdf>(PDF)</a>
 <li> Full <a href=cxx-closed.html>closed</a> issues list
 	<a href=cxx-closed.pdf>(PDF)</a>
+</ul>
+
+<p>
+Drafts:
+<ul>
 <li> Draft <a href=abi-layout.html>data layout</a> specification
 	<a href=abi-layout.pdf>(PDF)</a>
 <li> Draft psABI <a href=abi-eh.html>exception handling</a> specification
 	<a href=abi-eh.pdf>(PDF)</a>
+<li> HP <a href=exceptions.pdf>exception handling</a> working paper,
+	8 December 1999.
 </ul>
-<p>Proposals and auxiliary information:
+
+<p>
+Proposals and auxiliary information:
 <ul>
 <li> Proposals to the base ABI group for
 	<a href=../abi/prop-72-comdat.html>COMDAT</a> sections
@@ -50,12 +60,12 @@ C++ ABI Summary
 	removing limitations on <a href=../abi/prop-74-sindex.html>
 	section indices</a>
 	(<a href=../abi/prop-74-sindex.pdf>PDF</a>).
-<li> Proposed <a href=exceptions.pdf>exception handling</a> specification
-	from HP, 8 December 1999.
 <li> <a href=cxx-vtable-ex.html>Vtable layout</a> examples
 	<a href=cxx-vtable-ex.pdf>(PDF)</a>
 </ul>
-<p>Intel IA-64 information:
+
+<p>
+Intel IA-64 information:
 <ul>
 <li>
 <a href=http://developer.intel.com/design/ia64/devinfo.htm>
@@ -819,6 +829,15 @@ Virtual Function Handling </a> </th>
 <th colspan=6> Exception Handling </th>
 </tr>
 
+<tr class=small> <a name=D0></a> <td> D-0 </td>
+<td> Exception handling framework </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 991216 </td>
+</tr>
+
 <tr class=small> <td> D-1 </td>
 <td> Language-specific data area format </td>
 <td> lib ps </td>
@@ -867,7 +886,7 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> D-6 </td>
 <td> Allow resumption in other languages? </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
 <td> 991007 </td>
@@ -897,6 +916,69 @@ Virtual Function Handling </a> </th>
 <td> open </td>
 <td> HP </td>
 <td> 990908 </td>
+<td> </td>
+</tr>
+
+<tr> <a name=D10></a> <td> D-10 </td>
+<td> psABI proposal </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+
+<tr> <a name=D11></a> <td> D-11 </td>
+<td> pthreads interface </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+
+<tr> <a name=D12></a> <td> D-12 </td>
+<td> Table location </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+
+<tr> <a name=D13></a> <td> D-13 </td>
+<td> _Unwind_ForcedUnwind </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+
+<tr> <a name=D14></a> <td> D-14 </td>
+<td> __cxa_begin/end_catch </td>
+<td> lib </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+
+<tr> <a name=D15></a> <td> D-15 </td>
+<td> Terminate handler and threads </td>
+<td> lib </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+
+<tr> <a name=D16></a> <td> D-16 </td>
+<td> Exception specifications </td>
+<td> lib </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
 <td> </td>
 </tr>
 
