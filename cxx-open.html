@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 3 January 2000</i>
+<i>Revised 5 January 2000</i>
 
 </center>
 
@@ -25,6 +25,12 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000105]</font>
+Closed <a href=#D0>D-0</a>.
+Additions to <a href=#D1>D-1</a>, <a href=#D9>D-9</a>.
+New issues <a href=#D10>D-10</a> to <a href=#D16>D-16</a>.
 
 <p>
 <font color=blue>[000103]</font>
@@ -47,39 +53,6 @@ Additions to <a href=#D1>D-1</a>,
 <a href=#D2>D-2</a>, <a href=#D3>D-3</a>.
 Closed <a href=cxx-closed.html#D4>D-4</a>,
 <a href=cxx-closed.html#D7>D-7</a>.
-
-<p>
-<font color=blue>[991202]</font>
-Additions to <a href=#B4>B-4</a>
-(<a href=cxx-closed.html#B4>closed</a>),
-<a href=#C2>C-2</a>, <a href=#D0>D-*</a>.
-Closed <a href=cxx-closed.html#B1>B-1</a>,
-<a href=cxx-closed.html#C1>C-1</a>,
-<a href=cxx-closed.html#C3>C-3</a>,
-<a href=cxx-closed.html#G3>G-3</a>,
-<a href=cxx-closed.html#G6>G-6</a>.
-
-<p>
-<font color=blue>[991129]</font>
-Additions to <a href=#B1>B-1</a>, <a href=#F2>F-2</a>, <a href=#G3>G-3</a>.
-Closed <a href=cxx-closed.html#B5>B-5</a>.
-
-<p>
-<font color=blue>[991104]</font>
-New issue <a href=#G6>G-6</a>.
-Additions to <a href=#C4>C-4</a>.
-Closed <a href=cxx-closed.html#C5>C-5</a>,
-<a href=cxx-closed.html#C6>C-6</a>,
-<a href=cxx-closed.html#C9>C-9</a>.
-
-<p>
-<font color=blue>[991028]</font>
-Opened <a href=#C9>C-9</a>, <a href=#C10>C-10</a>.
-Closed <a href=cxx-closed.html#A6>A-6</a>,
-<a href=cxx-closed.html#B6>B-6</a>,
-<a href=cxx-closed.html#C10>C-10</a>.
-Additions to <a href=#C5>C-5</a>, <a href=#C6>C-6</a>,
-<a href=#F1>F-1</a>, <a href=#F2>F-2</a>, <a href=#F3>F-3</a>.
 
 <p>
 <a href=#ancient>Ancient revision history</a>.
@@ -2479,524 +2452,41 @@ No.
 </table>
 
 
-<p> <hr> <p> <a name=D0></a>
+<p> <hr> <p> <a name=Dstart></a>
 <h3> Exception Handling Issues </h3>
 
-<p>
-For reference, we have design information as follows:
-
-<ul>
-<p>
-<li>
-<font color=blue>[990818 Intel -- Priti]</font>
-<a href=Intel-exception-990818.ppt> (PowerPoint document) </a>
 
 <p>
-<li>
-<font color=blue>[990818 HP -- Christophe]</font>
-<a href=HP-exception-990818.pdf> (PDF document) </a>
-
-</ul>
-
-<p>
-<font color=blue>[990902 All]</font>
-We observed that there are three levels at which we can discuss EH
-compatibility.
-
-<p>
-<a name=exceptions-level1></a>
-The first, minimal level is effectively that of the definition in the
-IA-64 Software Conventions document.
-It describes a framework which can be used by an arbitrary implementation,
-with a complete definition of the stack unwind mechanism,
-but no significant constraints on the language-specific processing.
-In particular, it is not sufficient to guarantee that two object files
-compiled by different C++ compilers could interoperate,
-e.g. throwing an exception in one of them and catching it in the other.
-
-<p>
-<a name=exceptions-level2></a>
-The second level is the minimum that must be specified to allow
-interoperability in the sense described above.
-This level requires agreement on:
-
-<ul>
-<p>
-<li>
-Standard runtime initialization,
-e.g. pre-allocation of space for out-of-memory exceptions.
-
-<p>
-<li>
-The layout of the exception object created by a throw and processed by
-a catch clause.
-
-<p>
-<li>
-When and how the exception object is allocated and destroyed.
-
-<p>
-<li>
-The API of the personality routine,
-i.e. the parameters passed to it,
-the logical actions it performs,
-and any results it returns
-(either function results to indicate success, failure, or continue,
-or changes in global or exception object state),
-for both the phase 1 handler search and the phase 2 cleanup/unwind.
-
-<p>
-<li>
-How control is ultimately transferred back to the user program at a
-catch clause or other resumption point.
-That is, will the last personality routine transfer control directly to
-the user code resumption point,
-or will it return information to the runtime allowing the latter to do so?
-
-<p>
-<li>
-Standard runtime initialization,
-e.g. pre-allocation of space for out-of-memory exceptions.
-
-<p>
-<li>
-Multithreading behavior.
-
-</ul>
-
-<p>
-<a name=exceptions-level3></a>
-The third level is a specification sufficient to allow all compliant
-systems to share the relevant runtime implementation.
-It includes, in addition to the above:
-
-<ul>
-<p>
-<li>
-Format of the C++ language-specific unwind tables.
-
-<p>
-<li>
-APIs of the functions named __allocate_exception, __throw, and
-__free_exception (and likely others) by HP, or their equivalents.
-
-<p>
-<li>
-API of landing pad code,
-and of any other entries back into the user code.
-
-<p>
-<li>
-Definition of what HP calls the exception class value.
-
-</ul>
-
-<p>
-The vocal attendees at the meeting wish to achieve the third level,
-and we will attempt to do so.
-Whether or not that is achieved, however,
-a second-level specification must be part of the ABI.
-
-<p>
-<li>
-<font color=blue>[990909 All/Jim]</font>
-With much further discussion,
-we are starting to get better understanding of one another,
-but there are still obviously (in my mind)
-mismatched underlying assumptions.
-To resolve this, Christophe agreed to attempt to get us the
-HP APIs for the exception handling routines.
-I have also started a
-<a href=abi-eh.html>document</a> on a more complete EH specification,
-though it hasn't gone beyond specifying more of the underlying base ABI part.
-I will go farther once I get back from my trip.
-
-<p>
-<li>
-<font color=blue>[990922 HP -- Christophe]</font>
-
-<P>Here is a quick description of the personality routine interface
-and semantics. This description is a slight extension of the existing
-personality routine implemented by HP for IA64. The extension is to
-allow multiple runtimes from possibly different vendors or for
-possibly different languages to cooperate in processsing an
-exception.</P>
-
-<P>This document assumes that the chapter 11 of the Intel/HP &quot;IA-64 =
-Software Conventions and Runtime Architecture&quot; document is known to =
-the reader.</P>
-
-<P><B><I><FONT SIZE=3D5>INTERFACE:</FONT></I></B></P>
-
-<P>The complete exception processing framework consists of at least the =
-following routines: <TT>_RaiseException</TT>, <TT>_ResumeUnwind</TT>, =
-<TT>_DeleteException</TT>, <TT>_Unwind_getGR</TT>, =
-<TT>_Unwind_setGR</TT>, <TT>_Unwind_getIP</TT>, <TT>_Unwind_setIP</TT>, =
-<TT>_Unwind_getLanguageSpecificData</TT>, =
-<TT>_Unwind_getRegionStart</TT>. In addition, a language and vendor =
-specific personality routine will be stored by the compiler in the =
-unwind descriptor for the stack frames requiring exception =
-processing.</P>
-
-<P><B><FONT SIZE=3D4>UNWIND RUNTIME ROUTINES:</FONT></B></P>
-
-<P>The unwind runtime routines have the following interface and =
-semantics (all routines are <TT>extern &quot;C&quot;</TT>):</P>
-
-<P><TT>uint64 _RaiseException</TT><TT>(uint64 exception_class, void =
-*exception_object);</TT></P><BLOCKQUOTE>
-
-<P>Raise an exception, passing along the given exception class and =
-exception object. The exception object has been allocated by the =
-language-specific runtime, and has a language-specific format. =
-<TT>_RaiseException</TT> does not return, unless an error condition is =
-found (such as no handler accepting to handle the exception, bad stack =
-format, etc).</P>The first 4 words (32 bytes) of the exception object =
-are allocated for use exclusively by the unwinder, and should not be =
-written by the personality routine or other parts of the =
-language-specific runtime. The first word is used to store the exception =
-class. The second word points to the personality routine of the frame =
-that threw the exception intially. The two next words are reserved for =
-use by the unwinder. [Note: Typical use is to keep the state of the =
-unwinder while executing user code, such as our current frame_handle =
-pointer.]</BLOCKQUOTE>
-
-<P><TT>void _ResumeUnwind (void =
-*exception_object);</TT></P><BLOCKQUOTE>Resume propagation of an =
-existing exception. [Note: _ResumeUnwind should not be used to implement =
-rethrowing. To the unwinding runtime, the catch code that rethrows was a =
-handler, and the previous unwinding session was terminated before =
-entering it.] [Note:&nbsp;Compared to HP runtime, the exception class =
-and frame handle arguments have been removed. They also need no longer =
-be passed to the landing pads. Instead, the unwinder will store the =
-information in one of its 2 reserved words.]</BLOCKQUOTE>
-
-<P><TT>void _DeleteException(void =
-*exception_object);</TT></P><BLOCKQUOTE>If a given runtime resumes =
-normal execution after catching a foreign exception, it will not know =
-how to delete that exception. This exception will be deleted by calling =
-<TT>_DeleteException</TT>, which in turn will delegate the task to the =
-original personality routine (see <TT>EH_DELETE_EXCEPTION_OBJECT</TT> =
-below).</BLOCKQUOTE>
-
-<P><TT>uint64 _Unwind_getGR(void *context, int index);<BR>uint64 =
-_Unwind_getIP(void *context);<BR>void _Unwind_setGR(void *context, int =
-index, uint64 new_value);<BR>void _Unwind_setIP(void *context, uint64 =
-new_value);</TT></P><BLOCKQUOTE>Get or set registers from the given =
-unwinder context. The 'context' argument is the same argument passed to =
-the personality routine (see below).[Note: Minor changes compared to the =
-existing unwinding interface, mostly to hide the register =
-classes]</BLOCKQUOTE>
-
-<P><TT>uint64 _Unwind_getLanguageSpecificData(void =
-*context)</TT></P><BLOCKQUOTE>Get the address of the language-specific =
-data area for the current stack frame. The '<TT>context</TT>' argument =
-is the same argument passed to the personality routine.[Note: This is =
-not stricly required: it could be accessed through getIP using the =
-documented format of the UnwindInfoBlock, but since this work has been =
-done for finding the personality routine in the first place, it makes =
-sense to cache the result in the context, as we currently =
-do]</BLOCKQUOTE>
-
-<P><TT>uint64 _Unwind_getRegionStart(void =
-*context)</TT></P><BLOCKQUOTE>Get the address of the beginning of the =
-current procedure or region of code. [Note: This is required for us =
-because we store data relative to the beginning of the code. So let's =
-make it mandatory ;-]</BLOCKQUOTE>
-
-<P><B><FONT SIZE=3D4>PERSONALITY ROUTINE:</FONT></B></P>
-
-<P>The personality routine is defined with the following =
-interface:</P><BLOCKQUOTE><TT>int =
-PersonalityRoutine<BR>&nbsp;&nbsp;&nbsp;&nbsp;(int =
-version,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int =
-phase,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UInt64 =
-exceptionClass,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void * =
-exceptionObject,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void =
-*context);</TT></BLOCKQUOTE>
-
-<P>[Note: the frame_handle argument has been removed: it was used only =
-once in the runtime, and the cost of reading it back from the exception =
-object is really minimal, compared to the cost of having to spill it in =
-all landing pads... The context argument type has been made opaque]</P>
-
-<P></P>
-
-<P>The arguments have the following role and meanings:</P><UL><LI>
-
-<P><B>version</B>: Version number that the compiler and personality =
-routine agree on, identifying for instance language-specific table =
-format. This version number is read from the unwind information block =
-(unwind tables)</P></LI></UL><UL><LI>
-
-<P><B>phase</B>: Indicates what processing the personality routine is =
-supposed to perform. The possible actions are described below under =
-'<B>UNWINDING PHASES</B>'</P></LI></UL><UL><LI>
-
-<P><B>exceptionClass</B>: An 8-bytes identifier specifying the type of =
-the thrown exception. By convention, the high 4 bytes indicate the =
-vendor (for instance HP\0\0), and the low 4 bytes indicate the language =
-(for instance C++\0.) [Note: For C++, it is expected that agreement will =
-be reached on a common 'exceptionObject', but different vendors may =
-still chose to have different personality routines with different table =
-formats.]</P></LI></UL><UL><LI>
-
-<P><B>exceptionObject</B>: The pointer to a memory location recording =
-the necessary information for processing the exception according to the =
-semantics of a given language. [Note: For C++, it is assumed that the =
-format of this exception object can be agreed upon, even if we disagree =
-on the LSDA and/or landing pad registers or similar =
-details.]</P></LI></UL><UL><LI>
-
-<P><B>context</B>: Unwinder state information for use by the personality =
-routine. This is used by the personality routine in particular to access =
-the frame's registers. [Note: I don't see how anything could work =
-without a minimal common unwinder interface - which is why it has been =
-defined above]</P></LI></UL><UL><LI>
-
-<P><B>return value</B>: The return value from the personality routine =
-indicates how further undinwind should happen, as well as possible error =
-conditions. See &quot;<B>UNWINDING&nbsp;PHASES</B>&quot; below for =
-details.</P></LI></UL>
-
-<P><B><FONT SIZE=3D4>UNWINDING&nbsp;PHASES</FONT></B></P>
-
-<P>Unwinding is a 2-phases process.</P><UL><LI>
-
-<P>PASS 1 unwinds through the stack, looking for a &quot;handler&quot;, =
-that is a code that has the potential to stop the exception propagation. =
-For C++, this would be a 'catch' clause. The first pass can do a =
-&quot;quick&quot; unwind, meaning it does not need to maintain full =
-registers state.</P></LI></UL><UL><LI>
-
-<P>PASS 2 starts once a handler has been found. For each stack frame =
-that requires some cleanup, it performs that cleanup. For C++, this =
-would be destructors in addition to catch clauses. If compensation code =
-for some optimization is required, this is also the pass this code will =
-be executed. During that pass, the stack is actually unwound, and full =
-register state is restored prior to executing any cleanup, compensation =
-or handler code.</P></LI></UL>
-
-<P>[Note: Cleanup code is code doing some user-defined cleanup such as =
-destructors. Compensation code is code inserted by the compiler to =
-compensate for an optimization that moved code past the throwing call. =
-Handler code is user-defined code that possibly can resume normal =
-execution]</P>
-
-<P>The unwinding phase argument to the personality routine is a bitwise =
-or of the following constants:</P><UL><LI><TT>EH_SEARCH_PHASE</TT> =3D =
-1: Indicates that the personality routine should check if the current =
-frame contains a handler, and if so return <TT>EH_HANDLER_FOUND</TT>, or =
-otherwise return <TT>EH_CONTINUE_UNWIND</TT>. <TT>EH_SEARCH_PHASE</TT> =
-cannot be set at the same time as =
-<TT>EH_CLEANUP_PHASE</TT>.</LI></UL><UL><LI><TT>EH_CLEANUP_PHASE</TT> =3D =
-2: Indicates that the personality routine should perform cleanup for the =
-current frame. The personality routine can perform this cleanup itself, =
-by calling nested procedures, and return <TT>EH_CONTINUE_UNWIND</TT> [ =
-Note: This is required to support the Intel nested procedures model]. =
-Alternatively, it can setup the registers (including the IP) for =
-transferring control to a &quot;landing pad&quot;, and return =
-<TT>EH_INSTALL_HANDLER</TT> (See &quot;<B>TRANSFERRING CONTROL TO A =
-LANDING PAD</B>&quot; below).</LI></UL><UL><LI><TT>EH_HANDLER_FRAME</TT> =
-=3D 4: During pass 2, indicates to the personality routine that the =
-current frame is the one which was flagged as the handler frame during =
-pass 1.</LI></UL><UL><LI><TT>EH_DELETE_EXCEPTION_OBJECT</TT> =3D 8: =
-During pass 2, indicates that the runtime that actually caught the =
-exception does not know how to delete it, and called =
-<TT>_DeleteException</TT>. '<TT>context</TT>' should not be used in that =
-case.</LI></UL><UL><LI><TT>EH_FATAL_PASS2_ERROR</TT> =3D 16:&nbsp;During =
-pass 2, indicates that a fatal unwinding error occured. In that case, =
-the personality routine should not return. This is sent to the original =
-personality routine associated to the initial exception object. [Note: =
-This is required if we want to ensure that <TT>_ResumeUnwind</TT> never =
-returns, and if we also want to be able to call <TT>terminate() </TT>in =
-the case a stack inconsistency is found during pass 2. An error detected =
-during pass 1 is reported by returning from =
-<TT>_RaiseException</TT>.]</LI></UL><UL><LI>
-
-<P><TT>EH_FORCE_UNWIND</TT> =3D 32:&nbsp;During pass 2, indicates that =
-no language is allowed to &quot;catch&quot; the exception. This flag is =
-set while unwinding the stack for setjmp or during thread cancellation. =
-User-defined code in a catch clause may still be executed, but the catch =
-clause has to resume unwinding at its end.</P></LI></UL>
-
-<P><FONT SIZE=3D4><B>TRANSFERRING CONTROL TO A LANDING =
-PAD:</B></FONT></P>
-
-<P>In the case the personality routine wants to transfer control to a =
-landing pad, it setups registers (including IP) to suitable values for =
-entering the landing pad. Prior to executing code in the landing pad, =
-registers not altered by the personality routine will be restored to the =
-exact state they were in that frame before the call that threw the =
-exception.</P>
-
-<P>The landing pad can either resume execution to normal (as, for =
-instance, at end of a C++ <TT>catch</TT>), or resume unwinding by =
-calling the <TT>_ResumeUnwind</TT> function and passing it the =
-'<TT>exceptionObject</TT>' argument received by the personality routine. =
-<TT>_ResumeUnwind</TT> will never return.</P>
-
-<P><TT>_ResumeUnwind</TT> should be called if and only if the =
-personality routine did not return <TT>EH_HANDLER_FOUND</TT> during =
-phase 1. In other words, the unwinder can allocate some resources (for =
-instance memory) and keep track of them in the exception object reserved =
-words. It should then free these resources before transferring control =
-to the last (handler) landing pad. It does not need to free the =
-resources before entering non-handler landing-pads, since =
-<TT>_ResumeUnwind</TT> will ultimately be called.</P>
-
-<P>The landing pad will receive various arguments from the runtime, =
-typically passed in registers set using <TT>_Unwind_setGR</TT> by the =
-personality routine. For a landing pad that can lead to =
-<TT>_ResumeUnwind</TT>, one argument must be the =
-<TT>exceptionObject</TT> pointer, which must be preserved to be passed =
-to <TT>_ResumeUnwind</TT>. [Note: Thanks to the 4 reserved words in the =
-exception object, 2 landing-pad arguments have been eliminated.] The =
-landing pad may receive other arguments, for instance a 'switch value' =
-indicating the type of the exception being caught.</P>
-
-<P><B><FONT SIZE=3D4>RULES FOR CORRECT INTER-LANGUAGE =
-OPERATION:</FONT></B></P>
-
-<P>The following rules must be observed for correct operation between =
-languages and/or runtimes from different vendors:</P><UL><LI>
-
-<P>An exception which has an unknown class must not be altered by the =
-personality routine. The semantics of foreign exception processing =
-depend on the language of the stack frame being unwound. This covers in =
-particular how exceptions from a foreign language are mapped to the =
-native language in that frame.</P></LI></UL><UL><LI>
-
-<P>If a runtime resumes normal execution, and the caught exception was =
-created by another runtime, it should call <TT>_DeleteException</TT>. =
-This is true even if it understands the exception object format (such as =
-would be the case between different C++ runtimes). [Note:&nbsp;This is =
-because the other runtime might have to update some global variables =
-that point to the exception being deleted.]</P></LI></UL><UL><LI>
-
-<P>A runtime is not allowed to catch an exception if the =
-EH_FORCE_UNWIND&nbsp;flag was passed to the personality =
-routine.</P></LI></UL>
-
-<P><B><FONT SIZE=3D4>CATCHING FOREIGN EXCEPTIONS IN C++</FONT></B></P>
-
-<P>Foreign exception can be caught in a <TT>catch(...)</TT>. They can =
-also be caught as if they were of a <TT>__foreign_exception</TT> class, =
-defined in <TT>&lt;exception&gt;</TT>. [Note:&nbsp;The =
-<TT>__foreign_exception</TT> may have subclasses, such as =
-<TT>__java_exception</TT> and <TT>__ada_exception</TT>, if the runtime =
-is capable of identifying some of the foreign languages.]</P>
-
-<P>The behavior is undefined in the following cases:</P><UL><LI>
-
-<P>A <TT>__foreign_exception</TT> catch argument is accessed in any way =
-(including taking its address).</P></LI></UL><UL><LI>
-
-<P>A <TT>__foreign_exception</TT> is active at the same time as another =
-exception (either there is a nested exception while catching the foreign =
-exception, or the foreign exception was itself =
-nested)</P></LI></UL><UL><LI>
-
-<P><TT>uncaught_exception()</TT>, <TT>set_terminate()</TT>, =
-<TT>set_unexpected()</TT>, <TT>terminate()</TT> or <TT>unexpected()</TT> =
-is called at a time a foreign exception exists (for instance, calling =
-<TT>set_terminate</TT>() during unwinding of a foreign =
-exception)</P></LI></UL>
-
-<P>[Note: All these cases might involve accessing the C++ specific =
-content of the thrown exception, for instance to chain active =
-exceptions]</P>
-
-<P>Otherwise, a catch block catching a foreign exception is =
-allowed:</P><UL><LI>
-
-<P>To resume normal execution, thereby stopping propagation of the =
-foreign exception and deleting it,</P></LI><LI>
-
-<P> Or to rethrow the foreign exception. In that case, the original =
-exception object should have been unaltered in any way by the =
-C++&nbsp;runtime.</P></LI></UL>
-
-<P>A catch-all block may be executed during forced unwinding. For =
-instance, a setjmp may execute code in a catch(...) during stack =
-unwinding. However, if this happens, unwinding will proceed at the end =
-of the catch-all block, whether or not there is an explicit =
-rethrow.</P>Setting the low 4 bytes of exception class to C++\0 is =
-reserved for use by C++&nbsp;runtimes compatible with the common =
-C++&nbsp;ABI.
-
-<p>
-<li>
-<font color=blue><hr><p>[990923 All]</font>
-Extensive discussion at the meeting was generally positive about the HP
-proposal.
-Several changes came up, ranging from editorial to substantive.
-Christophe will modify the specification.
-
-<ul>
-<p>
-<li>
-Use <i>doubleword</i> instead of <i>word</i> for 8-byte items.
-
-<p>
-<li>
-By the time the personality routine is called,
-the runtime either knows where the language-specific data area is,
-or can get it trivially.
-Therefore, pass it to the personality routine,
-instead of providing _Unwind_getLanguageSpecificData.
-
-<p>
-<li>
-Most references to <code>setjmp</code> in the document should be to
-<code>longjmp</code>.
-
-<p>
-<li>
-The description of EH_DELETE_EXCEPTION_OBJECT was unclear.
-
-<p>
-<li>
-Clarify the distinction between passes 1 and 2, and the final steps
-(which are generally referred to as pass 2).
-
-<p>
-<li>
-The group agreed that the performance benefit of allowing a simplified
-setjmp which supports only a full-unwinding longjmp
-is outweighed by the interoperability benefit of having a single setjmp
-which will support either a C-style direct or a C++ full-unwind longjmp.
-
-<p>
-<li>
-We will follow the lead of IBM (?) and specify a distinct longjmp call
-which is defined to do a full-unwind longjmp.
-
-<p>
-<li>
-Pthreads cancellation will be supported by specifying:
-  <ul>
-  <li> New exceptions (cancel and exit).
-  <li> catch(...) always rethrows.
-  <li> catch(...) catches anything, including foreign languages.
-  </ul>
-
-</ul>
-
-<p>
-<li>
-<font color=blue><hr><p>[991202 All]</font>
-Since there was not much time for review of HP's revised proposal,
-discussion was limited to relatively minor comments.
-This remains the highest priority area,
-with ongoing implementations depending on resolution.
-We plan a thorough discussion next week,
-with adoption as soon as practical.
-Note that the concensus remains positive,
-with the expectation that the proposal will undergo only minor fixes
-before adoption, so implementations can proceed with the current
-document as a basis without great risk.
-
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D0></a> <td> D-0 </td>
+<td> Exception handling framework </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 991216 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define the general framework for exception handling,
+including Level I (psABI unwinding API)
+and Level II (C++ ABI exception handling API).
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+See the <a href=exceptions.pdf> HP proposal</a>,
+accepted as a working paper,
+and discussions in the closed issues page.
+</td> </tr>
+
+</table>
 
 
 <p>
@@ -3060,9 +2550,15 @@ Observe that this issue is part of a
 <a href=#exception-level3>level 3 specification</a>,
 i.e. part of a common runtime specification,
 but not strictly part of the ABI.
-It is being described as part of the
+It is described as part of the
 <a href=http://reality.sgi.com//dehnert_engr/cxx/exceptions.pdf>
-proposed common EH interface from HP</a>.
+EH working paper</a> from HP.
+
+<p>
+<font color=blue>[991216 all]</font>
+The <code>__typeinfo</code> type defined in 7.6 of the working paper
+should be replaced by the ABI standard <code>type_info</code>.
+The treatment of predefined types must be specified.
 
 
 <p>
@@ -3492,6 +2988,294 @@ It will always rethrow.
 <p>
 See the HP low-level exception writeup at the beginning of the
 exception issues section.
+
+<p>
+<font color=blue>[991216 All]</font>
+Use the name <code>longjmp_unwind</code> for the alternate
+<code>longjmp</code> that always does full C++ unwinding.
+The issue of where to put it (namespace and header) remains.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D10></a> <td> D-10 </td>
+<td> psABI proposal </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Solidify the Level I (psABI) specification and submit it to the base
+ABI group.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+This is essentially Section 8 of the HP working paper.
+SGI has reworked it into the
+<a href=abi-eh.html>draft exception handling specification</a>.
+This group needs to approve the reworked version,
+at which time it can be submitted to the base ABI group.
+
+<p>
+The draft needs to clarify that the unwinder will detect uncaught
+exceptions in Phase 1, and call <code>terminate()</code> before Phase 2.
+Issues D-11 through D-14 below are also relevant to the Level I
+specification.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D11></a> <td> D-11 </td>
+<td> pthreads interface </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Certain pthreads functionality is a prerequisite,
+e.g. to acquire thread-local storage.
+The ABI should specify the requirements,
+along with the expected stub behavior when
+the pthreads library is not present.
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D12></a> <td> D-12 </td>
+<td> Table location </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Determine constraints on the location of the unwind table
+and the unwind information table.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+The unwind table consists of triples:
+a begin and end location bounding the code fragment described by the
+unwind descriptors,
+and the location of the unwind information for this fragment.
+The base psABI states that these are segment-relative offsets,
+to avoid the need to relocate them at runtime.
+It also specifies a section type and name for the unwind table,
+with attribute <code>SHF_ALLOC</code> (but not writable),
+as well as a segment type,
+but does not specify the unwind information table section information.
+
+<p>
+The psABI specification leaves open the question of how to identify the
+relevant segments for the unwind table segment-relative entries.
+There are several possibilities:
+
+<ul>
+<p>
+<li>
+The intended method (apparently) is to put both the unwind tables
+and the unwind information tables in the text segment they describe.
+That is, the relevant text segment would contain these tables,
+and the unwind table segment would be an overlay segment.
+Then the identification of referenced segments just requires
+determining which text segment contains the unwind segment.
+
+<p>
+Forcing the unwind information tables into the text
+segment is constraining.
+Given that their format is undefined by the ABI
+(i.e. the language-specific data area),
+the severity of that constraint is not fully predictable.
+It would, for example, interfere with the bias in some systems to
+avoid data in text segments.
+
+<p>
+<li>
+The very preliminary (i.e. hacked) SGI implementation put the unwind
+information tables in data with their own section name,
+and used the section table to find them.
+This works, but using the section table is not desirable.
+
+<p>
+<li>
+A fully general solution would be a table of triples,
+each containing segment pointers for the unwind table segment and the
+segments containing its associated unwind information table and text.
+It would usually contain one triple,
+but it is desirable to allow multiple text segments and therefore
+multiple triples.
+It could be located via a dynamic tag,
+which is consistent with how we usually locate things at runtime.
+
+</ul>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D13></a> <td> D-13 </td>
+<td> _Unwind_ForcedUnwind </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define the interface of _Unwind_ForcedUnwind.
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D14></a> <td> D-14 </td>
+<td> __cxa_begin/end_catch </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define the interfaces of <code>__cxa_begin_catch</code>
+and <code>__cxa_end_catch</code>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+Define how <code>__cxa_begin_catch</code>
+and <code>__cxa_end_catch</code> identify the thrown exception.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D15></a> <td> D-15 </td>
+<td> Terminate handler and threads </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define how the terminate and unexpected handler registration
+interacts with threads.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+C++ allows the user to register <code>terminate()</code> and
+<code>unexpected()</code> handlers,
+but does not specify how the registration interacts with threading.
+There are (at least) three possibilities:
+
+<ul>
+<li> Registration defines a single global handler used by all threads.
+<li> Registration defines a handler used only by the current thread.
+<li> The user can choose which of these to use.
+</ul>
+
+<p>
+Several members believe the second choice (per-thread) would be very
+surprising to many users and is therefore a highly undesirable default.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D16></a> <td> D-16 </td>
+<td> Exception specifications </td>
+<td> lib ps </td>
+<td> open </td>
+<td> all </td>
+<td> 991216 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How is the type list for an exception specification
+represented in the action records?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+The working paper specifies this,
+but HP wishes to propose a different representation.
 
 
 <p> <hr> <p>
@@ -4610,6 +4394,39 @@ and their prototypes.
 
 <p> <hr> <p>
 <h3><a name=ancient> Ancient Revision History </a> </h3>
+
+<p>
+<font color=blue>[991202]</font>
+Additions to <a href=#B4>B-4</a>
+(<a href=cxx-closed.html#B4>closed</a>),
+<a href=#C2>C-2</a>, <a href=#D0>D-*</a>.
+Closed <a href=cxx-closed.html#B1>B-1</a>,
+<a href=cxx-closed.html#C1>C-1</a>,
+<a href=cxx-closed.html#C3>C-3</a>,
+<a href=cxx-closed.html#G3>G-3</a>,
+<a href=cxx-closed.html#G6>G-6</a>.
+
+<p>
+<font color=blue>[991129]</font>
+Additions to <a href=#B1>B-1</a>, <a href=#F2>F-2</a>, <a href=#G3>G-3</a>.
+Closed <a href=cxx-closed.html#B5>B-5</a>.
+
+<p>
+<font color=blue>[991104]</font>
+New issue <a href=#G6>G-6</a>.
+Additions to <a href=#C4>C-4</a>.
+Closed <a href=cxx-closed.html#C5>C-5</a>,
+<a href=cxx-closed.html#C6>C-6</a>,
+<a href=cxx-closed.html#C9>C-9</a>.
+
+<p>
+<font color=blue>[991028]</font>
+Opened <a href=#C9>C-9</a>, <a href=#C10>C-10</a>.
+Closed <a href=cxx-closed.html#A6>A-6</a>,
+<a href=cxx-closed.html#B6>B-6</a>,
+<a href=cxx-closed.html#C10>C-10</a>.
+Additions to <a href=#C5>C-5</a>, <a href=#C6>C-6</a>,
+<a href=#F1>F-1</a>, <a href=#F2>F-2</a>, <a href=#F3>F-3</a>.
 
 <p>
 <font color=blue>[991026]</font>
