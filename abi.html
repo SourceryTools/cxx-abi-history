@@ -1186,7 +1186,7 @@ Structure:
 <p>
 
 The class has a virtual table for each proper base class that has a
-virtual table.  These secondary virtual table for a base class B has the
+virtual table.  The secondary virtual table for a base class B has the
 same contents as the primary virtual table for B, except that:
 
 <ul>
@@ -2470,21 +2470,21 @@ library for truly dynamic casts of the form "dynamic_cast&lt;T>(v)":
 <p>
 <li>
 If, in the most derived object pointed (referred) to by v, v points
-(refers) to a public base class sub-object of a T object
+(refers) to a public base class subobject of a T object
 [note: this can be checked at compile time],
 and if only one object of type T is derived
-from the sub-object pointed (referred) to by v,
+from the subobject pointed (referred) to by v,
 the result is a pointer (an lvalue referring) to that T object.
 
 <p>
 <li>
-Otherwise, if v points (refers) to a public base class sub-object
+Otherwise, if v points (refers) to a public base class subobject
 of the most derived object,
 and the type of the most derived object has an
 unambiguous public base class of type T,
 the result is a pointer
 (an lvalue referring)
-to the T sub-object of the most derived object. 
+to the T subobject of the most derived object. 
 
 <p>
 <li>
