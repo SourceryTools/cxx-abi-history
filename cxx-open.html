@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 19 July 2000</i>
+<i>Revised 28 July 2000</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+Closed <a href=cxx-closed.html#C15>C-15</a>,
+<a href=cxx-closed.html#C16>C-16</a>.
+Tabled <a href=cxx-open.html#C17>C-17</a>.
+Additions to <a href=#C2>C-2</a>.
 
 <p>
 <font color=blue>[000706]</font>
@@ -2023,6 +2027,11 @@ Otherwise, object files cannot be mixed.
 We will pursue this further.
 
 <p>
+<font color=blue><hr><p>[000720 All]</font>
+Jim reported that the psABI group agreed to allocate a section type for
+this purpose, and will add a writeup to the Draft ABI (section 3.3.4).
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -2437,13 +2446,13 @@ The low-order byte shall contains a boolean initialization flag.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr class=small> <a href=cxx-open.html#C15> <td> C-15 </td></a>
+<tr class=small> <a href=cxx-closed.html#C15> <td> C-15 </td></a>
 <td> Alternate array allocators </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 000628 </td>
-<td> </td>
+<td> 000720 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -2460,25 +2469,6 @@ See the <a href=abi.html#array-ctor>Draft C++ ABI for IA-64</a>.
 
 </table>
 
-<p>
-<font color=blue>[000628 CodeSourcery -- Mark]</font>
-__cxa_vec_new and __cxa_vec_delete would be a lot more useful if
-they accepted pointers to the allocation and deallocation functions
-as well.
-As it is, they are hard-wired to use the `::operator new[]' and
-`::operator delete[]'.
-Since the whole purpose of these functions is to provide compilers
-a convenient way to manage construction and destruction,
-I think we should either add allocation/deallocation
-routine pointers to these functions,
-or add additional entry points.
-This additional flexibility would also be useful for C++-compatible
-allocations from other languages, etc.
-
-<p>
-<font color=blue>[000706 All]</font>
-We agreed to do this.  Jim will write it up.
-
 
 <p> <a name=C16></a>
 <table border=on cellpadding=3>
@@ -2489,13 +2479,13 @@ We agreed to do this.  Jim will write it up.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr class=small> <a href=cxx-open.html#C16> <td> C-16 </td></a>
+<tr class=small> <a href=cxx-closed.html#C16> <td> C-16 </td></a>
 <td> Copy constructor runtime </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 000628 </td>
-<td> </td>
+<td> 000720 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -2508,48 +2498,6 @@ See the <a href=abi.html#array-copy-ctor>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000628 CodeSourcery -- Mark]</font>
-I think we should also add a runtime support routine for copy
-constructors.  Here's a sample definition:
-
-<pre><code>
-  extern "C" void
-  __cxa_vec_cctor (void *dest_array,
-                   void *src_array,
-                   size_t element_count,
-                   size_t element_size,
-                   void (*constructor) (void *, void *),
-                   void (*destructor) (void *))
-  {
-    size_t ix = 0;
-    char *dest_ptr = static_cast <char *> (dest_array);
-    char *src_ptr = static_cast <char *> (src_array);
-
-    try
-      {
-        if (constructor)
-          for (; ix != element_count; 
-               ix++, src_ptr += element_size, dest_ptr += element_size)
-            constructor (dest_ptr, src_ptr);
-      }
-    catch (...)
-      {
-        __uncatch_exception ();
-        __cxa_vec_dtor (dest_array, ix, element_size, destructor);
-        throw;
-      }
-  }
-</code></pre>
-
-<p>
-This routine will be useful to compilers when copying a structure
-containing an array.  The EDG front-end uses this method.
-
-<p>
-<font color=blue>[000706 All]</font>
-We agreed to do this.  Jim will write it up.
 
 
 <p> <a name=C17></a>
@@ -2564,10 +2512,10 @@ We agreed to do this.  Jim will write it up.
 <tr class=small> <a href=cxx-open.html#C17> <td> C-17 </td></a>
 <td> Uncatch exception runtime </td>
 <td> call </td>
-<td> open </td>
+<td> tabled </td>
 <td> all </td>
 <td> 000706 </td>
-<td> </td>
+<td> 000720 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -2592,6 +2540,13 @@ This is possible with the current APIs,
 but a single call is simpler,
 will appear in various contexts,
 and is not performance sensitive, so needn't be an inline sequence.
+
+<p>
+<font color=blue>[000720 All]</font>
+We believe that all calls to this functionality come from the
+implementation runtime rather than from the compiled code,
+so the interface does not need to be exposed.
+The issue is tabled unless and until someone determines otherwise.
 
 
 
@@ -4774,7 +4729,7 @@ This has the following benefits:
 <li> If the static has been initialized already,
 the flag is set, so we short-circuit the function call
 
-<li> The function registers the object and its destructor for invokation
+<li> The function registers the object and its destructor for invocation
 at exit()time.
 
 </ol>
@@ -4786,6 +4741,19 @@ This is important, since test and set operations
 are potentially costly memorywise on IA64
 (they are definitely on PA-RISC,
 where any mutex / lock / whatever must be 16-bytes aligned)
+
+<p>
+<font color=blue><hr><p>[000720 All]</font>
+Discussion brought out that Christophe's
+<code>__cxa_allocate_static</code> can't work precisely as described,
+since the constructor and its arguments are also needed.
+Christophe said that the actual sequence is more complex,
+he removed too much to simplify the presentation,
+and he will attempt to provide a fuller description.
+
+<p>
+The concern was repeated that there are objections to any automatic
+locking approach, and we should go back and consider them again.
 
 
 
