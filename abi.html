@@ -3872,7 +3872,7 @@ Meaning of error indications:
     allocated with <code>malloc</code>.  If <code>buf</code> is not
     big enough to store the resulting demangled name,
     <code>__cxa_demangle</code> must either a) call <code>free</code>
-    to deallocate <code>buff</code> and then allocate a new buffer
+    to deallocate <code>buf</code> and then allocate a new buffer
     with <code>malloc</code>, or b) call <code>realloc</code> to
     increase the size of the buffer.  In either case, the new buffer
     size will be stored in <code>*n</code>.
