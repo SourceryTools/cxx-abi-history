@@ -37,6 +37,7 @@ for the ABI specifications.
 <h3> Contents </h3>
 
 <ul>
+<li> <a href=#bases> Base Class Layout </a>
 <li> <a href=#vcall> Virtual Function Calls </a>
 <li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
 </ul>
@@ -44,8 +45,179 @@ for the ABI specifications.
 
 
 <p> <hr> <p>
+<a name=bases>
+<h3> Base Class Layout </h3>
+
+<p>
+The following test programs check for correct sharing of the virtual
+pointer with a virtual base class.
+<p><hr width=50%><p>
+<code><pre>
+/*
+Test case for sharing virtual bases.
+In Derived_too,
+the primary base class is NewShareme,
+The bases Base and Shareme share vptr's
+with Derived and are allocated at the
+same offset as Derived.
+Should get:
+60% a.out
+(long)(NewShareme *)dd - (long)dd = 0
+(long)(Derived *)dd - (long)dd = 8
+(long)(Base *)dd - (long)dd = 8
+(long)(Shareme *)dd - (long)dd = 8
+*/
+
+struct Shareme {
+    virtual void foo();
+};
+struct Base : virtual Shareme {
+        virtual void bar();
+};
+struct Derived : virtual Base {
+        virtual void baz();
+};
+
+struct NewShareme {
+        virtual void foo();
+};
+
+struct Derived_too : virtual NewShareme, virtual Derived {
+        virtual void bar();
+};
+
+void Shareme::foo() { }
+void Base::bar() { }
+void Derived::baz() { }
+void NewShareme::foo() { }
+void Derived_too::bar() { }
+
+
+extern "C" int printf(const char *,...);
+#define EVAL(EXPR) printf( #EXPR " = %d\n", (EXPR) );
+main()
+{
+  Derived_too *dd = new Derived_too;
+  EVAL((long)(NewShareme *)dd - (long)dd);
+  EVAL((long)(Derived *)dd - (long)dd);
+  EVAL((long)(Base *)dd - (long)dd);
+  EVAL((long)(Shareme *)dd - (long)dd);
+}
+</code></pre>
+
+<p><hr width=50%><p>
+
+<code><pre>
+/*
+Test case for sharing virtual bases.
+In Most_Derived,
+the primary base class is Nonvirt1,
+Nonvirt2 and Nonvirt3 share vptrs with
+virtual base Shared_Virt.  Shared_Virt
+should be at the same offset as Nonvirt2.
+Should get:
+67% a.out
+(long)(Nonvirt1 *)dd - (long)dd = 0
+(long)(Nonvirt2 *)dd - (long)dd = 8
+(long)(Nonvirt3 *)dd - (long)dd = 16
+(long)(Shared_Virt *)dd - (long)dd = 8
+*/
+
+struct Shared_Virt {
+    virtual void foo();
+};
+struct Nonvirt2 : virtual Shared_Virt {
+        virtual void bar();
+};
+struct Nonvirt3 : virtual Shared_Virt {
+        virtual void baz();
+};
+struct Nonvirt1 {
+        virtual void foo();
+};
+
+struct Most_Derived : Nonvirt1, Nonvirt2, Nonvirt3 {
+        virtual void bar();
+};
+
+void Shared_Virt::foo() { }
+void Nonvirt2::bar() { }
+void Nonvirt3::baz() { }
+void Nonvirt1::foo() { }
+void Most_Derived::bar() { }
+
+extern "C" int printf(const char *,...);
+#define EVAL(EXPR) printf( #EXPR " = %d\n", (EXPR) );
+main()
+{
+  Most_Derived *dd = new Most_Derived;
+  EVAL((long)(Nonvirt1 *)dd - (long)dd);
+  EVAL((long)(Nonvirt2 *)dd - (long)dd);
+  EVAL((long)(Nonvirt3 *)dd - (long)dd);
+  EVAL((long)(Shared_Virt *)dd - (long)dd);
+}
+</code></pre>
+
+<p><hr width=50%><p>
+
+<code><pre>
+/*
+Test case for sharing virtual bases.
+In Most_Derived, share the vptr with
+Interface2 but not Interface3, since
+Interface3 is indirectly inherited.
+
+Should get:
+(long)(Interface1 *)dd - (long)dd = 0
+(long)(Interface2 *)dd - (long)dd = 0
+(long)(Interface3 *)dd - (long)dd = 8
+(long)(Concrete1 *)dd - (long)dd = 8
+*/
+
+struct Interface1 {
+    virtual void foo();
+};
+struct Interface2 : virtual Interface1 {
+        virtual void bar();
+};
+struct Interface3 : virtual Interface2 {
+        virtual void baz();
+};
+
+struct Concrete1 : virtual Interface3 {
+        virtual void foo();
+        int i; // important.
+};
+
+struct Most_Derived : virtual Interface1, 
+                      virtual Interface2,
+                      virtual Concrete1 {
+        virtual void bar();
+};
+
+void Interface1::foo() { }
+void Interface2::bar() { }
+void Interface3::baz() { }
+void Concrete1::foo() { }
+void Most_Derived::bar() { }
+
+
+extern "C" int printf(const char *,...);
+#define EVAL(EXPR) printf( #EXPR " = %d\n", (EXPR) );
+main()
+{
+  Most_Derived *dd = new Most_Derived;
+  EVAL((long)(Interface1 *)dd - (long)dd);
+  EVAL((long)(Interface2 *)dd - (long)dd);
+  EVAL((long)(Interface3 *)dd - (long)dd);
+  EVAL((long)(Concrete1 *)dd - (long)dd);
+}
+</code></pre>
+
+
+<p> <hr> <p>
 <a name=vcall>
-<h3> Virtual Function Calls</h3>
+<h3> Virtual Function Calls </h3>
 
 <p>
 The following class definitions are intended to illustrate various cases
