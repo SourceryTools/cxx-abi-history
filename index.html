@@ -12,7 +12,7 @@ C++ ABI Summary
 
 <font size=-1>
 <p>
-<i>Revised 2 June 1999</i>
+<i>Revised 3 June 1999</i>
 
 </center>
 
@@ -45,13 +45,30 @@ C++ ABI Summary
 </tr>
 
 <tr>
-<td> 20 June </td>
+<td> 3 June </td>
 <td> 11:00-13:00 </td>
-<td> SGI B20: Sapphire </td>
-<td> 916-356-9200 </td>
-<td> 7-33255 </td>
-<td> 773-9583 </td>
+<td> completed </td>
 <td> </td>
+<td>  </td>
+<td>  </td>
+</tr>
+
+<tr>
+<td> 10 June </td>
+<td> 10:00-12:00 </td>
+<td> SGI </td>
+<td> ? </td>
+<td> ? </td>
+<td> ? </td>
+</tr>
+
+<tr>
+<td> 17 June </td>
+<td> 10:00-12:00 </td>
+<td> SGI </td>
+<td> ? </td>
+<td> ? </td>
+<td> ? </td>
 </tr>
 
 </table>
@@ -60,45 +77,136 @@ C++ ABI Summary
 <hr>
 
 <p>
-<h4>Participants</h4><p>Redacted personal contact details for public history conversion.</p><h4>Agenda: 20 June 1999 </h4>
+<h4>Participants</h4><p>Redacted personal contact details for public history conversion.</p><h4> Objectives </h4>
 
 <ul>
 <p>
-<li> Introductions
+<li>
+Interoperable C++ compilation on IA-64:
+we want users to be able to build relocatable objects with
+different compilers and link them together,
+and if possible even to ship common DSOs.
+This objective implies agreement on:
+    <ul>    
+    <li> Data representation
+    <li> Object file representation
+    <li> Library API
+    </ul>
 
 <p>
-<li> Objectives
-
-  <ul>
-  <li> Interoperable C++ compilation on IA-64:
-  <dd> Data representation
-  <dd> Object file representation
-  <dd> Library API
-  </ul>
+<li>
+ISO Standard C++:
+highest priority is functionality and performance of standard-compliant code.
+It should not be sacrificed for the benefit of language extensions or
+legacy implementations (though considering them as tie-breakers is fine).
 
 <p>
-<li> Procedure
-
-  <ul>
-  <li> Meetings
-  <li> Intel NDA
-  <li> Communication
-  <li> Available documents
-  <li> Intellectual property
-  </ul>
+<li>
+Some areas will be easier to agree on than others.
+Our priorities should be based on achieving as much
+interoperability as possible if we can't attain perfection.
+That is, it is better to end up with a few restrictions being required
+for interoperable code, than to have no interoperability at all.
+This suggests priorities as follows:
+    <ol>
+    <li> Items requiring base ABI changes that might affect other
+	languages, and will therefore become impossible soon.
+	Examples include exception handling / stack unwind,
+	or ELF changes (not extensions).
+    <li> Core features where differences will prevent virtually any
+	C++ object code from porting.
+	Examples include data layout and calling conventions.
+    <li> Limited usage features,
+	where users can achieve portability by avoiding the feature.
+	An example might be multi-threading.
+    <li> Peripheral features,
+	where the requirements on users to achieve
+	portability are clear and easy to implement.
+	An example is non-explicit inlining,
+	where compilers would presumably allow it to just be suppressed.
+    <li> Tool interfaces, which affect how users build code,
+	rather than what they build.
+	An example is the compilation command line.
+    </ol>
 
 <p>
-<li> Issue Identification
-
-  <ul>
-  <li> Classification
-  <li> New issues
-  </ul>
-
-<p>
-<li> Object Layout (Matt Austern)
+<li>
+Mechanisms/methods which allow coexistence of incompatible
+implementations may be suitable in some cases.
+For instance, packaging vendor-specific compiler support runtimes
+in DSOs occupying distinct namespaces might allow multiple such DSOs to
+be loaded for mixed objects and avoid requiring that all vendors have
+the same support runtimes.
 
 </ul>
+
+<p>
+<hr>
+
+<p>
+<h4> Action Item Status </h4>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Action </th>
+<th> Who </th>
+<th> Status </th>
+<th> Opened </th>
+<th> Closed </th>
+</tr>
+
+<tr> <td> 1 </td>
+<td> Distribute Sun C++ ABI </td>
+<td> Mike Ball </td>
+<td> open </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> 2 </td>
+<td> Distribute Sun C++ ABI Rationale </td>
+<td> Mike Ball </td>
+<td> open </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> 3 </td>
+<td> Distribute Taligent C++ ABI </td>
+<td> Cary Coutant </td>
+<td> open </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> 4 </td>
+<td> Expedite IA-64 RT Arch doc release </td>
+<td> Cary Coutant </td>
+<td> open </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> 5 </td>
+<td> Set up n-way NDA for eligible members </td>
+<td> Priti Shrivastav </td>
+<td> open </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> 6 </td>
+<td> Organize/summarize object layout issues and alternatives </td>
+<td> Matt Austern </td>
+<td> open </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+</table>
 
 <p>
 <hr>
@@ -110,25 +218,36 @@ In the following table,
 the <b><i>class</i></b> column attempts to classify the issue on the
 basis of what it likely affects.
 The identifiers used are:
-<dl>
-<dt> call </dt>
-<dd> Function call interface, i.e. call linkage </dd>
 
-<dt> data </dt>
-<dd> Data layout </dd>
+<table>
+<tr> <td> call </td>
+<td> Function call interface, i.e. call linkage </td>
+</tr>
 
-<dt> lif </dt>
-<dd> Library interface, i.e. API </dd>
+<tr> <td> data </td>
+<td> Data layout </td>
+</tr>
 
-<dt> g </dt>
-<dd> Potential gABI impact </dd>
+<tr> <td> lib </td>
+<td> Runtime library support </td>
+</tr>
 
-<dt> ps </dt>
-<dd> Potential psABI impact </dd>
+<tr> <td> lif </td>
+<td> Library interface, i.e. API </td>
+</tr>
 
-<dt> tools </dt>
-<dd> May affect how program construction tools interact </dd>
-</dl>
+<tr> <td> g </td>
+<td> Potential gABI impact </td>
+</tr>
+
+<tr> <td> ps </td>
+<td> Potential psABI impact </td>
+</tr>
+
+<tr> <td> tools </td>
+<td> May affect how program construction tools interact </td>
+</tr>
+</table>
 
 <p>
 <hr width=50%>
@@ -205,6 +324,50 @@ The identifiers used are:
 <td> </td>
 </tr>
 
+<tr> <td> A-7 </td>
+<td> Vptr sharing with primary base class </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-8 </td>
+<td> (Virtual) base class alignment </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-9 </td>
+<td> Sorting fields as allowed by [class.mem]/12 </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-10 </td>
+<td> Parameter struct field promotion </td>
+<td> call </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-11 </td>
+<td> Representation of pointers to members </td>
+<td> data </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
 
 
 <tr> </tr>
@@ -214,7 +377,7 @@ Virtual Function Handling </a> </th>
 </tr>
 
 <tr> <td> B-1 </td>
-<td> Adjustment of "this" pointer </td>
+<td> Adjustment of "this" pointer (e.g. thunks) </td>
 <td> data call </td>
 <td> open </td>
 <td> SGI </td>
@@ -231,10 +394,37 @@ Virtual Function Handling </a> </th>
 <td> </td>
 </tr>
 
+<tr> <td> B-3 </td>
+<td> Optimizing for unchanged vptr </td>
+<td> call </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> B-4 </td>
+<td> Function descriptors in vtable </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> B-5 </td>
+<td> Where are vtables emitted? </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
 
 <tr> </tr>
 <tr> <th> C </th>
-<th colspan=6> Global Object Construction/Destruction </th>
+<th colspan=6> Object Construction/Destruction </th>
 </tr>
 
 <tr> <td> C-1 </td>
@@ -246,6 +436,60 @@ Virtual Function Handling </a> </th>
 <td> </td>
 </tr>
 
+<tr> <td> C-2 </td>
+<td> Order of const/destr w.r.t. link </td>
+<td> lif ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> C-3 </td>
+<td> Order of const/destr w.r.t. DSOs </td>
+<td> ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> C-4 </td>
+<td> Calling vfuncs in constr/destr </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> C-5 </td>
+<td> Calling virtual destructors </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> C-6 </td>
+<td> Extra parameters to constr/destr </td>
+<td> call </td>
+<td> open </td>
+<td> Cygnus </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> C-7 </td>
+<td> Extra parameters to constr/destr </td>
+<td> call </td>
+<td> open </td>
+<td> Cygnus </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
 
 <tr> </tr>
 <tr> <th> D </th>
@@ -253,8 +497,8 @@ Virtual Function Handling </a> </th>
 
 <ul>
 <tr> <td> D-1 </td>
-<td> Unwind descriptors: language-specific format </td>
-<td> lif ps </td>
+<td> Language-specific data area format </td>
+<td> lib ps </td>
 <td> open </td>
 <td> SGI </td>
 <td> 990520 </td>
@@ -263,7 +507,7 @@ Virtual Function Handling </a> </th>
 
 <tr> <td> D-2 </td>
 <td> Unwind personality routines </td>
-<td> lif ps </td>
+<td> lib ps </td>
 <td> open </td>
 <td> SGI </td>
 <td> 990520 </td>
@@ -272,7 +516,7 @@ Virtual Function Handling </a> </th>
 
 <tr> <td> D-3 </td>
 <td> Unwind process clarification </td>
-<td> lif ps </td>
+<td> lib ps </td>
 <td> open </td>
 <td> SGI </td>
 <td> 990520 </td>
@@ -280,12 +524,47 @@ Virtual Function Handling </a> </th>
 </tr>
 
 <tr> <td> D-4 </td>
-<td> Unwind routines nested?
-</td>
-<td> lif ps </td>
+<td> Unwind routines nested? </td>
+<td> lib ps </td>
 <td> open </td>
 <td> SGI </td>
 <td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> D-5 </td>
+<td> Interaction with other languages (e.g. Java) </td>
+<td> lib ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> D-6 </td>
+<td> Allow resumption in other languages? </td>
+<td> lib ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> D-7 </td>
+<td> Interaction with signals or asynch events </td>
+<td> lib ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> D-7 </td>
+<td> Interaction with threads packages </td>
+<td> lib ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990603 </td>
 <td> </td>
 </tr>
 
@@ -305,11 +584,20 @@ Virtual Function Handling </a> </th>
 </tr>
 
 <tr> <td> E-2 </td>
-<td> Separate compilation </td>
+<td> Separate compilation model </td>
 <td> tools </td>
 <td> open </td>
 <td> SGI </td>
 <td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> E-3 </td>
+<td> Template repository </td>
+<td> tools </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
 <td> </td>
 </tr>
 
@@ -348,7 +636,79 @@ Virtual Function Handling </a> </th>
 </tr>
 
 
+<tr> </tr>
+<tr> <th> G </th>
+<th colspan=6> Miscellaneous </th>
+</tr>
+
+<tr> <td> G-1 </td>
+<td> Basic command line options </td>
+<td> tools </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> G-2 </td>
+<td> Detection of 1-def rule violations </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+<tr> <td> G-3 </td>
+<td> Inlined routine linkage </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+
+
 </table>
+
+<p>
+<hr>
+
+<p>
+<h4>Notes from 3 June 1999 </h4>
+
+<ul>
+<p>
+<li> Introductions
+
+<p>
+<li> Objectives: see above
+
+<p>
+<li> Procedure
+
+  <ul>
+  <li> Meetings:  10-12 Thursdays at SGI for the near term.
+  <li> Intel NDA:  Generally unnecessary.  Priti will set up n-way
+       for eligible members for cases where needed.  Cary expects RT
+       architecture/software conventions document to be released in the
+       next month or two, removing most of the issues.
+  <li> Communication:  Use of reflector encouraged for discussion.
+       NDA communication will be handled with password-protected PDF
+       once Intel sets up n-way.
+  <li> Available documents:  Parties with existing, relevant documents
+       (includes Sun, HP) will send them to group.
+  <li> Intellectual property:  Participants don't expect problems with
+       release of any of their IP.  Microsoft has extensive patents in
+       the area, but they are excessively broad (covering obvious ideas
+       and prior art), so expectation is that they are not a problem.
+       Nonetheless, we should be aware of them.
+  </ul>
+
+<p>
+<li> Issue Identification:  new issues reflected in status table.
+
+</ul>
 
 <p>
 <hr>
