@@ -836,14 +836,14 @@ The next example is foo::C::D, i.e. a nested local name in a simple function:
 where:
 <pre><code>
   &lt;function encoding> ::- &lt;name> &lt;bare-function-type>
-                      ::- 3foo i
+                      ::- 3foo v
   &lt;entity name> ::- &lt;nested-name>
                 ...
                 ::- N &lt;unqualified-name> &lt;unqualified-name> E
                 ::- N 1C 1D E
 </code></pre>
 <p>
-So the final result is "Z 3foo i E N 1C 1D E".
+So the final result is "Z 3foo v E N 1C 1D E".
 Finally, as an example of nested local scopes, consider foo::C::bar::E::baz:
 <pre><code>
   &lt;encoding> ::- &lt;name>
