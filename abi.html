@@ -12,7 +12,7 @@
 <BODY>
 
 <hr />
-<h1>Itanium C++ ABI ($Revision: 1.77 $)</h1>
+<h1>Itanium C++ ABI ($Revision: 1.78 $)</h1>
 <p> <hr> <p>
 
 <h2> Contents </h2>
@@ -3311,16 +3311,31 @@ extern "C" void __cxa_vec_delete (
 	    void (*destructor) ( void *this ) );
 </pre></code></dt>
 <dd>
+<p>
 If the <code>array_address</code> is <code>NULL</code>, return
 immediately.  Otherwise, given the (data) address of an array, the
 non-negative size of prefix padding for the cookie, and the size of
 its elements, call the given destructor on each element, using the
-cookie to determine the number of elements, and then delete the space.
-If the destructor throws an exception, rethrow after destroying the
-remaining elements if possible.  If the destructor throws a second
-exception, call <code>terminate()</code>.  If padding_size is 0, the
-destructor pointer must be NULL.  If the destructor pointer is NULL,
-no destructor call is to be made.
+cookie to determine the number of elements, and then delete the space
+by calling <code>::operator delete[](void *)</code>.
+If the destructor throws an exception, rethrow after (a) destroying
+the remaining elements, and (b) deallocating the storage.  If the
+destructor throws a second exception, call <code>terminate()</code>.
+If padding_size is 0, the destructor pointer must be NULL.  If the
+destructor pointer is NULL, no destructor call is to be made.
+</p>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+The intent of this function is to permit an implementation to call
+this function when confronted with an expression of the form
+<code>delete[] p</code> in the source code, provided that the default
+deallocation function can be used.  Therefore, the semantics
+of this function are consistent with those required by the standard.
+The requirement that the deallocation function be called even if the
+destructor throws an exception derives from the resolution to DR 353
+to the C++ standard, which was adopted in April, 2003.
+</p>
 </dd>
 
 <dt><code><pre>
@@ -4923,9 +4938,14 @@ unwind table location.
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
 
-<p>This version of this document is $Revision: 1.77 $.  No special
+<p>This version of this document is $Revision: 1.78 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[040923]</font>
+Clarify behavior of <code>__cxa_vec_delete</code>.
+</p>
 
 <p>
 <font color=blue>[040219]</font>
