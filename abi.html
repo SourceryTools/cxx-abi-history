@@ -639,7 +639,7 @@ have been laid out, defining size, data size, non-virtual size,
 alignment, and non-virtual alignment.
 (See the description of these terms in
 <a href=#general><b>General</b></a> above.)
-Further, assume for data members that nvsize==size, and nvalign=align.
+Further, assume for data members that nvsize==size, and nvalign==align.
 Layout (of type C) is done using the following procedure.
 
 <ol type=I>
@@ -752,7 +752,7 @@ follows:
        partially filled by a bitfield, and that bitfield is also a
        data member declared in C (but not in one of C's proper base
        classes), the next available bits are the unfilled bits at
-       offset dsize(C) - 1.  Otherwise, the next available bits at
+       offset dsize(C) - 1.  Otherwise, the next available bits are at
        offset dsize(C).
        
        <p>
