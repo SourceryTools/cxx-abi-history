@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 28 July 2000</i>
+<i>Revised 8 August 2000</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000808]</font>
+New issues <a href=#C18>C-18</a>, <a href=#C19>C-19</a>.
+Closed <a href=cxx-closed.html#C13>C-13</a>.
+Tabled <a href=cxx-open.html#F3>F-3</a>, <a href=cxx-open.html#F4>F-4</a>.
+Additions to <a href=#C2>C-2</a>, <a href=#G4>G-4</a>.
 
 <p>
 <font color=blue>[000728]</font>
@@ -2030,9 +2037,21 @@ Otherwise, object files cannot be mixed.
 We will pursue this further.
 
 <p>
-<font color=blue><hr><p>[000720 All]</font>
+<font color=blue>[000720 All]</font>
 Jim reported that the psABI group agreed to allocate a section type for
 this purpose, and will add a writeup to the Draft ABI (section 3.3.4).
+
+<p>
+<font color=blue>[000803 All]</font>
+We will follow more closely the IBM pragma semantics:
+no variable names, applying until the next pragma or end of file.
+Rename the pragma simply "priority."
+
+<p>
+<font color=blue>[000808 SGI -- Dehnert]</font>
+I remembered why I changed the pragma name.
+I'm concerned about "priority" conflicting with more traditional uses
+of the term, e.g. for multiprocessing priority.
 
 <p>
 <table border=on cellpadding=3>
@@ -2388,22 +2407,24 @@ Void.
 <tr> <a name=C13></a> <td> C-13 </td>
 <td> Allocating constructors </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 000309 </td>
-<td> </td>
+<td> 000803 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Should we define allocating constructors?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C13> Resolution</a></b>:
+Their use is optional.
+Their name mangling is specified.
+If used, they must be emitted everywhere referenced as a COMDAT group
+(Draft ABI section 5.2.5).
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000308 HP -- Christophe]</font>
-We should consider defining alternate constructors which
-allocate the object before constructing it.
 
 
 <p>
@@ -2550,6 +2571,99 @@ We believe that all calls to this functionality come from the
 implementation runtime rather than from the compiled code,
 so the interface does not need to be exposed.
 The issue is tabled unless and until someone determines otherwise.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C18></a> <td> C-18 </td>
+<td> Result buffers </td>
+<td> call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 000724 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should buffers for results with non-trivial copy constructors be passed
+as a dummy first parameter, or in r8 as specified by the psABI for long
+structured results?
+</td> </tr>
+<!--
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C18> Resolution</a></b>:
+</td> </tr>
+-->
+
+</table>
+
+<p>
+<font color=blue>[000724 SGI -- Dehnert]</font>
+I just noticed that the IA-64 psABI requires returning large aggregates
+(over 256 bits except for some floating point ones) via a buffer
+allocated by the caller and passed in r8.  We have specified in the C++
+ABI that class results with non-trivial copy constructors be returned
+in a buffer allocated by the caller and passed as an implicit first
+parameter (i.e. in out0, not in r8).  I suggest that we make these two
+cases consistent, i.e. pass the buffer address in r8 instead of out0.
+(This would not affect non-IA-64 compilers.)
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C19></a> <td> C-19 </td>
+<td> NULL ctor/dtor API parameters </td>
+<td> call </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000806 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Allow NULL constructor/destructor parameters whereever it makes sense
+in the Section 3.3 APIs.
+</td> </tr>
+<!--
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C19> Resolution</a></b>:
+</td> </tr>
+-->
+
+</table>
+
+<p>
+<font color=blue>[000806 CodeSourcery -- Mark]</font>
+The ABI doesn't say whether or not the constructor and destructor
+parameters may be NULL for many of the functions.  In some cases, it
+does say that the pointers may not be NULL.
+
+<p>
+I believe that a) the spec should explicitly specify this everywhere,
+and b) we should allow NULL pointers whenever it makes sense.  These
+are convenience routines; why not make them convenient?
+
+<p>
+For example, why not allow __cxa_vec_new2 to be used with both NULL
+constructors and destructors?  The caller should then pass in zero for
+the padding size, of course.  There's no reason to try to make these
+routines go fast -- they're just their for convenience, and the memory
+allocation/function call indirection overhead will swamp a few
+conditionals on NULL parameters.
 
 
 
@@ -3529,7 +3643,7 @@ this problem.
 <td> Consistency checks
 </td>
 <td> call g </td>
-<td> open </td>
+<td> tabled </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
@@ -3889,6 +4003,10 @@ A decision is therefore not urgent,
 and we agreed to consider the possibilities over the upcoming break,
 and address this issue further in the summer.
 
+<p>
+<font color=blue>[000803 all]</font>
+There is no current interest in tackling this.  Table the issue.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -3903,7 +4021,7 @@ and address this issue further in the summer.
 <td> Empty throw specs
 </td>
 <td> call g </td>
-<td> open </td>
+<td> tabled </td>
 <td> HP </td>
 <td> 990930 </td>
 <td> </td>
@@ -3933,6 +4051,10 @@ and distribute it for consideration.
 <p>
 <font color=blue><hr><p>[000504 All]</font>
 See the comment for issue F-3 above.
+
+<p>
+<font color=blue>[000803 all]</font>
+There is no current interest in tackling this.  Table the issue.
 
 
 <p>
@@ -4757,6 +4879,34 @@ and he will attempt to provide a fuller description.
 <p>
 The concern was repeated that there are objections to any automatic
 locking approach, and we should go back and consider them again.
+
+<p>
+<font color=blue><hr><p>[000720 All]</font>
+Christophe would like to see the locking for this purpose combined with
+the locking required to register the initialized object with __cxa_atexit,
+as well as the ability to statically create the structure that will be
+enqueued by __cxa_atexit.
+
+<p>
+A potential interface that allows this would be the following.
+Expand the guard object to the following structure:
+<pre><code>
+	struct __cxa_guard {
+	  long long guard;	// Guard variable
+	  void *next;		// List link for destructor chain
+	  void (*dtor) (void*);	// Pointer to destruction routine
+	  void *p;		// Pointer to dtor parameter
+	  dso_handle dhandle;	// DSO handle for owning DSO
+	};
+</code></pre>
+An implementation that chooses to implement its __cxa_atexit list with
+elements matching this structure could then simply enqueue the above
+structure on the list (without its initial doubleword guard).
+An implementation using another structure might need to rearrange the data.
+(This ABI would not specify either choice.)
+The __cxa_guard_release call above would be re-specified to also
+enqueue the object on the destruction list by calling __cxa_atexit or
+its equivalent.
 
 
 
