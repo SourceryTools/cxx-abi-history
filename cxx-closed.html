@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 9 December 1999</i>
+<i>Revised 20 December 1999</i>
 
 </center>
 
@@ -3309,10 +3309,10 @@ DT_INIT_ARRAYSZ, DT_FINI_ARRAY, and DT_FINI_ARRAYSZ dynamic tags.
 <tr> <a name=C3></a> <td> C-3 </td>
 <td> Order of ctors/dtors w.r.t. DSOs </td>
 <td> ps </td>
-<td> closed </td>
+<td> open </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> 991202 </td>
+<td> reopened </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -3492,6 +3492,13 @@ which takes a list of DSOs instead of a single DSO,
 and if the program or dynamic linker identifies a set of DSOs to be
 unloaded together, run their finalization entries in a single pass
 instead of one DSO at a time.
+
+
+<p>
+<font color=blue><hr><p>[991215 CodeSourcery -- Mark]</font>
+Note that the type of "__dso_handle" above is not specified.
+Since the simplest implementation is for the static linker to resolve
+it into an arbitrary address in the DSO, define it as "void *".
 
 
 <p>
