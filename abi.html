@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 21 June 2000</i>
+<i>Revised 5 July 2000</i>
 
 </center>
 
@@ -97,7 +97,6 @@ but sometimes an order change would be required for compactness,
 and we note more substantive changes.
 
 <p>
-<font color=red>
 This document is a work in progress,
 still being changed on a regular basis.
 In general, text appearing in this document in color is either
@@ -110,7 +109,6 @@ If problems are noticed,
 they should be reported to the
 <a href=mailto:cxx-abi@corp.sgi.com>C++ ABI Group</a>
 as soon as possible.
-</font>
 
 <p>
 <font color=blue>
@@ -287,10 +285,10 @@ the unique base class (if any) with which it shares the virtual pointer
 at offset 0.
 
 <p>
-<dt> <i>secondary vtable</i> </dt>
+<dt> <i>secondary virtual table</i> </dt>
 <dd>
-The instance of a vtable for a base class
-that is embedded in the vtable of a class derived from it.
+The instance of a virtual table for a base class
+that is embedded in the virtual table of a class derived from it.
 
 <p>
 <dt> <i>thunk</i> </dt>
@@ -310,7 +308,7 @@ a full call to the target function.
 <dt> <i>vague linkage</i> </dt>
 <dd>
 The treatment of entities --
-e.g. inline functions, templates, vtables --
+e.g. inline functions, templates, virtual tables --
 with external linkage that can be
 defined in multiple translation units,
 while the ODR requires that the program
@@ -380,7 +378,6 @@ However, some (many?) are specified to be extern "C" if they:
      e.g. <code>longjmp_unwind</code>; or
 <li> are expected to be called only implicitly by compiled code,
      and are likely to be implemented in C.
-     Note: this second exception has not yet been adopted.
 </ul>
 
 
@@ -388,7 +385,6 @@ However, some (many?) are specified to be extern "C" if they:
 <a name=scope>
 <h3> 1.4 Scope of This ABI </h3>
 
-<font color=red>
 <a name=scope-library>
 <h3> 1.4.1 Runtime Libraries </h3>
 
@@ -475,7 +471,6 @@ experience is available.
 
 
 </i>
-</font>
 
 
 <p> <hr> <p>
@@ -1116,8 +1111,14 @@ Following the function pointer entries that correspond to those of the
 primary base class,
 the primary vtable holds the following additional entries at its tail:
 <ul>
-<li> Entries for virtual functions introduced by this class.
-<li> Entries for overridden virtual functions not already in the vtable.
+<li> Entries for virtual functions introduced by this class,
+<font color=red>
+     including virtual function overrides with covariant return types.
+</font>
+<li> Entries for overridden virtual functions not already in the vtable,
+<font color=red>
+     including those overridden with covariant return types.
+</font>
      (These are also called replicated entries because they are already
      in the secondary vtables of the class.)
 </ul>
@@ -1128,7 +1129,8 @@ The primary vtable can be viewed as two vtables accessed
 from a shared vtable pointer. 
 
 <p>
-<i>Note</i>:
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
 Another benefit of replicating virtual function entries is that it
 reduces the number of this pointer adjustments during virtual calls.
 Without replication,
@@ -1139,6 +1141,7 @@ is overridden in the derived class,
 implying an additional thunk adjustment back to the original pointer.
 Thus replication saves two adjustments for each virtual call to an
 overridden function introduced by a non-primary proper base class. 
+</i>
 
 <p>
 <h5> Category 3: Virtual Bases Only </h5>
@@ -1177,7 +1180,10 @@ in the same order they would appear if P itself were the virtual base.
 Next (after any intervening vbase offsets for virtual bases of A
 but not of P)
 come vcall offsets for each virtual function declared in A,
-in declaration order.
+in declaration order,
+<font color=red>
+including overriding virtual functions with covariant return types.
+</font>
 
 <p>
 <li>
@@ -1189,7 +1195,6 @@ are in declaration order.
 </ul>
 
 <p>
-<font color=red>
 If the above listing of vcall offsets includes more than one
 for a particular virtual function signature,
 only the first one (closest to the vtable address point) is allocated.
@@ -1198,7 +1203,6 @@ eliminates any from A or its other bases,
 an offset from A eliminates any from the non-primary bases,
 and an offset from a non-primary base B of A eliminates any from the
 bases of B.
-</font>
 
 <p>
 <i>
@@ -1306,6 +1310,30 @@ Therefore, its virtual base offset for S in its embedded T-in-W vtable
 is the only one present.
 </i>
 
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+<font color=red>
+The above-described virtual table group layout would allow all
+non-virtual secondary base class virtual tables in a group to be
+accessed from a virtual pointer for one of them,
+since the relative offsets would be fixed.
+(Since the primary virtual table could end up being embedded,
+as the primary base class virtual table,
+in another virtual table with additional virtual pointers separating it
+from its secondary virtual tables,
+this observation is not true of the primary virtual table.)
+However, since construction virtual table groups may be organized
+differently (see below),
+an implementation may not depend on this relationship between
+secondary virtual tables.
+This tradeoff was made because the space savings resulting from not
+requiring construction virtual tables to occur in complete groups
+was considered more important than potential sharing of virtual
+pointers.
+</font>
+</i>
+
 
 <p> <hr> <p>
 <a name=vtable-ctor>
@@ -1409,11 +1437,13 @@ or (b) virtual function declarations overridden along a virtual path
 between the declaration and D,
 the address of the secondary vtable for X-in-D.
 These include virtual and non-virtual, direct and indirect subobjects,
-<font color=red>
 with the exception of primary non-virtual bases.
-</font>
 The order of the virtual pointers is
 inheritance graph preorder.
+<font color=red>
+Though primary non-virtual bases do not get secondary virtual pointers,
+they do not otherwise affect the ordering.
+</font>
 
 <p>
 When constructing a sub-VTT for a subclass B of D in part 2 above,
@@ -1421,21 +1451,17 @@ the relevant condition (b) for the inclusion of a secondary virtual
 pointer in the sub-VTT for B is the existence of a virtual function
 declaration overridden along a virtual path between the declaration and B,
 since otherwise the complete object virtual table for B is used
-<font color=red>
 to initialize the B subobject.
-</font>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-<font color=red>
 "Along a virtual path" refers to the path in the inheritance graph
 between the class that declares the overridden virtual function
 and the class derived from it that declares the overriding virtual
 function.
 This is considered a virtual path if one of the class derivations it
 represents is from a virtual base.
-</font>
 </i>
 
 <p>
@@ -1471,23 +1497,16 @@ not of the first vcall offset.
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-It is
-<font color=red> required </font>
-that the VTT for a complete class D be identical in
+It is required that the VTT for a complete class D be identical in
 structure to the sub-VTT for the same class D as a subclass of another
 class E derived from it,
-<font color=red>
 so that the constructors for D can depend on that structure.
-</font>
 Therefore, the various components of its VTT are present based on the
 rules given, even if they point to the D complete object vtable or its
 secondary vtables.
 That is, secondary VTTs are present for all bases with virtual bases
 (including the virtual bases themselves,
-<font color=red>
-which have their secondary VTTs
-</font>
-in the virtual VTT section),
+which have their secondary VTTs in the virtual VTT section),
 and secondary virtual pointers are present for all bases with either
 virtual bases or virtual function declarations overridden along a
 virtual path.
@@ -1495,7 +1514,6 @@ The only exception is that a primary non-virtual base class does not
 require a secondary virtual pointer.
 
 <p>
-<font color=red>
 Parts (1) and (3) of a primary (not secondary, i.e. nested) VTT,
 that is the primary and secondary virtual pointers,
 are used for the final initialization of an object's virtual pointers
@@ -1518,7 +1536,6 @@ This ABI does not specify a choice,
 nor does it specify names for the construction virtual tables,
 so the constructors must use the VTT rather than assuming that a
 particular construction virtual table exists.
-</font>
 
 <p>
 For example, suppose we have the following hierarchy:
@@ -1557,16 +1574,18 @@ complete object vtables are required.
 
   // 3. Secondary virtual pointers:
     // (no C1-in-D -- primary base)
-  [5]  C2-in-D (preorder; has virtual bases)
-  [6]    V2-in-D (V2::f overridden in D, has virtual base)
-  [7]    V1-in-D (A2::f overridden in D)
+<font color=red>
+  [5]    V1-in-D (A2::f overridden in D)
+  [6]  C2-in-D (preorder; has virtual bases)
+  [7]    V2-in-D (V2::f overridden in D, has virtual base)
+</font>
     // (For complete object D VTT, these can all point to the
     // secondary vtables in the D vtable.  In the sub-VTT for
     // D in a class derived from D, some might be construction
     // vtables.)
 
   // 4. Virtual VTTs:
-    // (V1 primary, can use complete object constructor).
+    // (V1 <font color=red>has no virtual bases</font>).
   [8]  V2 * (V2::f overridden in D, has virtual base)
   [9]    V1-in-V2 in D * (secondary vptr, A2::f overridden in D)
 	   (A2 is primary base of V1)
@@ -1660,7 +1679,7 @@ function resolution.
 <h3> 2.7 Array Operator <code>new</code> Cookies </h3>
 
 <p>
-When operator <code>new</code> is used to create a new dynamic-length array,
+When operator <code>new</code> is used to create a new array,
 a cookie is usually stored to remember the allocated length
 (number of array elements)
 so that it can be deallocated correctly.
@@ -1755,12 +1774,10 @@ to allow distinct instances of the function
 (e.g. due to inlining) to use the same guard.
 
 <p>
-<font color=red>
 The size of the guard variable is 64 bits.
 The low-order byte shall contain the value 0 prior to initialization of
 the associated variable, and 1 after initialization is complete.
 Usage of the other bytes of the guard variable is implementation-defined.
-</font>
 
 
 
@@ -1865,7 +1882,7 @@ described below with the RTTI layout of pointer types.
 <p>
 The <code>name()</code> member function returns the address of an NTBS,
 unique to the type,
-containing the <a href=mangling-type>mangled name</a> of the type.
+containing the <a href=#mangling-type>mangled name</a> of the type.
 It has a <a href=mangling-special>mangled name</a> defined by the ABI
 to allow consistent reference to it,
 and the <a href=#vague-rtti>Vague Linkage</a> section specifies how to
@@ -2068,11 +2085,12 @@ It is derived from abi::__class_type_info, and adds data members:
 	</ul>
 
       <p>
-      <font color=red><i>
-      Note: In an ABI for a machine with 32-bit addresses,
+      <img src=warning.gif alt="<b>NOTE</b>:">
+      <i>
+      In an ABI for a machine with 32-bit addresses,
       the offset becomes a 32-bit field,
       and the flags are in the low-order byte of a second 32-bit field.
-      </i></font>
+      </i>
 
   </ul>
 
@@ -2646,8 +2664,11 @@ with a virtual step
 (have vcall offsets needing adjustment).
 
 <p>
-If the not-in-charge constructor calls constructors for base class
+<font color=red>
+If a constructor calls constructors for base class
 subobjects that do not need construction vtables,
+e.g. because they have no virtual bases,
+</font>
 the construction vtable parameter is not passed to the base class
 subobject constructor,
 and the base class subobject constructors use
@@ -3101,14 +3122,13 @@ The type is omitted for variables and static data members.
 
 <pre><font color=blue><code>
     &lt;name> ::= &lt;nested-name>
-	   ::= &lt;unqualified-name>	<font color=red>
-	   ::= &lt;unqualified-template-name> &lt;template-args> </font>
+	   ::= &lt;unqualified-name>
+	   ::= &lt;unqualified-template-name> &lt;template-args>
 	   ::= &lt;local-name>	# See <a href=#mangling-scope>Scope Encoding</a> below
 	   ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
-<font color=red>
+
     &lt;unqualified-template-name> ::= &lt;template-name>
 				::= &lt;substitution>
-</font>
 </pre></font></code>
 
 Names of objects nested in namespaces or classes are identified as a
@@ -3129,8 +3149,8 @@ a single substitution.
 		    ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
     &lt;template-prefix> ::= &lt;compound-name> &lt;template-name>
 		      ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
-    &lt;component-name> ::= &lt;template-name>	<font color=red>
-		     ::= &lt;source-name>	</font>
+    &lt;component-name> ::= &lt;template-name>
+		     ::= &lt;source-name>
 		     ::= &lt;builtin-type>
 		     ::= &lt;function-type>
 		     ::= &lt;array-type>
@@ -3144,15 +3164,22 @@ a single substitution.
 		       ::= &lt;template-name> &lt;template-args>
 		       ::= &lt;operator-name>
 		       ::= &lt;special-name> # ctors, vtables, ...
-    &lt;source-name> ::= &lt;<i>length</i> number> &lt;identifier>
-    &lt;number> ::= &lt;<i>decimal integer</i>>
+<font color=red>
+    &lt;source-name> ::= &lt;<i>length</i> positive-number> &lt;identifier>
+    &lt;number> ::= [n] &lt;positive-number>
+    &lt;positive-number> ::= &lt;<i>decimal integer</i>>
+</font>
     &lt;identifier> ::= &lt;<i>unqualified source code identifier</i>>
 
 </pre></font></code>
 
 <p>
 &lt;number> is a pseudo-terminal representing a decimal integer,
-giving the character length of the following identifier.
+<font color=red>
+with a leading 'n' for negative integers.
+It is used in &lt;source-name> to provide the
+</font>
+character length of the following identifier.
 &lt;number>s appearing in mangled names never have leading zeroes,
 except for the value zero, represented as '0'.
 &lt;identifier> is a pseudo-terminal representing the unqualified
@@ -3329,6 +3356,7 @@ Types are encoded as follows:
 	 ::= &lt;array-type>
 	 ::= &lt;pointer-to-member-type>
 	 ::= &lt;template-param>
+	 ::= &lt;template-template-param> &lt;template-args>
 	 ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
 
 </pre></font></code>
@@ -3384,6 +3412,21 @@ That is, given a type <code>const volatile foo</code>,
 the fully qualified type or foo may be substituted,
 but not <code>const foo</code>.
 </i>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<font color=red>
+<i>
+The restrict qualifier is part of the C99 standard,
+but is strictly an extension to C++ at this time.
+There is no standard specification of whether the restrict attribute
+is part of the type for overloading purposes.
+An implementation should include its encoding in the mangled name
+if and only if it also treats it as a distinguishing attribute for
+overloading purposes.
+This ABI does not specify that choice.
+</i>
+</font>
 
 <a name=mangling-builtin>
 <p>
@@ -3472,7 +3515,7 @@ since extern "C" function objects have unmangled names.
 </pre></font></code>
 
 <p>
-A class or enum type is simply a name,
+A class<font color=red>, union,</font> or enum type is simply a name,
 It may be a simple &lt;unqualified-name>,
 with or without a template argument list,
 or a more complex &lt;nested-name>.
@@ -3491,7 +3534,7 @@ For variable length arrays,
 the dimension (but not the '_' separator) is omitted.
 
 <pre><font color=blue><code>
-  &lt;array-type> ::= A [&lt;<i>dimension</i> number>] _ &lt;<i>element</i> type>
+  &lt;array-type> ::= A [&lt;<i>dimension</i> positive-number>] _ &lt;<i>element</i> type>
 
 </pre></font></code>
 
@@ -3507,23 +3550,22 @@ Pointer-to-member types encode the class and member types.
 When function and member function template instantiations reference
 the template parameters in their parameter/result types,
 the template parameter number is encoded,
-<font color=red>
 with the sequence T_, T0_, ...
-</font>
 Class template parameter references are mangled using the standard
 mangling for the actual parameter type,
 typically a substitution.
-<font color=red>
 Note that a template parameter reference is a substitution candidate,
 distinct from the type (or other substitutible entity)
 that is the actual parameter.
-</font>
 
-<pre><font color=red><code>
+<pre><code><font color=red>
   &lt;template-param> ::= T_	# first template parameter
-		   ::= T &lt;<i>parameter-2</i> number> _
+		   ::= T &lt;<i>parameter-2</i> positive-number> _
 
-</pre></font></code>
+  &lt;template-template-param> ::= &lt;template-param>
+			    ::= L &lt;substitution>
+
+</font></code></pre>
 
 <p>
 Template argument lists appear after the unqualified template name,
@@ -3533,11 +3575,16 @@ but also in types and scope identification.
 
 <pre><font color=blue><code>
   &lt;template-args> ::= I &lt;template-arg>+ E
+</font>
+<font color=red>
   &lt;template-arg> ::= &lt;type>			# type
-  &lt;template-arg> ::= L &lt;type> &lt;<i>value</i> number> E	# literal
-  &lt;template-arg> ::= LZ &lt;encoding> E		# external name
-  &lt;template-arg> ::= X &lt;expression> E		# expression
+		 ::= L &lt;type> &lt;<i>value</i> number> E	# literal
+		 ::= LZ &lt;encoding> E		# external name
+		 ::= X &lt;expression> E		# expression
+		 ::= &lt;template-template-arg>
 
+  &lt;template-template-arg> ::= &lt;name>
+			  ::= L &lt;substitution>
 </pre></font></code>
 
 <p>
@@ -3639,8 +3686,8 @@ The encoding for such entities is as follows:
 <code><pre><font color=blue>
   &lt;local-name> := Z &lt;<i>function</i> encoding> E &lt;<i>entity</i> name> [&lt;discriminator>]
                := Z &lt;<i>function</i> encoding> E s [&lt;discriminator>]
-
-  &lt;discriminator> := _ &lt;number> 
+</font> <font color=red>
+  &lt;discriminator> := _ &lt;positive-number> 
 </font></pre></code>
 
 <p>
@@ -3648,14 +3695,14 @@ The first production is used for named local static objects,
 which are identified by their declared names.
 The discriminator is used only for the
 second and later occurrences of the same name within a single function.
-In this case &lt;number> is n - 2,
+In this case &lt;positive-number> is n - 2,
 if this is the nth occurrence, in lexical order, of the given name.
 
 <p>
 The second production is used for string literals.
 The discriminator is used only if there is more than one,
 for the second and subsequent ones.
-In this case &lt;number> is n - 2,
+In this case &lt;positive-number> is n - 2,
 if this is the nth distinct string literal, in lexical order,
 appearing in the function.
 Multiple references to the same string literal produce one string
@@ -3718,14 +3765,12 @@ Each non-terminal in the grammar above for which &lt;substitution>
 appears on the RHS, types, names, and qualified name prefixes,
 is both a source of future substitutions
 and a candidate for being substituted.
-<font color=red>
 There are two exceptions that appear to be substitution
 candidates from the grammar, but are explicitly excluded:
 <ul>
 <li> &lt;builtin-type> other than vendor extended types, and
 <li> function and operator names other than extern "C" functions.
 </ul>
-</font>
 
 <p>
 <i>
@@ -3741,11 +3786,9 @@ The reason for this is to facilitate implementations that use the
 symbol table to keep track of components that might be substitutable.
 
 <p>
-<font color=red>
 Note that the above exclusion of function and operator names from
 consideration for substitution does <u>not</u> exclude the full
 function entity, i.e. its name plus its signature encoding.
-</font>
 </i>
 
 <p>
@@ -3802,14 +3845,12 @@ since at the point where S0_ appears:
 
 </pre></code>
 
-<font color=red>
 After this point, the numbering continues:
 <code><pre>
    "S2_" == N::T&lt;double, double>
    "S3_" == N::T&lt;int, int>::mf(N::T&lt;double, double>)
 
 </pre></code>
-</font>
 
 <p>
 Note that substitutable components are the represented symbolic constructs,
@@ -3882,17 +3923,15 @@ they are not part of the actual mangled name, and should be ignored.
 <tr class=small><td> _Z3foo3bar </td>
 <td> Ret? foo(bar); </td></tr>
 
-<tr class=small><td><font color=red> _Zrm1XS_ </font></td>
+<tr class=small><td> _Zrm1XS_ </td>
 <td> Ret? operator%(X, X); </td></tr>
 
-<tr class=small><td><font color=red> _ZplR1XS0_ </font></td>
+<tr class=small><td> _ZplR1XS0_ </td>
 <td> Ret? operator+(X&, X&); </td></tr>
 
-<tr class=small><td><font color=red> _ZlsRK1XS1_ </font></td>
+<tr class=small><td> _ZlsRK1XS1_ </td>
 <td> Ret? operator&lt;&lt; (X const&, X const&);
-<font color=red>
 <br> (Note: X is S_, X const is S0_)
-</font>
 </td></tr>
 
 <tr class=small><td> _ZN3FooIA4_iE3barE </td>
@@ -3903,14 +3942,12 @@ they are not part of the actual mangled name, and should be ignored.
 <br> (Note: the return type is always explicitly encoded for template
 functions taking parameters.)</td></tr>
 
-<tr class=small><td><font color=red> _Z5firstI3DuoEvS_ </font></td>
+<tr class=small><td> _Z5firstI3DuoEvS_ </td>
 <td> void first&lt;Duo>(/*nondependent*/Duo);
-<font color=red>
 <br>(Note: Duo is S_, first<Duo>(Duo) is S0_)
-</font>
 </td></tr>
 
-<tr class=small><td><font color=red> _Z5firstI3DuoEvT_ </font></td>
+<tr class=small><td> _Z5firstI3DuoEvT_ </td>
 <td> void first&lt;Duo>(/*T1=*/Duo); </td></tr>
 
 <tr class=small><td> _Z3fooIiPFidEiEvv </td>
@@ -3929,22 +3966,20 @@ functions taking parameters.)</td></tr>
 <tr class=small><td> _ZN5StackIiiE5levelE </td>
 <td> Type? Stack&lt;int, int>::level; </td></tr>
 
-<tr class=small><td><font color=red> _Z1fI1XE vPV N1AIT_E1TE </font></td>
+<tr class=small><td> _Z1fI1XE vPV N1AIT_E1TE </td>
 <td> void f&lt;X>(A&lt;/*T1=*/X>::T volatile*); </td></tr>
 
-<tr class=small><td><font color=red>
-_ZngILi42EE v N1A I XplT_Li2EE E 1TE </font></td>
+<tr class=small><td>
+_ZngILi42EE v N1A I XplT_Li2EE E 1TE </td>
 <td> void operator-&lt;/*int J=*/42>(A&lt;J+2>::T); </td></tr>
 
 <tr class=small><td> _Z4makeI7FactoryiE T1_IT2_E </td>
 <td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
 <br> // T1 == template template parameter </td></tr>
 
-<tr class=small><td><font color=red> _Z3foo 5Hello5WorldS0_S_ </font></td>
+<tr class=small><td> _Z3foo 5Hello5WorldS0_S_ </td>
 <td> void foo(Hello,World,World,Hello)
-<font color=red>
 <br> (Note: Hello is S_, World is S0_, foo(...) is S1_)
-</font>
 </td></tr>
 
 <tr class=small><td> _Z3fooPM2ABi </td>
@@ -3954,8 +3989,8 @@ _ZngILi42EE v N1A I XplT_Li2EE E 1TE </font></td>
 <tr class=small><td> _ZlsRSoRKSs </td>
 <td> operator&lt;&lt; (std::ostream&,std::string const&) </td></tr>
 
-<tr class=small><td><font color=red> _ZN7a_classTIE </font></td>
-<td> <font color=red> typeid(class a_class) </font> </td></tr>
+<tr class=small><td> _ZN7a_classTIE </td>
+<td>  typeid(class a_class)  </td></tr>
 
 </table>
 
@@ -4009,13 +4044,11 @@ that must be kept in common among all copies
 by using the local symbol mangling defined above.
 These objects are named according to the rules for local names in the
 <a href=#scope-encoding> Scope Encoding </a> section above,
-<font color=red>
 and the definition of each is emitted in a COMDAT group,
 identified by the symbol name described in the
 <a href=#scope-encoding> Scope Encoding </a> section above.
 Each COMDAT group must be emitted in any object with references
 to the symbol for the object it contains, whether inline or out-of-line.
-</font>
 
 
 <p>
@@ -4092,7 +4125,6 @@ destructor name.
 <p>
 An instantiation of a class template requires:
 
-<font color=red>
 <ul>
 <p>
 <li> In the object where instantiated,
@@ -4114,7 +4146,6 @@ An instantiation of a class template requires:
     or its name is referenced without calling it),
     in a COMDAT group identified by the function name.
 </ul>
-</font>
 
 <p>
 An instantiation of a function template or member function template
