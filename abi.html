@@ -883,7 +883,8 @@ and the full layout is equivalent to the C struct:
 <p>
 <li> <h5> Finalization </h5>
 <p>
-Round sizeof(C) up to a non-zero multiple of align(C).
+Round sizeof(C) up to a non-zero multiple of align(C).  If C is a POD,
+but not a POD for the purpose of layout, set nvsize(C) = sizeof(C).
 
 </ol>
 
