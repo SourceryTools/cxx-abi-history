@@ -42,6 +42,10 @@ C++ ABI for IA-64: Data Layout
 <h3> Revisions </h3>
 
 <p>
+<font color=blue>[991019]</font>
+Modified RTTI proposal for 14 October decisions.
+
+<p>
 <font color=blue>[991006]</font>
 Added RTTI proposal.
 
@@ -730,7 +734,7 @@ the C++ IA-64 ABI group:
     pointers are equal.
 <p>
 <li> A simple dynamic_cast algorithm that is efficient in the common
-    case of base-to-most-derived cast case is preferrable over more
+    case of base-to-most-derived cast case is preferable to more
     sophisticated ideas that handle deep-base-to-in-between-derived
     casts more efficiently at a slight cost to the common case.
     Hence, the original scheme of providing a hash-table into the
@@ -745,6 +749,19 @@ the C++ IA-64 ABI group:
     src2dst_offset hint.
 <p>
 <li> std::__extended_type_info is dropped.
+<p>
+<li> It was decided to only keep direct base information about a class type.
+    Indirect base information can be found by chasing type_info pointers
+    (and care should be taken to determine ambiguous base class types).
+<p>
+<li> Different class types are introduced for class that (a) have no bases,
+    (b) use only single inheritance, and (c) use multiple inheritance.
+<p>
+<li> The typeinfo structure for a class type with associated virtual
+    tables is emitted as part of the set of virtual tables.
+    It precedes the tables proper
+    (not explicitly decided, but assumed:
+    it also precedes auxiliary tables for locating construction vtables).
 </ul>
 
 <p>
@@ -845,14 +862,17 @@ Also, some kinds of dynamic_cast operations are handled at compile time
 and do not need any RTTI.
 There are then three kinds of truly dynamic cast operations:
 <ul>
-<li> dynamic_cast<void cv*>, which returns a pointer to the complete lvalue,
+<li> dynamic_cast&lt;void cv*>, which returns a pointer to the complete lvalue,
 <li> dynamic_cast operation from a base class to a derived class, and
 <li> dynamic_cast across the hierarchy which can be seen as a cast to
 	the complete lvalue and back to a sibling base.
 </ul>
 
 <p>
+The most common kind of dynamic_cast is base-to-derived in a singly
+inherited hierarchy.
 
+<p>
 <h5>RTTI layout</h5>
 
 <ol type=1>
@@ -871,6 +891,8 @@ This entry is directly useful to implement dynamic_cast<void cv*>,
 but is also needed for the other truly dynamic casts.
 This entry is located two words ahead of the location
 pointed to by the vptr (i.e., entry "-2").
+This entry is present in all vtables,
+even for classes having virtual bases but no virtual functions.
 
 <p>
 <li>
@@ -878,6 +900,12 @@ Every vtable shall contain one entry pointing to an object derived
 from std::type_info.
 This entry is located at the word preceding the location
 pointed to by the vptr (i.e., entry "-1").
+The entry is allocated in all vtables;
+for classes having virtual bases but no virtual functions,
+the entry is zero.
+This entry is coded as an offset with respect to the virtual table origin,
+rather than as a pointer
+(thereby avoiding run-time relocations).
 
 <p>
 std::type_info contains just two pointers:
@@ -896,6 +924,8 @@ The possible derived types are:
   <li> std::__function_type_info
   <li> std::__enum_type_info
   <li> std::__class_type_info
+  <li> std::__si_class_type_info
+  <li> std::__vmi_class_type_info
   <li> std::__ptr_to_member_type_info
 </ul>
 
@@ -936,38 +966,66 @@ std::__enum_type_info does not add fields either.
 
 <p>
 <li>
-std::__class_type_info introduces a variable length structure.
-The variable part that follows consists of a sequence of base class
-descriptions having the following structure:
+Three different types are used to represent type information:
 
-<pre><code>
-    struct std::__base_class_info {
-  
-       std::type_info *type; /* Null if unused. */
-       std::ptrdiff_t offset;
-       int is_direct: 1;
-       int is_floating: 1; /* I.e., virtual or base of virtual subobject. */
-       int is_virtual: 1; /* Implies is_floating. */
-       int is_shared: 1; /* Implies is_floating and the virtual subobject
-                            appears on multiple derivation paths. */
-       int is_accessible: 1;
-       int is_ambiguous: 1;
-    };
-</pre></code>
+<ol type=a>
+<p>
+<li>
+std::__class_type_info is used for class types having no bases,
+and is also a base type for the other two class type representations.
+It adds one word to std::type_info with flags describing details
+about the class (most for use of the derived classes):
+  <ul>
+  <li> 0x1: contains multiply inherited subobject
+  <li> 0x2: is polymorphic
+  <li> 0x4: has virtual bases
+  <li> 0x8: has privately inherited base
+  </ul>
 
 <p>
-<font color=red><i>
-(Ed. note:  to avoid endianness confusion,
-the above should be defined in terms of a flags field and masks.)
-</i></font>
+<li>
+For classes containing only a single, nonvirtual inheritance hierarchy,
+class std::__si_class_type_info is used.
+It adds to std::__class_type_info
+a single pointer to the type_info structure for the base type.
+
+<p>
+<li>
+For class containing (directly or indirectly)
+a multiple or virtual inheritance component in their hierarchy,
+std::__vmi_class_type_info is used.
+It is derived from std::__class_type_info, and adds:
+  <ul>
+  <li> a word with the number of direct base class descriptions that follow
+  <li> base class descriptions for every direct base;
+       each description is of the type:
+<pre><code>
+      struct std::__base_class_info {
+         std::type_info *type;
+         std::ptrdiff_t offset;
+	 int vmi_flags;
+      };
+</pre></code>
+  </ul>
+
+<p>
+The vmi_flags field contains one or more flags:
+  <ul>
+  <li> 0x1: Base class is virtual
+  <li> 0x2: Base class is public
+  </ul>
+
+</ol>
 
 <p>
 <li>
 The std::__ptr_to_member_type_info type adds two fields to std::type_info:
 <ul>
 <li> a pointer to a std::__class_type_info (e.g., the "A" in "int A::*")
-<li> a_pointer to a std::type_info corresponding to the member type
+<li> a pointer to a std::type_info corresponding to the member type
     (e.g., the "int*" in "int A::*")
+<li> a word describing the cv-qualification of what is pointed to
+    (see std::__pointer_type_info)
 </ul>
 
 </ol>
@@ -975,7 +1033,8 @@ The std::__ptr_to_member_type_info type adds two fields to std::type_info:
 
 <h5>std::type_info::name()</h5>
 <p>
-The NTBS returned by this routine is the mangled name of the type.
+The null-terminated byte string returned by this routine is
+the mangled name of the type.
 
 
 <p>
@@ -1030,15 +1089,15 @@ These tests are implemented by std::__dynamic_cast:
     *      source object is polymoprhic, *(void**)sub is a vptr.
     * src: static type of the source object.
     * dst: destination type (the "T" in "dynamic_cast<T>(v)").
-    * src2dst_offset: a static hint about the adjustment needed
-    *    on sub; since this adjustment cannot be 1, 2 or 3,
-    *    those special values mean:
-    *       1: no hint
-    *       2: src is not a public base of dst
-    *       3: src is a multiple public base type but never a
-    *          virtual base type
+    * obj2sub_offset: a static hint about the location of the
+    *    source subobject with respect to the complete object;
+    *    special negative values are:
+    *       -1: no hint
+    *       -2: src is not a public base of dst
+    *       -3: src is a multiple public base type but never a
+    *           virtual base type
     *    otherwise, the src type is a unique public nonvirtual
-    *    base type of dst at offset -src2dst_offset from the
+    *    base type of dst at offset obj2sub_offset from the
     *    origin of dst.
     */
 
