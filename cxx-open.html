@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 10 August 1999</i>
+<i>Revised 17 August 1999</i>
 
 </center>
 
@@ -25,6 +25,14 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990813]</font>
+Closed <a href=cxx-closed.html#A11>A-11</a>.
+Additions to <a href=#A6>A-6</a>,
+<a href=#B1>B-1</a>, <a href=#B6>B-6</a>, <a href=#B8>B-8</a>,
+<a href=#C2>C-2</a>,
+<a href=#G5>G-5</a>.
 
 <p>
 <font color=blue>[990810]</font>
@@ -304,6 +312,7 @@ no parameter slot will be allocated to empty parameters.
 
 </table>
 
+
 <p>
 <table border=on cellpadding=3>
 
@@ -348,6 +357,13 @@ It was noted that appropriate name selection along with the normal
 DSO global name resolution should be sufficient to produce a unique
 address for each class' RTTI struct,
 which address would then be a suitable identifier for comparisons.
+
+<p>
+<font color=blue>[990812 Sun -- Michael]</font>
+Sun has provided a description,
+<a href=Sun-RTTI-990812.html>in a separate page</a>,
+describing their implementation.
+They are filing for a patent on the algorithms described.
 
 <p>
 <table border=on cellpadding=3>
@@ -490,63 +506,22 @@ except for cases with non-trivial copy constructors identified in C-7.
 <tr> <a name=A11></a> <td> A-11 </td>
 <td> Pointers to member functions </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> Cygnus </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990812 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How should pointers to member functions be represented?
 </td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+As a pair of values, a "pointer" and a this adjustment.
+See the closed list for a more detailed description.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990729 All]</font>
-Jason described the g++ implementation, which is a three-member struct:
-<ol>
-<li> The adjustment to <i>this</i>.
-<li> The Vtable index plus one of the function, or -1.
-     (Zero is a NULL pointer.)
-<li> If (2) is an index, the offset from the full object to the member
-     function's Vtable.  If -1, a pointer to the function (non-virtual).
-</ol>
-
-<p>
-A concern about covariant returns was raised.
-It was observed that, given our decision to use distinct Vtable entries
-for distinct return types, no further concern is required here.
-Others will describe their representations.
-IBM has an alternative, but it is believed to be patented by Microsoft.
-
-<p>
-<font color=blue>[990805 All]</font>
-It is agreed that a two-element struct will be used for a pointer to a
-member function, with elements as follows:
-
-<dl>
-<p>
-<dt> <code>ptr</code>:
-<dd> For a non-virtual function, this field is a simple function pointer.
-     (Under current base IA-64 psABI conventions,
-     this is a pointer to a GP/function address pair.)
-     For a virtual function,
-     it is 1 plus twice the Vtable offset of the function.
-     The value zero is a NULL pointer.
-
-<p>
-<dt> <code>adj</code>:
-<dd> The required adjustment to <i>this</i>.
-</dl>
-
-<p>
-Although we agreed to close this, SGI suggests a minor modification.
-Since the Vtable offset of a virtual function will always be even,
-we suggest that it not be doubled before adding 1.
-This is because shifts are more restricted on many processors than
-other integer ALU operations (shifters are large structures),
-so an XOR or NAND will often be cheaper than a right shift.
 
 <p>
 <table border=on cellpadding=3>
@@ -981,10 +956,7 @@ sequence. In bold and between #if/#endif, the affected code.
         ;;
         // Perform the actual branch to the target
 
-        // For prediction to occur correctly on McKinley,
-        // at least 5 cycles between the mov to BR above and the use
-        // of the BR.  Up to 16 bundles...
-        // This is very unlikely to be possible in most actual code, so...
+        // ...
         // ... Branch misprediction almost always, followed by
         // ... I-Cache miss almost always if jumping to a thunk
         br.call B0=BRn
@@ -1019,6 +991,11 @@ adjusting_entry_A::f
 A::f:
         alloc   ...
 </pre></code>
+
+<p>
+<font color=blue>[990812 All]</font>
+Discussion of B-6 raises questions of impact on the above approach.
+Christophe will look at the issues.
 
 
 <p>
@@ -1355,6 +1332,14 @@ Index and link fields often point into section table,
 we would have to figure out how to deal with this.
 (Jack is not opposed to the idea of an alternate section table,
 he is just pointing out some of the issues we will have to resolve.)
+
+
+<p>
+<font color=blue>[990805 All]</font>
+We need a specific proposed representation for COMDAT.
+IBM's version is restricted to one symbol per section.
+Jim will look for Microsoft's PECOFF definition.
+Anyone else with a usable definition should send it.
 
 
 
@@ -1699,19 +1684,25 @@ and attempt to close on 22 July.
 (Christophe is on vacation until that week,
 and Daveed leaves on vacation the next week.)
 
-
-<p>
-<font color=blue>[990805 All]</font>
-We need a specific proposed representation for COMDAT.
-IBM's version is restricted to one symbol per section.
-Jim will look for Microsoft's PECOFF definition.
-Anyone else with a usable definition should send it.
-
 <p>
 <font color=blue>[990811 SGI -- Jim]</font>
 I've put a reworked version of Christophe's writeup in the
 <a href=abi-layout.html#vtable>data layout document</a>,
 along with a number of questions it raises.
+
+<p>
+<font color=blue>[990812 All]</font>
+Extensive discussion of this issue produced the observations that
+<ul>
+<li> The number of virtual base offsets changes for vtables
+    embedded in derived vtables.
+<li> Therefore, one cannot reference one by a compile-time-constant
+    offset from another (within the set associated with a type).
+<li> Therefore, one cannot omit vfunc pointers from a derived vtable
+    just because they appear in one of the base class vtables.
+</ul>
+Christophe will look at the implications of these observations.
+Others should too.
 
 
 <p>
@@ -1775,6 +1766,13 @@ ambiguous base classes) and (b) dynamic_cast to void*?
 <font color=blue>[990701 All]</font>
 This should be part of the proposal Daveed will put together
 by the 15th (action #13); the group will discuss it on the 22nd.
+
+<p>
+<font color=blue>[990812 Sun -- Michael]</font>
+Sun has provided a description,
+<a href=Sun-RTTI-990812.html>in a separate page</a>,
+describing their implementation.
+They are filing for a patent on the algorithms described.
 
 
 <p> <hr> <p>
@@ -2127,6 +2125,12 @@ belongs shall be destroyed before the registered function is called."
 What this implies to me is that atexit, and the part of the runtime
 library that handles destructors for static objects, must know about
 each other.
+
+<p>
+<font color=blue>[990812 All]</font>
+Some people would prefer a sorting scheme based on the section name
+instead of the data, and also less linker impact.
+Jim will look into alternatives.
 
 
 <p>
@@ -3371,6 +3375,46 @@ I'd like to see an indirection in vararg lists,
 so they can be passed through thunks.
 This is necessary at least for the covariant returns,
 but might have other applications as well.
+
+<p>
+<font color=blue>[990810 HU-B Martin]</font>
+Since there already was the decision not to return a list of
+pointers from a covariant method,
+the only alternative to real thunks
+is code duplication (as done in Sun Workshop 5).
+<i>(Or alternate entrypoints...  Jim)</i>
+
+<p>
+With real thunks, you have to copy the argument list.
+That is not possible for a varargs list,
+so here is my proposal for varargs in C++:
+
+<p>
+In the place of the ellipsis, a pointer to the first argument is passed.
+In case of a thunk for covariant returns,
+this pointer can be copied to the destination function.
+The variable arguments are put on the stack as they normally would.
+
+<p>
+With that, the issue is in which cases to use such a calling
+convention:
+<ol>
+<li> only for vararg calls to virtual methods, or
+<li> only for vararg calls to functions with C++ linkage, or
+<li> for all vararg calls.
+     That would probably require a change to the C ABI
+</ol>
+<p>
+Option (1) could be further restricted to methods returning a pointer
+or reference to class type. 
+
+<p>
+<font color=blue>[990812 All]</font>
+In response to a question,
+it was observed that passing one variant of a class hierarchy in a
+varargs list and referencing another variant in the va_arg macro is undefined,
+and we don't need to worry about a mechanism for doing the conversion.
+
 
 
 
