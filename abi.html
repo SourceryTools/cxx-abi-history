@@ -1252,8 +1252,8 @@ two conditions holds:
      already present.  If the return types are different, they are
      both pointer-to-class types, or both reference-to-class types.
      Let B and D denote the classes, where D is derived from B.  The
-     types are substantively different if B is a virtual base or is
-     not an indirect primary base of D.
+     types are substantively different if B is a morally virtual base of D 
+     or if B is not located at offset zero in D.
 </ul>
 
 <p>
@@ -4941,6 +4941,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[030103]</font>
+Clarify definition of substantively different types.
 
 <p>
 <font color=blue>[021222]</font>
