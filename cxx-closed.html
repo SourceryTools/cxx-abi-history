@@ -367,7 +367,7 @@ Define the data structure to be used for RTTI, that is:
 <tr> <td colspan=7>
 <b>Resolution</b>:
 Defined in the
-<a href=abi-layout.html#rtti>ABI data layout document</a>.
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
 </tr>
 
 </table>
@@ -465,7 +465,7 @@ the C++ IA-64 ABI group:
 
 <p>
 The full proposal has been incorporated in the
-<a href=abi-layout.html#rtti>ABI data layout document</a>.
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
 
 <p>
 <font color=blue><hr><p>[991014 all]</font>
@@ -512,7 +512,7 @@ all had a change to go over the modified writeup.
 <p>
 <font color=blue><hr><p>[991028 all]</font>
 The current definition,
-in the <a href=abi-layout.html#rtti>ABI data layout document</a>,
+in the <a href=abi.html#rtti>Draft C++ ABI for IA-64</a>,
 has been updated with Daveed's changes,
 and is accepted.
 Note that we are back to using a pointer to RTTI in the vtable
@@ -639,7 +639,7 @@ Do we use an access clause as an opportunity to fill the gaps left by padding?
 </td> </tr>
 <tr> <td colspan=7>
 <b>Resolution</b>:
-See separate writeup of <a href=abi-layout.html>Data Layout</a>.
+See separate writeup of <a href=abi.html>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -713,7 +713,7 @@ the size is rounded up to a multiple of alignment (with tail padding).
 The precise placement of empty bases when they don't fit at offset zero
 remained imprecise in the original description.
 Accordingly, a precise layout algorithm is described in
-a separate writeup of <a href=abi-layout.html#class-types>Data Layout</a>.
+a separate writeup of <a href=abi.html#class-types>Data Layout</a>.
 
 <p>
 <font color=blue>[990729 all]</font>
@@ -1121,7 +1121,7 @@ as its allocation, in the usual depth-first, left-to-right order.
 <p>
 <font color=blue>[991228 SGI -- Jim]</font>
 Specific wording for a proposed change is in the
-<a href=abi-layout.html#q4>data layout draft</a>.
+<a href=abi.html#q4>Draft C++ ABI for IA-64</a>.
 
 <p>
 <font color=blue>[000103 CodeSourcery -- Mark]</font>
@@ -1288,7 +1288,7 @@ if this initial candidate A is itself already a primary base class of
 a later virtual base B,
 then B will be used instead, unless it is already a primary base class
 of a later virtual base, and so on.
-See <a href=abi-layout.html#a19>proposed wording</a>
+See <a href=abi.html#a19>proposed wording</a>
 in the ABI layout document.
 
 <p>
@@ -1344,7 +1344,7 @@ so that it can be deallocated correctly.
 <b><a href=cxx-closed.html#A20> Resolution</a></b>:
 In principle, place cookie immediately before array, aligned naturally.
 Use no cookie for array element types without destructors.
-See the <a href=abi-layout.html#array-new>ABI Layout</a> document.
+See the <a href=abi.html#array-new>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -1411,7 +1411,7 @@ Also, are cookies allocated if there is no destructor?
 Use no cookie for element types with no destructors,
 nor for <code>::operator new(size_t, void*)</code>.
 Otherwise, use a cookie as in issue A-20.
-See the <a href=abi-layout.html#array-new>ABI Layout</a> document.
+See the <a href=abi.html#array-new>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -1721,7 +1721,7 @@ Resolve several questions about the RTTI representation of class types.
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#A23> Resolution</a></b>:
-See the <a href=abi-layout.html>ABI layout</a> document.
+See the <a href=abi.html>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -2291,7 +2291,7 @@ we can reopen.
 <p>
 <font color=blue><hr><p>[000314 SGI -- Jim]</font>
 I've incorporated the chosen scheme into the
-<a href=abi-layout.html#rtti>ABI layout</a> document.
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
 In working this out, though,
 I've remembered why SGI had an issue with the proxy commons,
 which is that, in large programs with lots of class types,
@@ -2674,8 +2674,7 @@ to perform the adjustment may actually prove interesting.
 </td> </tr>
 <tr> <td colspan=7>
 <b>Resolution</b>:
-See the <a href=abi-layout.html#vcall>writeup in the ABI data layout
-specification.
+See the <a href=abi.html#vcall>writeup in the Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -4424,8 +4423,8 @@ What is the layout of the Vtable?
 </td> </tr>
 <tr> <td colspan=7>
 <b>Resolution</b>:
-See the ABI data layout document,
-<a href=abi-layout.html#vtable>abi-layout.html</a>.
+See the Draft C++ ABI for IA-64,
+<a href=abi.html#vtable>abi.html</a>.
 </td> </tr>
 
 </table>
@@ -4439,7 +4438,7 @@ Issue split from A-1.
 
 <p>
 The current full proposal has been incorporated in the
-<a href=abi-layout.html#vtable>ABI data layout document</a>.
+<a href=abi.html#vtable>Draft C++ ABI for IA-64</a>.
 
 
 
@@ -4455,7 +4454,7 @@ and Daveed leaves on vacation the next week.)
 <p>
 <font color=blue>[990811 SGI -- Jim]</font>
 I've put a reworked version of Christophe's writeup in the
-<a href=abi-layout.html#vtable>data layout document</a>,
+<a href=abi.html#vtable>Draft C++ ABI for IA-64</a>,
 along with a number of questions it raises.
 
 <p>
@@ -4609,7 +4608,7 @@ Also feel free to provide additional examples illustrating other points.
 <p>
 <font color=blue>[990930 Cygnus -- Jason]</font>
 Jason has updated the Vtable layout description in
-<a href=abi-layout.html>abi-layout.html</a>
+<a href=abi.html>abi.html</a>
 to reflect the approach from Cygnus and IBM.
 
 <p>
@@ -4660,8 +4659,8 @@ and if we agree with the revised version we can close it at the
 <p>
 <font color=blue><hr><p>[991028 all]</font>
 It was agreed to accept the version currently in the
-ABI data layout document,
-<a href=abi-layout.html#vtable>abi-layout.html</a>.
+Draft C++ ABI for IA-64,
+<a href=abi.html#vtable>abi.html</a>.
 
 <p>
 <table border=on cellpadding=3>
@@ -5636,7 +5635,7 @@ g++ doesn't, to allow for inlining of constructors.
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#C11> Resolution</a></b>:
 Define standard library entries for array construction/destruction.
-See the <a href=abi-layout.html#array-ctor>ABI Layout</a> document.
+See the <a href=abi.html#array-ctor>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -7308,7 +7307,7 @@ name necessary to resolve overloading?
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#F1> Resolution</a></b>:
-See the <a href=abi-layout.html#mangling>ABI Layout</a> document.
+See the <a href=abi.html#mangling>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -7613,7 +7612,7 @@ not used in a function, it does not matter).
 <p>
 <font color=blue><hr><p>[000217 Editor]</font>
 Note that the current mangling proposal is now part of the
-<a href=abi-layout.html#mangling>ABI Layout</a> document.
+<a href=abi.html#mangling>Draft C++ ABI for IA-64</a>.
 
 <p>
 <font color=blue><hr><p>[000308 All]</font>
@@ -7623,7 +7622,7 @@ Jason will do a YACC description to check for ambiguity.
 <p>
 <font color=blue>[000313 SGI -- Jim]</font>
 I have reworked the description in the
-<a href=abi-layout.html#mangling>ABI Layout</a> document
+<a href=abi.html#mangling>Draft C++ ABI for IA-64</a>,
 to get a more precise grammar description,
 and to incorporate the loose ends decisions from the meeting
 and proposals for a few more.
@@ -7632,13 +7631,13 @@ and proposals for a few more.
 <font color=blue>[000316 All]</font>
 Extensive discussions in the meeting,
 reflected in the updated
-<a href=abi-layout.html#mangling>ABI Layout</a> document.
+<a href=abi.html#mangling>Draft C++ ABI for IA-64</a>.
 
 <p>
 <font color=blue>[000323 All]</font>
 Extensive discussions in the meeting,
 reflected in the updated
-<a href=abi-layout.html#mangling>ABI Layout</a> document.
+<a href=abi.html#mangling>Draft C++ ABI for IA-64</a>.
 The principal decisions were:
 
 <ul>

@@ -326,7 +326,7 @@ Define the data structure to be used for RTTI, that is:
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#A6> Resolution </a></b>:
 Defined in the
-<a href=abi-layout.html#rtti>ABI data layout document</a>.
+<a href=abi.html#rtti>Draft C++ ABI for IA-64 </a> document.
 </tr>
 
 </table>
@@ -418,7 +418,8 @@ Do we use an access clause as an opportunity to fill the gaps left by padding?
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#A9> Resolution </a></b>:
-See <a href=abi-layout.html#class-types>ABI Data Layout Specification</a>.
+See the
+<a href=abi.html#class-types>Draft C++ ABI for IA-64 </a>.
 </td> </tr>
 
 </table>
@@ -773,7 +774,7 @@ so that it can be deallocated correctly.
 <b><a href=cxx-closed.html#A20> Resolution</a></b>:
 In principle, place cookie immediately before array, aligned naturally.
 Use no cookie for element types with no destructors.
-See the <a href=abi-layout.html#array-new>ABI Layout</a> document.
+See the <a href=abi.html#array-new> Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -811,7 +812,7 @@ Also, are cookies allocated if there is no destructor?
 Use no cookie for element types with no destructors,
 nor for <code>::operator new(size_t, void*)</code>.
 Otherwise, use a cookie as in issue A-20.
-See the <a href=abi-layout.html#array-new>ABI Layout</a> document.
+See the <a href=abi.html#array-new>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -869,7 +870,7 @@ Resolve several questions about the RTTI representation of class types.
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#A23> Resolution</a></b>:
-See the <a href=abi-layout.html>ABI layout</a> document.
+See the <a href=abi.html>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -902,8 +903,8 @@ How does RTTI represent incomplete types?
 Use class_type_info distinct from the complete type copy,
 add a flag to pointer_type_info if it points to incomplete type RTTI,
 and do mangled name comparison if an incomplete pointer is involved.
-See the <a href=abi-layout.html#rtti>writeup</a> in the ABI data layout
-specification.
+See the writeup in the 
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -1372,7 +1373,7 @@ Proposal B resolves the remaining issue,
 and the group is inclined to accept it,
 while considering whether to go further with A.
 Jim will (and has) integrated B into the
-<a href=abi-layout.html#rtti> ABI data layout</a> document.
+<a href=abi.html#rtti> Draft C++ ABI for IA-64</a>.
 
 
 
@@ -1483,7 +1484,7 @@ pointer-to-member is incomplete
 
 <p>
 (Ed. note)  I've added updates to the
-<a href=abi-layout.html#rtti>ABI Layout</a> document.
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
 
 
 <p> <hr> <p>
@@ -1519,8 +1520,8 @@ to perform the adjustment may actually prove interesting.
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#B1> Resolution</a></b>:
-See the <a href=abi-layout.html#vcall>writeup</a> in the ABI data layout
-specification.
+See the writeup in the
+<a href=abi.html#vcall>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -1696,8 +1697,8 @@ What is the layout of the Vtable?
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#B6> Resolution</a></b>:
-See the ABI data layout document,
-<a href=abi-layout.html#vtable>abi-layout.html</a>.
+See the 
+<a href=abi.html#vtable>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -2992,11 +2993,11 @@ some other means is required for accessing the correct vfunc.
 <font color=blue>[990630 HP -- Christophe]</font>
 A rough idea from Christophe's original vtable layout proposal
 has been incorporated in the
-<a href=abi-layout.html#vtable-ctor>ABI data layout document</a>.
+<a href=abi.html#vtable-ctor>Draft C++ ABI for IA-64</a>.
 
 <p>
 <font color=blue>[000217 All]</font>
-Coleen has generated <a href=abi-layout.html#vtable-ctor>a proposal</a>.
+Coleen has generated <a href=abi.html#vtable-ctor>a proposal</a>.
 
 <p>
 <font color=blue>[000308 All]</font>
@@ -3309,7 +3310,7 @@ g++ doesn't, to allow for inlining of constructors.
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#C11> Resolution</a></b>:
 Define standard library entries for array construction/destruction.
-See the <a href=abi-layout.html#array-ctor>ABI Layout</a> document.
+See the <a href=abi.html#array-ctor>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -4689,7 +4690,7 @@ name necessary to resolve overloading?
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#F1> Resolution</a></b>:
-See the <a href=abi-layout.html#mangling>ABI Layout</a> document.
+See the <a href=abi.html#mangling>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
@@ -5621,7 +5622,7 @@ static functions in case a compiler chooses to inline them?
 Local objects are mangled with the name of the containing function
 followed by a discriminator,
 consisting of the object name and possibly a sequence ID.
-See the <a href=abi-layout.html#mangling-scope>ABI Layout</a> document.
+See the <a href=abi.html#mangling-scope>Draft C++ ABI for IA-64</a>.
 </td> </tr>
 
 </table>
