@@ -4383,8 +4383,8 @@ the dimension (but not the '_' separator) is omitted.
 When the dimension is an expression involving template parameters,
 the second production is used.
 Thus, the declarations:
-<pre><code>    template<int I> void foo (int (&)[I + 1]) { }
-    template void foo<2> (int (&)[3]);
+<pre><code>    template&lt;int I&gt; void foo (int (&amp;)[I + 1]) { }
+    template void foo&lt;2&gt; (int (&amp;)[3]);
 </pre></code>
 produce the mangled name "<code>_Z3fooILi2EEvRAplT_Li1E_i</code>".
 
@@ -4395,6 +4395,14 @@ Pointer-to-member types encode the class and member types.
   &lt;pointer-to-member-type> ::= M &lt;<i>class</i> type> &lt;<i>member</i> type>
 
 </pre></font></code>
+<p>
+Note that for a pointer to cv-qualified member function, the qualifiers are
+attached to the function type, so
+<pre><code>
+    struct A;
+    void f (void (A::*)() const) {}
+</code></pre>
+produces the mangled name "<code>_Z1fM1AKFvvE</code>".
 
 <p>
 When function and member function template instantiations reference
@@ -5027,6 +5035,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[020220]</font>
+Clarify pointer to member function mangling (5.1.5).
 
 <p>
 <font color=blue>[010407]</font>
