@@ -1,0 +1,365 @@
+<HTML>
+
+<HEAD>
+<title>C++ ABI Closed Issues</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+<link rel=stylesheet href=code.css type="text/css">
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ ABI Closed Issues
+</b></i></font>
+
+<font size=-1>
+<p>
+<i>Revised 25 June 1999</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+<p> <hr> <p>
+<h3> Issue Status </h3>
+
+In the following sections,
+the <b><i>class</i></b> of an issue attempts to classify it on the
+basis of what it likely affects.
+The identifiers used are:
+
+<table>
+<tr> <td> call </td>
+<td> Function call interface, i.e. call linkage </td>
+</tr>
+
+<tr> <td> data </td>
+<td> Data layout </td>
+</tr>
+
+<tr> <td> lib </td>
+<td> Runtime library support </td>
+</tr>
+
+<tr> <td> lif </td>
+<td> Library interface, i.e. API </td>
+</tr>
+
+<tr> <td> g </td>
+<td> Potential gABI impact </td>
+</tr>
+
+<tr> <td> ps </td>
+<td> Potential psABI impact </td>
+</tr>
+
+<tr> <td> source </td>
+<td> Source code conventions (i.e. API, not ABI) </td>
+</tr>
+
+<tr> <td> tools </td>
+<td> May affect how program construction tools interact </td>
+</tr>
+</table>
+
+<p> <hr> <p>
+<h3> A.  Object Layout Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-1 </td>
+<td> Vptr location </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 990624 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Where is the Vptr stored in an object (first or last are the usual answers).
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990610 All]</font>
+Given the absence of addressing modes with displacements on IA-64,
+the consensus is to answer this question with "first."
+
+<p>
+<font color=blue>[990617 All]</font>
+Given a Vptr and only non-polymorphic bases,
+which (Vptr or base) goes at offset 0?
+<ul>
+<li> HP: Vptr at end, but IA-64 is different because no load displacement
+<li> Sun: Vptr at 0 probably preferred
+<li> g++: Vptr at end today
+</ul>
+<p>
+Tentative decision:  Vptr always goes at beginning.
+
+<p>
+<font color=blue>[990624 All]</font>
+Accepted tentative decision.
+Rename, close this issue, and open separate issue (B-6) for Vtable layout.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-2 </td>
+<td> Virtual base classes </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 990624 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Where are the virtual base subobjects placed in the class layout?
+How are data member accesses to them handled?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990610 Matt]</font>
+With regard to how data member accesses are handled,
+the choices are to store either a pointer or an offset in the Vtable.
+The concensus seems to be to prefer an offset.
+
+<p>
+<font color=blue>[990617 All]</font>
+Any number of empty virtual base subobjects (rare) will be placed at
+offset zero.
+If there are no non-virtual polymorphic bases,
+the first virtual base subobject with a Vpointer will be placed at
+offset zero.
+Finally, all other virtual base subobjects will be allocated at the
+end of the class, left-to-right, depth-first.
+
+<p>
+<font color=blue>[990624 All]</font>
+Define an empty object as one with no non-static, non-empty data members,
+no virtual functions,
+no virtual base classes,
+and no non-empty non-virtual base classes.
+Define a nearly empty object as one which contains only a Vptr.
+The above resolution is accepted, restated as follows:
+
+<p>
+Any number of empty virtual base subobjects
+(rare, because they cannot have virtual functions or bases themselves)
+will be placed at offset zero, subject to the conflict rules in A-3
+(i.e. this cannot result in two objects of the same type at the same
+address).
+If there are no non-virtual polymorphic base subobjects,
+the first nearly empty virtual base subobject will be placed at offset zero.
+Any virtual base subobjects not thus placed at offset zero will be
+allocated at the end of the class,
+in left-to-right, depth-first declaration order.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-4 </td>
+<td> Empty base classes </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 990624 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Where are empty base classes allocated?
+(An empty base class is one with no non-static data members,
+no virtual functions, no virtual base classes,
+and no non-empty non-virtual base classes.)
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990624 All]</font>
+Closed as a duplicate of A-3.
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-8 </td>
+<td> (Virtual) base class alignment </td>
+<td> data </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 990624 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+A (virtual) base class may have a larger alignment constraint than a
+derived class.
+Do we agree to extend the alignment constraint to the derived class?
+(An alternative for virtual bases:
+allow the virtual base to move in the complete object.)
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990623 SGI]</font>
+We propose that the alignment of a class be the maximum alignment of
+its virtual and non-virtual base classes,
+non-static data members, and Vptr if any.
+
+<p>
+<font color=blue>[990624 All]</font>
+Above proposal accepted.
+(SGI observation:
+the size of the class is rounded up to a multiple of this alignment,
+per the underlying psABI rules.)
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-9 </td>
+<td> Sorting fields as allowed by [class.mem]/12 </td>
+<td> data </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 990624 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The standard constrains ordering of class members in memory only if
+they are not separated by an access clause.
+Do we use an access clause as an opportunity to fill the gaps left by padding?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990610 all]</font>
+Some participants want to avoid attempts to reorder members differently
+than the underlying C struct ABI rules.
+Others think there may be benefit in reordering later access sections
+to fill holes in earlier ones, or even in base classes.
+
+<p>
+<font color=blue>[990617 all]</font>
+There are several potential reordering questions, more or less independent:
+<ol>
+<li> Do we reorder whole access regions relative to one another?
+<li> Do we attempt to fill padding in earlier access regions with
+	initial members from later regions?
+<li> Do we fill the tail padding of non-POD base classes with members from
+	the current class?
+<li> Do we attempt to fill interior padding of non-POD base classes with later
+	members?
+</ol>
+
+<p>
+There is no apparent support for (1),
+since no simple heuristic has been identified with obvious benefits.
+There is interest in (2), based on a simple heuristic which might
+sometimes help and will never hurt.
+However, it is not clear that it will help much,
+and Sun objects on grounds that they prefer to match C struct layout.
+Unless someone is interested enough to implement and run experiments,
+this will be hard to agree upon.
+G++ has implemented (3) as an option,
+based on specific user complaints.
+It clearly helps HP's example of a base class containing a word and flag,
+with a derived class adding more flags.
+Idea (4) has more problems, including some non-intuitive (to users) layouts,
+and possibly complicating the selection of bitwise copy in the compiler.
+
+<p>
+<font color=blue>[990624 all]</font>
+We will not do (1), (2), or (4).  We will do (3).
+Specifically, allocation will be in modified declaration order as follows:
+<ol>
+<li> Vptr if any, and the primary base class per A-7.
+<li> Any empty base classes allocated at offset zero per A-3.
+<li> Any remaining non-virtual base classes.
+<li> Any non-static data members.
+<li> Any remaining virtual base classes.
+</ol>
+Each subobject allocated is placed at the next available position that
+satisfies its alignment constraints, as in the underlying psABI.
+This is interpreted with the following special cases:
+<ol>
+<li> The "next available position" after a class subobject
+	(base class or data member) with tail padding is at the
+	beginning of the tail padding, not after it.
+<li> Empty classes are considered to have alignment and size 1,
+	consisting solely of one byte of tail padding.
+<li> Placement on top of the tail padding of an empty class must avoid
+	placing multiple subobjects of the same type at the same
+	address.
+</ol>
+After allocation is complete,
+the size is rounded up to a multiple of alignment (with tail padding).
+
+<p> <hr> <p>
+<h3> B.  Virtual Function Handling Issues </h3>
+
+<p> <hr> <p>
+<h3> C.  Object Construction/Destruction Issues </h3>
+
+<p> <hr> <p>
+<h3> D.  Exception Handling Issues </h3>
+
+<p> <hr> <p>
+<h3> E.  Template Instantiation Model Issues </h3>
+
+<p> <hr> <p>
+<h3> F.  Name Mangling Issues </h3>
+
+<p> <hr> <p>
+<h3> G.  Miscellaneous Issues </h3>
+
+<p> <hr> <p>
+<h3> H.  Library Interface Issues </h3>
+
+<p>
+<hr>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+</BODY>
+</HTML>
