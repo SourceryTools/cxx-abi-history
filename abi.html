@@ -3860,6 +3860,27 @@ function types do not have the special delimiter characters required
 when nested (see below).
 The type is omitted for variables and static data members.
 
+<p>
+For the purposes of mangling, the name of an anonymous union is
+considered to be the name of the first named data member found by a
+pre-order, depth-first, declaration-order walk of the data members of
+the anonymous union.  If there is no such data member (i.e., if all of
+the data members in the union are unnamed), then there is no way for a
+program to refer to the anonymous union, and there is therefore no
+need to mangle its name.
+</p>
+
+<p>
+All of these examples:
+<blockquote><code><pre>
+union { int i; int j; };
+union { union { int : 7 }; union { int i; }; };
+union { union { int j; } i; };
+</pre></code></blockquote>
+are considered to have the name <code>i</code> for the purposes of
+mangling.
+</p>
+
 <pre><font color=blue><code>
     &lt;name> ::= &lt;nested-name>
 	   ::= &lt;unscoped-name>
@@ -4920,6 +4941,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021222]</font>
+Document mangling for anonymous unions.
 
 <p>
 <font color=blue>[021204]</font>
