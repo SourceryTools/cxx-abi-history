@@ -1,0 +1,1338 @@
+<HTML>
+
+<HEAD>
+<title>C++ ABI Open Issues</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+<link rel=stylesheet href=code.css type="text/css">
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ ABI Open Issues
+</b></i></font>
+
+<font size=-1>
+<p>
+<i>Revised 16 June 1999</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+<p> <hr> <p>
+<h3> Revisions </h3>
+
+<p>
+[990616]  Added HP summaries.
+Added sketchy notes from 990610 discussions (A and B issues).
+A-10 was intended by HP as something different than I described,
+so it was renamed, and a new issue A-13 opened as an SGI issue.
+HP did not submit A-12, so relabeled as Sun's (is that right?).
+Added library interface issues, H-1 and H-2.
+
+<p> <hr> <p>
+<h3> Issue Status </h3>
+
+In the following sections,
+the <b><i>class</i></b> of an issue attempts to classify it on the
+basis of what it likely affects.
+The identifiers used are:
+
+<table>
+<tr> <td> call </td>
+<td> Function call interface, i.e. call linkage </td>
+</tr>
+
+<tr> <td> data </td>
+<td> Data layout </td>
+</tr>
+
+<tr> <td> lib </td>
+<td> Runtime library support </td>
+</tr>
+
+<tr> <td> lif </td>
+<td> Library interface, i.e. API </td>
+</tr>
+
+<tr> <td> g </td>
+<td> Potential gABI impact </td>
+</tr>
+
+<tr> <td> ps </td>
+<td> Potential psABI impact </td>
+</tr>
+
+<tr> <td> source </td>
+<td> Source code conventions (i.e. API, not ABI) </td>
+</tr>
+
+<tr> <td> tools </td>
+<td> May affect how program construction tools interact </td>
+</tr>
+</table>
+
+<p> <hr> <p>
+<h3> Object Layout Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-1 </td>
+<td> Virtual function table </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Where is the Vptr stored in an object (first or last are the usual answers).
+What is the layout of the Vtable?
+</td> </tr>
+
+</table>
+
+<p>
+[990610 All]
+Given the absence of addressing modes with displacements on IA-64,
+the consensus is to answer the first part of this question with "first."
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-2 </td>
+<td> Virtual base classes </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Matt]
+</td> </tr>
+
+</table>
+
+<p>
+[990610 Matt]
+With regard to how data member accesses are handled,
+the choices are to store either a pointer or an offset in the Vtable.
+The concensus seems to be to prefer an offset.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-3 </td>
+<td> Multiple inheritance </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Matt]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-4 </td>
+<td> Empty base classes </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Matt]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-5 </td>
+<td> Empty parameters </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Matt]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-6 </td>
+<td> RTTI (<code>type_info</code>) .o representation </td>
+<td> data call ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Matt]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-7 </td>
+<td> Vptr sharing with primary base class </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+It is in general possible to share the virtual pointer with a base
+class (the "primary" base class).
+Which base class do we use for this?
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-8 </td>
+<td> (Virtual) base class alignment </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+A (virtual) base class may have a larger alignment constraint than a
+derived class.
+Do we agree to extend the alignment constraint to the derived class?
+(An alternative for virtual bases:
+allow the virtual base to move in the complete object.)
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-9 </td>
+<td> Sorting fields as allowed by [class.mem]/12 </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The standard constrains ordering of class members in memory only if
+they are not separated by an access clause.
+Do we use an access clause as an opportunity to fill the gaps left by padding?
+</td> </tr>
+
+</table>
+
+<p>
+[990610 all]
+Some participants want to avoid attempts to reorder members differently
+than the underlying C struct ABI rules.
+Others think there may be benefit in reordering later access sections
+to fill holes in earlier ones, or even in base classes.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-10 </td>
+<td> Class parameters in registers </td>
+<td> call </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The C ABI specifies that small structs are passed in registers.
+Does this apply to small non-POD C++ objects passed by value?
+What about the copy constructor and <code>this</code> pointer in that case?
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-11 </td>
+<td> Representation of pointers to members </td>
+<td> data </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Sun]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-12 </td>
+<td> Merging secondary vtables </td>
+<td> data </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990610 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Sun]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-13 </td>
+<td> Parameter struct field promotion </td>
+<td> call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+It is possible to pass small classes either as memory images,
+as is specified by the base ABI for C structs,
+or as a sequence of parameters, one for each member.
+Which should be done, and if the latter,
+what are the rules for identifying "small" classes?
+</td> </tr>
+
+</table>
+
+<p> <hr> <p>
+<h3> Virtual Function Handling Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-1 </td>
+<td> Adjustment of "this" pointer (e.g. thunks) </td>
+<td> data call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+There are several methods for adjusting the this pointer
+for a member function call,
+including thunks or offsets located in the vtable.
+We need to agree on the mechanism used,
+and on the location of offsets, if any are needed.
+To maximize performance on IA64,
+a slightly unusual approach such as using secondary entry points
+to perform the adjustment may actually prove interesting. 
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-2 </td>
+<td> Covariant return types </td>
+<td> call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+There are several methods for adjusting the 'this' pointer of the
+returned value for member functions with covariant return types.
+We need to decide how this is done.
+Return thunks might be especially costly on IA64,
+so a solution based on returning multiple pointers may prove more interesting.
+</td> </tr>
+
+</table>
+
+<p>
+[990610 Matt]
+One possibility is to have two Vtable entries,
+which might point to different functions, different entrypoints,
+or a real entrypoint and a thunk.
+Another is to return two result pointers (base/derived),
+and have the caller select the right one.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-3 </td>
+<td> Allowed caching of vtable contents </td>
+<td> call </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The contents of the vtable can sometimes be modified,
+but the concensus is that it is nonetheless always allowed to "cache" elements,
+i.e. to retain them in registers and reuse them,
+whenever it is really useful.
+However, this may sometimes break "beyond the standard" code,
+such as code loading a shared library that replaces a virtual function.
+Can we all agree when caching is allowed? 
+</td> </tr>
+
+</table>
+
+<p>
+[990604 HP Christophe]
+Mike (Ball) gave me what I believe is an excellent definition of  
+when caching is allowed.  I'd like him to present it.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-4 </td>
+<td> Function descriptors in vtable </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+For a runtime architecture where the caller is expected to load the GP
+of the callee (if it is in, or may be in, a different DSO), e.g. HP/UX,
+what should vtable entries contain?
+One possibility is to put a function address/GP pair in the vtable.
+Another is to include only the address of a thunk which loads the GP
+before doing the actual call.
+
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-5 </td>
+<td> Where are vtables emitted? </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Jason]
+</td> </tr>
+
+</table>
+
+<p> <hr> <p>
+<h3> Object Construction/Destruction Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-1 </td>
+<td> Interaction with .init/.fini </td>
+<td> lif ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Static objects with dynamic constructors must be constructed at
+intialization time.
+This is done via the executable object initialization functions that
+are identified (in ELF) by the DT_INIT and DT_INITARRAY dynamic tags.
+How should the compiler identify the constructors to be called in this way?
+One traditional mechanism is to put calls in a .init section.
+Another, used by HP, is to put function addresses in a .initarray section.
+<p>
+The dual question arises for static object destructors.
+Again, the extant mechanisms include putting calls in a .fini section,
+or putting function addresses in a .finiarray section.
+<p>
+Finally, which mechanism (DT_INIT or DT_INITARRAY, or the FINI versions)
+should be used in linked objects?
+The gABI, and the IA-64 psABI, will support both,
+with DT_INIT being executed before the DT_INITARRAY elements.
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-2 </td>
+<td> Order of ctors/dtors w.r.t. link </td>
+<td> lif ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Given that the compiler has identified constructor/destructor calls for
+static objects in each relocatable object, in what order should the
+static linker combine them in the linked executable object?
+(The initialization order determines the finalization order,
+as its opposite.)
+</td> </tr>
+
+</table>
+
+<p>
+[990610 All]
+Meeting concensus is that the desirable order is right to left on the
+link command line, i.e. last listed relocatable object is initialized
+first.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-3 </td>
+<td> Order of ctors/dtors w.r.t. DSOs </td>
+<td> ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Given the constructor/destructor calls for each executable object
+comprising a program, what is the order of execution between objects?
+For constructors, there is not much question:
+unless we choose some explicit means of control,
+file-scope objects will be initialized by the DT_INIT/DT_INITARRAY
+functions in the order determined by the base ABI order rules,
+and local objects will be initialized in the order their containing
+scopes are entered.
+<p>
+For destructors, the Standard requires opposite-order destruction,
+which implies a runtime structure to keep track of the order.
+Furthermore, the potential for dynamic unloading of a DSO
+(e.g. by dlclose)
+requires a mechanism for early destruction of a subset.
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-4 </td>
+<td> Calling vfuncs in ctors/dtors </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Michael Lam]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-5 </td>
+<td> Calling virtual destructors </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Michael Lam]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-6 </td>
+<td> Extra parameters to ctors/dtors </td>
+<td> call </td>
+<td> open </td>
+<td> Cygnus </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Michael Lam]
+</td> </tr>
+
+</table>
+
+<p> <hr> <p>
+<h3> Exception Handling Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-1 </td>
+<td> Language-specific data area format </td>
+<td> lib ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-2 </td>
+<td> Unwind personality routines </td>
+<td> lib ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-3 </td>
+<td> Unwind process clarification </td>
+<td> lib ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-4 </td>
+<td> Unwind routines nested? </td>
+<td> lib ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-5 </td>
+<td> Interaction with other languages (e.g. Java) </td>
+<td> lib ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The IA64 exceptions handling framework is largely language independent.
+What is the behaviour of a C++ runtime receiving, for instance,
+an exception thrown from Java?
+Does it call terminate()?
+Does it allow the exception to pass through C++ code with destructors
+if there is no catch clause?
+Does it allow the exception to be caught in a catch(...) provided this
+catch(...) ends with a rethrow?
+Does it allow even more?
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-6 </td>
+<td> Allow resumption in other languages? </td>
+<td> lib ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The exception handling framework requires the interaction of the
+runtime of all the languages "on the stack" during exception processing.
+Some of these languages may have very different exception handling semantics.
+What are the constraints we impose on the C++ exception handling runtime
+to preserve the relative language neutrality of the EH framework?
+Example: do we allow a handler to cleanup and resume at the point
+where the exception was thrown?
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-7 </td>
+<td> Interaction with signals or asynch events </td>
+<td> lib ps </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The Standard says that the behavior of anything other than
+"pure C code" (POF) is implementation defined,
+and warns (in a note) against using EH in a signal handler.
+We should define what is supported,
+possibly explicitly stating that signal handler code must be a POF.
+We could allow any feature but exception handling to be used.
+We could allow some EH routines to be called
+(for instance, <code>uncaught_exception()</code>).
+Or we could allow even an exception to be thrown,
+if it does not exit the handler.
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> D-8 </td>
+<td> Interaction with threads packages </td>
+<td> lib ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p> <hr> <p>
+<h3> Template Instantiation Model Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+
+<tr> </tr>
+<tr> <th> E </th>
+<th colspan=6> Template Instantiation Model </th>
+</tr>
+
+<tr> <td> E-1 </td>
+<td> When does instantiation occur? </td>
+<td> tools </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> E-2 </td>
+<td> Separate compilation model </td>
+<td> tools </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> E-3 </td>
+<td> Template repository </td>
+<td> tools </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Independent of the template instantiation model,
+we need to make sure that whatever template persistent storage is used
+by one vendor does not interact negatively with other vendors' mechanisms.
+Issues:
+  (1) Avoiding conflict on the name of any repository.
+  (2) If .o files are used,
+	describe how this information is to be preserved, ignored, etc.
+  (3) Evaluate if tools such as make, ld, ar, or others, can
+	break because .o files get written at unexpected times.
+</td> </tr>
+
+</table>
+
+<p> <hr> <p>
+<h3> Name Mangling Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> F-1 </td>
+<td> Mangling convention </td>
+<td> call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What rules shall be used for mangling names,
+i.e. for encoding the information other than the source-level object
+name necessary to resolve overloading?
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> F-2 </td>
+<td> Mangled name size </td>
+<td> call g </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Typical name mangling schemes to date typically begin to produce very
+long names.  SGI routinely encounters multi-kilobyte names,
+and increasing usage of namespaces and templates will make them worse.
+This has a negative impact on object file size, and on linker speed.
+<p>
+SGI has considered solutions to this problem including modified string
+tables and/or symbol tables to eliminate redundancy.
+Cygnus, HP, and Sun have also considered or implemented approaches
+which at least mitigate it.
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> F-3 </td>
+<td> Distinguish template instantiation and specialization
+</td>
+<td> call g </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[SGI]
+</td> </tr>
+
+</table>
+
+<p> <hr> <p>
+<h3> Miscellaneous Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> G-1 </td>
+<td> Basic command line options </td>
+<td> tools </td>
+<td> open </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Can we agree on basic command line options (compiler and linker)
+for fundamental functionality,
+possibly allowing portable makefiles?
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> G-2 </td>
+<td> Detection of ODR violations </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Sun]
+(See also F-3.)
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> G-3 </td>
+<td> Inlined routine linkage </td>
+<td> call </td>
+<td> open </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Jason]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> G-4 </td>
+<td> Dynamic init of local static objects and multithreading </td>
+<td> call </td>
+<td> open </td>
+<td> SCO </td>
+<td> 990607 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The Standard requires that local static objects with dynamic
+constructors be initialized exactly once, the first time the containing
+scope is entered.
+Multi-threading renders the simple check of a flag before
+initialization inadequate to prevent multiple initialization.
+Should the ABI require locking for this purpose,
+and if so, what are the necessary interfaces?
+In addition to the locking of the initialization,
+special exception handling treatment is required to deal with an
+exception during construction.
+</td> </tr>
+
+</table>
+
+<p> <hr> <p>
+<h3> Library Interface Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> H-1 </td>
+<td> Runtime library DSO name </td>
+<td> tools </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990616 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Determine the name of the common C++ runtime library DSO,
+e.g. <code>libC.so</code>.
+If there are to be vendor-specific support libraries which must coexist
+in programs from mixed sources, identify naming convention for them.
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> H-2 </td>
+<td> Runtime library API </td>
+<td> lif </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990616 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define the required entrypoints in the common C++ runtime library DSO,
+and their prototypes.
+</td> </tr>
+
+</table>
+
+<p>
+<hr>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+
+</BODY>
+</HTML>
