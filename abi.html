@@ -3955,19 +3955,17 @@ the first of which is lowercase.
 		  ::= qu	# ?             
 		  ::= st	# sizeof (a type)
 		  ::= sz	# sizeof (an expression)
-		  ::= sr	# scope resolution (::), see below        
 		  ::= cv &lt;type>	# (cast)        
 		  ::= v &lt;digit> &lt;source-name>	# vendor extended operator
 
 </pre></font></code>
 
 <p>
-The scope resolution operator is discussed with expressions below.
 Vendors who define builtin extended operators (e.g. __alignof)
 shall encode them as a 'v' prefix followed by
 the operand count as a single decimal digit, and
 the name in &lt;length,ID> form.
-
+</p>
 
 <p>
 <a name=mangling-special>
@@ -4324,10 +4322,23 @@ but also in types and scope identification.
 <pre><font color=blue><code>
   &lt;template-args> ::= I &lt;template-arg>+ E
   &lt;template-arg> ::= &lt;type>			# type or template
-		 ::= L &lt;type> &lt;<i>value</i> number> E	# literal
-		 ::= L_Z &lt;encoding> E		# external name
 		 ::= X &lt;expression> E		# expression
-</pre></font></code>
+                 ::= &lt;expr-primary>             # simple expressions
+
+  &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
+	       ::= &lt;<i>binary</i> operator-name> &lt;expression> &lt;expression>
+	       ::= &lt;<i>trinary</i> operator-name> &lt;expression> &lt;expression> &lt;expression>
+               ::= st &lt;type&gt;
+               ::= &lt;template-param>
+	       ::= &lt;expr-primary>
+
+  &lt;expr-primary> ::= L &lt;type> &lt;<i>value</i> number> E                   # integer literal
+                 ::= L &lt;type &lt;<i>value</i> float> E                     # floating literal
+                 ::= L &lt;mangled-name> E                           # external name
+                 ::= sr &lt;type> &lt;unqualified-name>                 # dependent name
+                 ::= sr &lt;type> &lt;unqualified-name> &lt;template-args> # dependent template-id
+
+</pre></code></font>
 
 <p>
 Type arguments appear using their regular encoding.
@@ -4344,11 +4355,18 @@ are encoded with their type and value.
 Negative integer values are preceded with "n";
 for example, "A&lt;-42L>" becomes "1AILln42EE".
 The bool value false is encoded as 0, true as 1.
-If floating-point arguments are accepted as an extension,
-their values should be encoded using a fixed-length lowercase hexadecimal
-string corresponding to the internal representation (IEEE on Itanium),
-high-order bytes first, without leading zeroes.
-For example: "Lf bf800000 E" is -1.0f on Itanium.
+
+<p>
+Floating-point literals are encoded using a fixed-length lowercase
+hexadecimal string corresponding to the internal representation (IEEE
+on Itanium), high-order bytes first, without leading zeroes.  For
+example: "Lf bf800000 E" is -1.0f on Itanium.
+
+<p>
+The encoding for a literal of an enumerated type is the encoding of the
+type name followed by the encoding of the numeric value of the literal
+in its base integral type
+(which deals with values that don't have names declared in the type).
 
 <p>
 A reference to an entity with external linkage is encoded with
@@ -4388,34 +4406,13 @@ Except for the parentheses, therefore,
 it represents the source token stream.
 (C++ Standard reference 14.5.5.1 p. 5.)
 
-<pre><font color=blue><code>
-  &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
-	       ::= &lt;<i>binary</i> operator-name> &lt;expression> &lt;expression>
-	       ::= &lt;<i>trinary</i> operator-name> &lt;expression> &lt;expression> &lt;expression>
-               ::= st &lt;type&gt;
-	       ::= &lt;expr-primary>
-  &lt;expr-primary> ::= &lt;template-param>
-		 ::= L &lt;type> &lt;<i>value</i> number> E	# literal
-		 ::= L &lt;mangled-name> E		# external name
-
-</pre></font></code>
-
 <p>
-Template arguments that could be pointer-to-member constants are
-difficult because it is often not possible to distinguish them from
-pointers to static member functions or data members without doing the
-substitution.
-Therefore, the <i>scope resolution</i> (sr) mangling operator is used
-if the LHS operand of :: involves a template parameter.
-Ignoring substitutions, <code>&T::j</code> as a template argument
-would be encoded <code>Xadsr1T1jE</code>.
-
-<p>
-The encoding for a literal of an enumerated type is the encoding of the
-type name followed by the encoding of the numeric value of the literal
-in its base integral type
-(which deals with values that don't have names declared in the type).
-
+If an expression is a qualified-name, and the qualifying scope is a
+dependent type, one of the <code>sr</code> productions is used, rather
+than the <code>&lt;mangled-name></code> production.  If the qualified
+name refers to an operator for which both unary and binary manglings
+are available, the mangling chosen is the mangling for the binary
+version.
 
 <p>
 <a name=mangling-scope>
@@ -4873,6 +4870,14 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021016]</font>
+Clarify mangling of floating-point literals.
+
+<p>
+<font color=blue>[021014]</font>
+Clarify use of <code>sr</code> in mangling.
 
 <p>
 <font color=blue>[021011]</font>
