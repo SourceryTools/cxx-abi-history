@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 12 October 1999</i>
+<i>Revised 19 October 1999</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990912]</font>
+Closed <a href=cxx-closed.html#B8>B-8</a>,
+<a href=cxx-closed.html#G5>G-5</a>.
+Additions to <a href=#A6>A-6</a>, <a href=#B5>B-5</a>,
+<a href=#C5>C-5</a>.
 
 <p>
 <font color=blue>[990912]</font>
@@ -473,6 +480,48 @@ the C++ IA-64 ABI group:
 <p>
 The full proposal has been incorporated in the
 <a href=abi-layout.html#rtti>ABI data layout document</a>.
+
+<p>
+<font color=blue><hr><p>[991014 all]</font>
+<ol>
+<p>
+<li>
+Do we keep pointers to direct bases only, or to indirect bases as well?
+It is believed that keeping pointers to indirect bases speeds
+up dynamic_cast by a constant factor,
+but at the cost of extra space even when dynamic_cast is never used.
+There is a general preference for keeping direct bases only.
+
+<p>
+<li>
+The current proposal has a flag to differentiate single
+inheritance from multiple inheritance case.
+Jason suggests instead splitting the two cases into two separate classes,
+and there was general agreement that this is a good idea.
+
+<p>
+<li>
+The current proposal has separate classes for various kinds of
+non-class types.
+Jason suggests merging all non-class types into a single class.
+Nobody had strong feelings,
+or strong arguments either for or against this change.
+In the absence of a consensus in favor of this change,
+we'll keep the proposal as is.
+
+<p>
+<li>
+Minor changes:
+There's a typo in the pointer to member part, which Daveed will fix.
+Jason suggests flipping the sign on the offset, and nobody objected.
+</ol>
+
+<p>
+ACTION ITEMS: Daveed---make these changes.  Jim---incorporate these
+changes into the open issues list.  We are almost ready to close this
+issue; we intend to close it at the 28 October meeting, after we've
+all had a change to go over the modified writeup.
+
 
 
 <p>
@@ -2170,6 +2219,10 @@ storing section indices as 16-bit values must change.
 
 </i>
 
+<p>
+<font color=blue><hr><p>[991014 All]</font>
+Jim Dehnert will push these proposals to the base ABI committee.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -2377,6 +2430,52 @@ Jason has updated the Vtable layout description in
 <a href=abi-layout.html>abi-layout.html</a>
 to reflect the approach from Cygnus and IBM.
 
+<p>
+<font color=blue><hr><p>[991014 all]</font>
+<ol>
+<p>
+<li>
+Do we promote base offsets out of base class vtables?
+Answer: we promote them out of virtual bases,
+but we do not promote them out of nonvirtual bases.
+It's a time/space tradeoff.
+The time saving is large for virtual bases,
+but too small to bother with for nonvirtual bases.
+
+<p>
+<li>
+Do we have rtti fields for classes that have virtual bases but no
+virtual functions?
+The C++ standard regards such classes as nonpolymorphic,
+so performing rtti operations on them is undefined.
+Decision: we will keep the rtti fields themselves in the vtable, in
+the interest of having a uniform vtable format.  The slot of offset to
+beginning of complete type will be filled in, and the slot for offset
+to typeinfo object will contain 0.
+
+<p>
+<li>
+When we discussed issue B-8, we agreed that we would have an
+offset to typeinfo object rather than a pointer to typeinfo object.
+This means that the typeinfo object is now part of the vtable.
+It will go at the very beginning,
+i.e. at a negative offset from where the vtpr points.
+(Comment: We discussed B-6 before discussing B-8.
+Does making this change interfere with having a uniform vtable offset,
+since we won't have a typeinfo object at the beginning of a vtable
+for a nonpolymorphic class with virtual bases?
+Should we revisit decision (2) or (3), or am I just being paranoid?)
+</ol>
+
+<p>
+ACTION ITEMS: Jason---update writeup to reflect these three changes.
+Our decision on issue B-8 will require a one-sentence change.
+All of us: study the revised version.
+We are almost ready to close this issue,
+and if we agree with the revised version we can close it at the
+21 October meeting.
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -2421,10 +2520,10 @@ No special representation is useful in support of shared memory.
 <tr> <a name=B8></a> <td> B-8 </td>
 <td> dynamic_cast </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990628 </td>
-<td> </td>
+<td> 991014 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -2432,20 +2531,13 @@ What information to we put in the vtable to enable (a) dynamic_cast
 from pointer-to-base to pointer-to-derived (including detection of
 ambiguous base classes) and (b) dynamic_cast to void*?
 </td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+The vtable will contain an offset to the beginning of the complete object,
+and an offset to the typeinfo object.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990701 All]</font>
-This should be part of the proposal Daveed will put together
-by the 15th (action #13); the group will discuss it on the 22nd.
-
-<p>
-<font color=blue>[990812 Sun -- Michael]</font>
-Sun has provided a description,
-<a href=Sun-RTTI-990812.html>in a separate page</a>,
-describing their implementation.
-They are filing for a patent on the algorithms described.
 
 
 <p> <hr> <p>
@@ -3058,6 +3150,27 @@ the memory management code if you never actually touch the heap.
 Microsoft has a patent on this device,
 but the old Sun ABI also talks about it,
 which seems to qualify as prior art.
+
+<p>
+<font color=blue>[991014 all]</font>
+One solution to the problem with destructors is to have
+two destructor entry points, and two destructor slots in the vtable.
+One entry point destroys the object and then calls operator delete,
+the other destroys the object without calling operator delete.
+We can use a similar solution for constructors
+(but without any impact on the vtable layout):
+one entry point for constructing a complete object,
+another for constructing a subobject.
+
+<p>
+Note that one of the entry points may call the other, but that's not
+an ABI issue and can be left to individual implementors.
+
+<p>
+There was general agreement that this is a promising idea.
+We don't have a detailed proposal yet.
+HP is working on a prototype implementation.
+Christophe will submit a writeup.
 
 
 <p>
@@ -4885,10 +4998,10 @@ may not be looked upon kindly by users.]
 <tr class=small> <a name=G5></a> <td> G-5 </td>
 <td> Varargs routine interface </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> HU-B </td>
 <td> 990810 </td>
-<td> </td>
+<td> 991014 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -4897,57 +5010,12 @@ Does C++ need, or would it benefit from, any modifications or special cases?
 How should we pass references or class objects?
 Is any runtime library support required?
 </td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+No special cases required -- C++ will follow the C varargs ABI.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990810 HU-B Martin]</font>
-I'd like to see an indirection in vararg lists,
-so they can be passed through thunks.
-This is necessary at least for the covariant returns,
-but might have other applications as well.
-
-<p>
-<font color=blue>[990810 HU-B Martin]</font>
-Since there already was the decision not to return a list of
-pointers from a covariant method,
-the only alternative to real thunks
-is code duplication (as done in Sun Workshop 5).
-<i>(Or alternate entrypoints...  Jim)</i>
-
-<p>
-With real thunks, you have to copy the argument list.
-That is not possible for a varargs list,
-so here is my proposal for varargs in C++:
-
-<p>
-In the place of the ellipsis, a pointer to the first argument is passed.
-In case of a thunk for covariant returns,
-this pointer can be copied to the destination function.
-The variable arguments are put on the stack as they normally would.
-
-<p>
-With that, the issue is in which cases to use such a calling
-convention:
-<ol>
-<li> only for vararg calls to virtual methods, or
-<li> only for vararg calls to functions with C++ linkage, or
-<li> for all vararg calls.
-     That would probably require a change to the C ABI
-</ol>
-<p>
-Option (1) could be further restricted to methods returning a pointer
-or reference to class type. 
-
-<p>
-<font color=blue>[990812 All]</font>
-In response to a question,
-it was observed that passing one variant of a class hierarchy in a
-varargs list and referencing another variant in the va_arg macro is undefined,
-and we don't need to worry about a mechanism for doing the conversion.
-
-
-
 
 
 <p> <hr> <p>
