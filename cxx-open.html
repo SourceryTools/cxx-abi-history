@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 3 September 1999</i>
+<i>Revised 14 September 1999</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990914]</font>
+Additions to <a href=#B1>B-1</a>, <a href=#D0>D-*</a>, <a href=#D9>D-9</a>.
 
 <p>
 <font color=blue>[990908]</font>
@@ -1481,6 +1485,14 @@ For example,
 creating an extra entry when overriding a function introduced in a
 virtual base has the added benefit of avoiding a cast to a virtual
 base at the call site.
+
+<p>
+<font color=blue>[990909 All]</font>
+We are getting closer --
+understanding of the alternatives is improving,
+and Christophe may agree with the Jason/Brian proposal after more thought.
+To make sure we really understand what we're agreeing to,
+Jason and Christophe will write up more precise proposal(s).
 
 
 <p>
@@ -3202,7 +3214,21 @@ Definition of what HP calls the exception class value.
 The vocal attendees at the meeting wish to achieve the third level,
 and we will attempt to do so.
 Whether or not that is achieved, however,
-a second-level specification should be part of the ABI.
+a second-level specification must be part of the ABI.
+
+<p>
+<li>
+<font color=blue>[990909 All/Jim]</font>
+With much further discussion,
+we are starting to get better understanding of one another,
+but there are still obviously (in my mind)
+mismatched underlying assumptions.
+To resolve this, Christophe agreed to attempt to get us the
+HP APIs for the exception handling routines.
+I have also started a
+<a href=abi-eh.html>document</a> on a more complete EH specification,
+though it hasn't gone beyond specifying more of the underlying base ABI part.
+I will go farther once I get back from my trip.
 
 <p>
 <table border=on cellpadding=3>
@@ -3608,6 +3634,47 @@ while providing the stack-unwinding semantics.
 This is probably because unwinding support is in the OS.
 Also OS/390 and I believe AS/400 too.
 Our AIX implementation does not do the unwinding.
+
+<p>
+<font color=blue>[990909 DEC -- Brender]</font>
+In addition to the systems already mentioned by
+others, these systems also do exception-handling compatible unwinding
+for C's setjmp/longjmp:
+
+<ul>
+<li> VMS/VAX and VMS/Alpha:
+    Tru64 Unix/Alpha [not originally, but at least as of V4]
+<li>
+    Microsoft Visual C on W95&WNT/IA32:
+       [to support SEH (structured exception handling) extensions]
+	(probably also on IA64 for compatibility reasons)
+<li>
+    Microsoft Visual C on WNT/Alpha (RIP):
+       [to support SEH]
+</ul>
+
+<p>
+If you believe in safe and compatible multi-language systems,
+there really is no choice but to do EH compatible unwinding for
+setjmp/longjmp -- at least by default.
+
+<p>
+I suppose it would be OK for an implementation to offer an alternate
+setjmp/longjmp that could be linked in for those who either know that
+it is safe in particular cases or are happy to trade safety for speed...
+
+<p>
+<font color=blue>[990909 All]</font>
+A brief discussion agreed that concensus is not absolutely necessary.
+An implementation could replace setjmp/longjmp with a version that
+either unwinds or justs restores and jumps,
+without breaking any code except that which assumed one or the other.
+(Ed.:  In fact, if setjmp stores enough information to either restore
+or to catch an exception, one could just swap longjmp,
+although that would not be optimal for the unwind and catch case,
+since setjmp doesn't need to save much information in that case
+as most of what is needed is in the unwind descriptors.)
+
 
 
 <p> <hr> <p>
