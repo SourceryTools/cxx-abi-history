@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 28 October 1999</i>
+<i>Revised 5 November 1999</i>
 
 </center>
 
@@ -1773,6 +1773,173 @@ Agreed.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <a name=C5></a> <td> C-5 </td>
+<td> Calling destructors </td>
+<td> call </td>
+<td> closed </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> 991104 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What is the calling convention for destructors?
+Do virtual destructors require special treatment?
+Is delete() integrated with the destructor call or separate?
+How is delete() handled when invoked on a base subobject?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Destructors are called with a reference to <i>this</i>.
+Virtual destructors have two versions, and two entries in the vtable,
+one that deletes the object after destruction, and one that doesn't.
+There is a third version that does not delete the object,
+and is not in-charge, i.e. does not destroy any base objects;
+it is not called via the vtable.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990729 all]</font>
+Some implementations combine destructors with deletion,
+checking a flag in the destructor to determine whether to delete.
+This produces somewhat less code,
+especially if there are many delete() calls.
+However, it adds overhead to any destructor which does not require
+deletion, e.g. base and member objects, automatic objects.
+There is some concern that a runtime test is sometimes required,
+but noone has yet identified why.
+
+<p>
+<font color=blue>[990819 Cygnus -- Jason]</font>
+The [above] questions the usefulness of calling op delete from the destructor.
+But it's required by the language,
+in case the derived class defines its own op delete.
+This only applies to virtual dtors, of course.
+
+<p>
+One option would be to have two dtor slots, one which performs deletion
+and one which doesn't.
+The advantage of this sort of approach would be avoiding pulling in all
+the memory management code if you never actually touch the heap.
+
+<p>
+Microsoft has a patent on this device,
+but the old Sun ABI also talks about it,
+which seems to qualify as prior art.
+
+<p>
+<font color=blue>[991014 all]</font>
+One solution to the problem with destructors is to have
+two destructor entry points, and two destructor slots in the vtable.
+One entry point destroys the object and then calls operator delete,
+the other destroys the object without calling operator delete.
+We can use a similar solution for constructors
+(but without any impact on the vtable layout):
+one entry point for constructing a complete object,
+another for constructing a subobject.
+
+<p>
+Note that one of the entry points may call the other, but that's not
+an ABI issue and can be left to individual implementors.
+
+<p>
+There was general agreement that this is a promising idea.
+We don't have a detailed proposal yet.
+HP is working on a prototype implementation.
+Christophe will submit a writeup.
+
+<p>
+<font color=blue><hr><p>[991028 all]</font>
+There are two options in destructors:
+<ul>
+<li> Whether or not <code>delete()</code> is called.
+<li> Whether or not the destructor is <i>in-charge</i>,
+     i.e. calls the destructor for virtual bases.
+</ul>
+Since only the most-derived object calls <code>delete()</code>,
+and only the most-derived object does destruction for virtual bases,
+only three of the possible combinations arise:
+<ul>
+<li> No <code>delete()</code>, not in-charge.
+<li> No <code>delete()</code>, in-charge.
+<li> Call <code>delete()</code>, in-charge.
+</ul>
+The first will be called for a base object when a derived object is
+being destroyed,
+and one of the other two for the most-derived object.
+Therefore, for any particular vtable,
+no more than two will be required.
+A vtable for a class with virtual destructors will contain two
+destructor entries, delete and no-delete,
+and they will both be the in-charge versions for the most-derived class
+in the structure.
+The no-delete, not in-charge destructors may be called from those,
+but always directly,
+so a global name is required but no vtable entry.
+
+<p>
+We distinguish the delete/no-delete cases by distinct entrypoints,
+so only a <code>this</code> parameter is required,
+and the standard calling conventions are used.
+The only special treatment of virtual destructors is the pair of vtable
+entries described above.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C6></a> <td> C-6 </td>
+<td> Extra parameters to constructors </td>
+<td> call </td>
+<td> closed </td>
+<td> Cygnus </td>
+<td> 990603 </td>
+<td> 991104 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+When calling constructors for classes with virtual bases,
+what information about the treatment of virtual base subobjects
+in the full class, or about object allocation,
+must be transmitted to the constructor in parameters?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+None.
+Two versions, and two entrypoints,
+of the constructor will be created:
+one that calls the virtual base subobject constructor (in-charge),
+and one that does not.
+Object allocation will be done by the caller.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991028 all]</font>
+We will produce two constructor entries,
+one in-charge (constructing virtual bases) for a most-derived object,
+and one not in-charge for a base subobject.
+The object allocation will be the responsibility of the caller,
+so there will be no variation or parameters for that purpose.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <td> C-7 </td>
 <td> Passing value parameters by reference </td>
 <td> call </td>
@@ -1857,6 +2024,74 @@ and passes a pointer as an implicit first parameter
 </td> </tr>
 
 </table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C9></a> <td> C-9 </td>
+<td> Passing parameters with ctors/dtors </td>
+<td> call </td>
+<td> closed </td>
+<td> All </td>
+<td> 991028 </td>
+<td> 991104 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Where do allocation, construction, destruction, and deallocation occur
+for value parameters?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+See the description in the
+<a href=cxx-closed.html#C9>closed issues list</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991028 all]</font>
+For value parameter types with a non-trivial copy constructor or destructor,
+a call handles the parameter as follows:
+<ol>
+<p>
+<li>
+Space is allocated in the caller for the temporary.
+If there is no non-trivial copy constructor,
+it is in the normal parameter-passing space (registers/stack);
+otherwise it is allocated on the stack or heap.
+
+<p>
+<li>
+The caller constructs the parameter in the space allocated,
+a simple copy to parameter space if there is no non-trivial copy constructor.
+
+<p>
+<li>
+The function is called, passing the parameter value
+(if no non-trivial copy constructor),
+or its address (if there is a non-trivial copy constructor).
+
+<p>
+<li>
+The callee calls any non-trivial destructor for the parameter before
+returning.
+(Note that, if there is no non-trivial copy constructor,
+this implies that the parameter was copied out of registers on
+entry so the destructor can be called with <code>this</code> in memory.)
+
+<p>
+<li>
+If necessary (e.g. if the parameter was allocated on the heap),
+the caller deallocates space after the return.
+
+</ol>
 
 <p>
 <table border=on cellpadding=3>
