@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 25 June 1999</i>
+<i>Revised 1 July 1999</i>
 
 </center>
 
@@ -185,6 +185,65 @@ in left-to-right, depth-first declaration order.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <td> A-3 </td>
+<td> Multiple inheritance </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 990701 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define the class layout in the presence of multiple base classes.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990617 All]</font>
+At offset zero is the Vptr whenever there is one,
+as well as the primary base class if any (see A-7).
+Also at offset zero is any number of empty base classes,
+as long as that does not place multiple subobjects of the same type at
+the same offset.
+If there are multiple empty base classes such that placing two of them
+at offset zero would violate this constraint, the first is placed there.
+(First means in declaration order.)
+
+<p>
+All other non-virtual base classes are laid out in declaration order at
+the beginning of the class.
+All other virtual base subobjects will be allocated at the
+end of the class, left-to-right, depth-first.
+
+<p>
+The above ignores issues of padding for alignment,
+and possible reordering of class members to fit in padding areas.
+See issue A-9.
+
+<p>
+<font color=blue>[990624 All]</font>
+There remains an issue concerning the selection of the primary base
+class (see A-7), but we are otherwise in agreement.
+We will attempt to close this on 1 July, modulo A-7.
+
+<p>
+<font color=blue>[990701 All]</font>
+This issue is closed.
+A full description of the class layout can be found in issue A-9.
+(At this time, A-7 remains to be closed,
+waiting for the Taligent rationale.)
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <td> A-4 </td>
 <td> Empty base classes </td>
 <td> data </td>
@@ -206,6 +265,80 @@ and no non-empty non-virtual base classes.)
 <p>
 <font color=blue>[990624 All]</font>
 Closed as a duplicate of A-3.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-5 </td>
+<td> Empty parameters </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 990701 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+When passing a parameter with an empty class type by value,
+what is the convention?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990623 SGI]</font>
+We propose that no parameter slot be allocated to such parameters,
+i.e. that no register be used,
+and that no space in the parameter memory sequence be used.
+This implies that the callee must allocate storage at a unique address
+if the address is taken (which we expect to be rare).
+
+<p>
+<font color=blue>[990624 All]</font>
+In addition to the address-taken case,
+care is required if the object has a non-trivial copy constructor.
+HP observes that in (some?) such cases,
+they perform the construction at the call site and pass the object by
+reference.
+
+<p>
+<font color=blue>[990625 SGI -- Jim]</font>
+I understand that the Standard explicitly allows elimination of
+even non-trivial copy construction in some cases.
+Is this one of them?  Where should I look?
+Also, of course, varargs processing for elided empty parameters would
+need to be careful.
+
+<p>
+I have opened a new issue (C-7) for passing copy-constructed
+parameters by reference.
+Since doing so would turn an empty value parameter
+into a non-empty reference parameter,
+this issue can ignore such cases.
+
+<p>
+<font color=blue>[990701 All]</font>
+An empty parameter will not occupy a slot in the parameter sequence
+unless:
+<ol>
+<li> its type is a class with a non-trivial copy constructor; or
+<li> it corresponds to the variable part of a varargs parameter list.
+</ol>
+
+<p>
+Daveed and Matt will pursue the question of when copy constructors may
+be ignored for parameters with the Core committee,
+and if they identify cases where the constructors may clearly be
+omitted, those (empty) parameters will also be elided.
+
+<p>
+<table border=on cellpadding=3>
 
 <tr>
 <th> # </th>
@@ -254,7 +387,7 @@ per the underlying psABI rules.)
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> A-9 </td>
+<tr> <td> <a name=A9>A-9</a> </td>
 <td> Sorting fields as allowed by [class.mem]/12 </td>
 <td> data </td>
 <td> closed </td>
@@ -322,9 +455,10 @@ Each subobject allocated is placed at the next available position that
 satisfies its alignment constraints, as in the underlying psABI.
 This is interpreted with the following special cases:
 <ol>
-<li> The "next available position" after a class subobject
+<li> The "next available position" after a non-POD class subobject
 	(base class or data member) with tail padding is at the
 	beginning of the tail padding, not after it.
+	(For POD objects, the tail padding is not "available.")
 <li> Empty classes are considered to have alignment and size 1,
 	consisting solely of one byte of tail padding.
 <li> Placement on top of the tail padding of an empty class must avoid
@@ -333,6 +467,86 @@ This is interpreted with the following special cases:
 </ol>
 After allocation is complete,
 the size is rounded up to a multiple of alignment (with tail padding).
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-10 </td>
+<td> Class parameters in registers </td>
+<td> call </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 990710 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The C ABI specifies that structs are passed in registers.
+Does this apply to small non-POD C++ objects passed by value?
+What about the copy constructor and <code>this</code> pointer in that case?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990701 all]</font>
+A separate issue (C-7) deals with cases where a non-trivial copy
+constructor is required; we ignore those cases here.
+Our conclusion is that, without a non-trivial copy constructor,
+we need not be concerned about the class object moving in the process
+of being passed, and there is no need to use a mechanism different from
+the base ABI C struct mechanism.
+At the same time, if we do use the underlying C struct mechanism,
+the user has complete control of the passing technique,
+by choosing whether to pass by value or reference/pointer.
+
+<p>
+Therefore, except in cases identified by issue C-7 for different treatment,
+class parameters will be passed using the underlying C struct protocol.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> A-13 </td>
+<td> Parameter struct field promotion </td>
+<td> call </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990603 </td>
+<td> 990701 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+It is possible to pass small classes either as memory images,
+as is specified by the base ABI for C structs,
+or as a sequence of parameters, one for each member.
+Which should be done, and if the latter,
+what are the rules for identifying "small" classes?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+No special treatment will be specified by the ABI.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990701 all]</font>
+Define no special treatment for this case in the ABI.
+A translator with control over both caller and callee may choose to optimize.
+
 
 <p> <hr> <p>
 <h3> B.  Virtual Function Handling Issues </h3>
