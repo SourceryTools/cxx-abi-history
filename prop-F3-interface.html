@@ -2,18 +2,21 @@
 <HTML>
 
 <HEAD>
-<title>SGI IA-64 psABI 4: Object Files</title>
+<title>SGI Proposal for F-3:  Interface Section</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+<link rel=stylesheet href=code.css type="text/css">
 
 <hr>
 
 <font size=6><i><b>
 <p>
-SGI IA-64 psABI
-<p>
-Proposal 42: Interface Section
+SGI Proposal for F-3: Interface Section
 </b></i></font size>
+
+<font size=-1>
 <p>
-<i>Last updated 30 June 1999</i>
+<i>Last updated 25 April 2000</i>
 
 </center>
 
@@ -24,11 +27,63 @@ Proposal 42: Interface Section
 <hr>
 
 <p>
-<H2> <A NAME="InterfaceSection"></A>4.8 Interface Section</H2>
+<H3> <A NAME="Intro"></A>Introduction</H3>
+
+<p>
+The purpose of this proposal is to address Issue F-3, consistency checks,
+along with F-4, empty throw specs,
+and F-10, function return types.
+
+<p>
+The proposal is based on a facility that has been in use on SGI/MIPS
+systems for several years,
+with the objective of catching mismatches between function calls and
+definitions.
+In the form implemented,
+it is capable of catching result and parameter type mismatches
+(not precisely in the case of structured types),
+and specifically of catching problems resulting from passing floating
+point parameters in floating point registers to varargs functions
+expecting them in integer registers (with much less overhead).
+
+<p>
+It has been modified below (in purple) to:
+
+<ul>
+<li> catch throw specification mismatches,
+<li> catch template specialization/instantiation mismatches, and
+<li> catch precise structured type mismatches.
+</ul>
+
+<p>
+It is worth noting that this facility is quite simple in concept,
+and its implementation at SGI required little effort.
+Nevertheless, the description is a bit involved,
+due to two sources of complexity:
+
+<ul>
+<li>
+We have attempted to minimize the descriptor size,
+since there may potentially be a large number of them.
+Thus, we have many optional fields present only if required.
+
+<p>
+<li>
+We support an even smaller descriptor which is sufficient to catch
+floating point varargs parameter problems,
+since old non-ANSI-compliant code may have them (on MIPS and IA-64),
+without full-blown parameter profiles.
+</ul>
+
+<p>
+<hr>
+
+<p>
+<H2> <A NAME="InterfaceSection"></A>Interface Section</H2>
 
 <p>
 Interface correctness checking by the linkers
-(<b><i>ld</b></i>/<b><i>rld</b></i>),
+(<b><i>ld</b></i>/<b><i>ld.so</b></i>),
 as well as object file transformations,
 require information about subprogram interfaces,
 especially parameter profiles.
@@ -60,32 +115,32 @@ Its section attributes are:
 <p>
 <TABLE align=center BORDER=2 CELLSPACING=2 CELLPADDING=2>
 
-<TR>
+<TR class=tiny>
 <TD><b> name </b></TD>
 <TD> <code> .IA_64.interfaces</code> </TD>
 </TR>
 
-<TR>
+<TR class=tiny>
 <TD><code> sh_type </code></TD>
 <TD><code> SHT_IA_64_IFACE </code> </TD>
 </TR>
 
-<TR>
+<TR class=tiny>
 <TD><code> sh_link </code></TD>
 <TD> Section header index of the associated symbol table </TD>
 </TR>
 
-<TR>
+<TR class=tiny>
 <TD><code> sh_info </code></TD>
 <TD> 0 </TD>
 </TR>
 
-<TR>
+<TR class=tiny>
 <TD><code> sh_flags </code></TD>
 <TD><code> SHF_SGI_NOSTRIP </code></TD>
 </TR>
 
-<TR>
+<TR class=tiny>
 <TD> requirements </TD>
 <TD> Must not be stripped </TD>
 </TR>
@@ -103,50 +158,51 @@ by the figure below.
 <B>Figure 4-30: Interface Descriptor Header Format</B>
 </CAPTION>
 
-<TR>
+<TR class=small>
 <th align=left> <B> Field Name </B> </th>
 <th align=center> <B> Type </B> </th>
 <th align=left> <B> Comments </B> </th>
 </TR>
 
-<TR>
+<TR class=small>
 <TD><tt><i> symbol </i></tt></TD>
 <TD><tt> ElfXX_Word </tt></TD>
 <TD> Symbol table index of subprogram name, or 0 for an indirect call</TD>
 </TR>
 
-<TR>
+<TR class=small>
 <TD><tt><i> attrs </i></tt></TD>
 <TD><tt> ElfXX_Half </tt></TD>
 <TD> Attributes: see Figure 4-31 </TD>
 </TR>
 
-<TR>
+<TR class=small>
 <TD><tt><i> pcnt </i></tt></TD>
 <TD><tt> ElfXX_Byte </tt></TD>
 <TD> Parameter count <sup>a, b</sup></TD>
 </TR>
 
-<TR>
+<TR class=small>
 <TD><tt><i> fpmask </i></tt></TD>
 <TD><tt> ElfXX_Byte </tt></TD>
 <TD> Mask of FP parameter registers <sup>c</sup></TD>
 </TR>
 
-<TR>
-<td colspan=3>
+</TABLE>
+
+<p>
 Notes:
 <dl>
-<dt><sup>a</sup></dt>
+<dt> <tt><i> pcnt </i></tt> </dt>
 <dd>
+<sup>a</sup>
 The parameter count and parameter profile below describe the parameter
 profile as transformed (not as declared).
 They include implicit parameters inserted by the compiler,
 including function results converted to implicit result pointers 
 passed as parameters.
-</dd>
-<dt><sup>b</sup></dt>
-<dd>
+<p>
+<sup>b</sup>
 The parameter count includes the result if the
 <b>SA_FUNCTION</b> attribute is set, 
 and the first descriptor is for the result.
@@ -154,8 +210,10 @@ If the parameter count is 255,
 then the parameter list is preceded by a two-byte parameter count.
 See Figure 4-32.)
 </dd>
-<dt><sup>c</sup></dt>
+<p>
+<dt> <tt><i> fpmask </i></tt> </dt>
 <dd>
+<sup>c</sup>
 This mask indicates which of the eight FP parameter registers are used
 to pass parameters instead of the corresponding integer registers.
 The function result is not considered if <b>SA_FUNCTION</b> is set.
@@ -163,10 +221,7 @@ The lowest-order bits of the mask represent the first parameters,
 i.e. 0x01 is parameter #1 in f8, 0x02 parameter #2 in f9, etc.
 </dd>
 </dl>
-</td>
-</TR>
-
-</TABLE>
+<p><hr>
 
 <p>
 The attributes of a subprogram are encoded in the <i>attrs</i> field as
@@ -198,21 +253,27 @@ the following bits.
 </TR>
 
 <TR>
+<TD><b> <font color=purple> SA_INSTANTIATION </font></b></TD>
+<TD><tt> 0x2000 </tt></TD>
+<TD> Is this a template instantiation?</TD>
+</TR>
+
+<TR>
 <TD><b> SA_FUNCTION </b></TD>
 <TD><tt> 0x0400 </tt></TD>
-<TD> Does subprogram return a result? <sup>a</sup></TD>
+<TD> Does subprogram return a result? </TD>
 </TR>
 
 <TR>
 <TD><b> SA_NESTED </b></TD>
 <TD><tt> 0x0200 </tt></TD>
-<TD> Is subprogram nested? <sup>b</sup></TD>
+<TD> Is subprogram nested? </td>
 </TR>
 
 <TR>
 <TD><b> SA_IGNORE_ERROR </b></TD>
 <TD><tt> 0x0100 </tt></TD>
-<TD> Don't enforce consistency. <sup>c</sup></TD>
+<TD> Don't enforce consistency. </td>
 </TR>
 
 <TR>
@@ -222,41 +283,75 @@ the following bits.
 </TR>
 
 <TR>
+<TD><b> <font color=purple> SA_THROW_SPEC </font></b></TD>
+<TD><tt> 0x0040 </tt></TD>
+<TD> C++ throw specification follows</TD>
+</TR>
+
+<TR>
 <TD><b> SA_FREE_REGS </b></TD>
 <TD><tt> 0x0020 </tt></TD>
-<TD> Free register mask follows. <sup>d</sup></TD>
+<TD> Free register mask follows. </td>
 </TR>
 
 <TR>
 <TD><b> SA_PARAMETERS </b></TD>
 <TD><tt> 0x0010 </tt></TD>
-<TD> Parameter profile follows. <sup>e</sup></TD>
+<TD> Parameter profile follows. </td>
 </TR>
 
-<TR>
-<td colspan=3>
+</TABLE>
+
+<p>
 Notes:
+
 <dl>
-<dt><sup>a</sup></dt>
+
+<p>
+<font color=purple>
+<dt> SA_INSTANTIATION </dt>
+<dd>
+This function was produced as the result of C++ template instantiation.
+If it matches another interface descriptor without this flag set,
+there is a conflict between an instantiation and a specialization.
+</dd>
+</font>
+
+<p>
+<dt> SA_FUNCTION </dt>
 <dd>
 This is specified as transformed by the compiler, not necessarily as declared,
 e.g. a subprogram treating a structure result by placing it in a buffer
 addressed as an implicit first parameter would not be encoded as a function.
 </dd>
-<dt><sup>b</sup></dt>
+
+<p>
+<dt> SA_NESTED </dt>
 <dd>
 Because nested subprograms require a static link in addition to the
 usual declared parameters,
 if a definition has this attribute all calls should too,
 but the opposite condition is not necessary.
 </dd>
-<dt><sup>c</sup></dt>
+
+<p>
+<dt> SA_IGNORE_ERROR </dt>
 <dd>
 Some subprograms may be known to be called inconsistently.
 This attribute indicates that any tools checking for inconsistencies
-should not reject the objects due to inconstencies for this subprogram.
+should not reject the objects due to inconsistencies for this subprogram.
 </dd>
-<dt><sup>d</sup></dt>
+
+<font color=purple>
+<p>
+<dt> SA_THROW_SPEC </dt>
+<dd>
+The parameter profile is followed by a C++ throw specification.
+</dd>
+</font>
+
+<p>
+<dt> SA_FREE_REGS </dt>
 <dd>
 A 32-bit free register mask precedes the parameter profile,
 specifying integer global registers which are never used in this routine.
@@ -265,7 +360,9 @@ subject to the ABI assumptions about caller-saved registers.
 The mask must be updated by such a tool if registers are used.
 See Figure 4-32.)
 </dd>
-<dt><sup>e</sup></dt>
+
+<p>
+<dt> SA_PARAMETERS </dt>
 <dd>
 Minimal checking may be achieved by including only the fixed-length
 part of the interface descriptor,
@@ -275,15 +372,16 @@ in the fixed-length header.
 See the description of required linker checking below.
 </dd>
 </dl>
-</td>
-</TR>
-
-</TABLE>
+<p><hr>
 
 <p>
 The variable-length part of an interface descriptor consists of a list
 of parameter descriptors following the fixed-length header,
-possibly preceded by a free register mask.
+possibly preceded by a profile size, full parameter count,
+free register mask,
+<font color=purple>
+and/or throw specification offset and count.
+</font>
 It contains one descriptor for each parameter 
 (formal for definitions, actual for calls),
 plus a leading descriptor for the result of functions.
@@ -330,6 +428,20 @@ is a parameter profile with the form given in the figure below.
 </TR>
 
 <TR>
+<TD> 2 bytes </TD>
+<TD> <font color=purple>
+Offset (from size field) of throw spec if SA_THROW_SPEC is set
+</font> </TD>
+</TR>
+
+<TR>
+<TD> 2 bytes </TD>
+<TD> <font color=purple>
+Number of throw spec entries if SA_THROW_SPEC is set
+</font> </TD>
+</TR>
+
+<TR>
 <TD> 2+ bytes </TD>
 <TD> Result type descriptor if <b>SA_FUNCTION</b> is set </TD>
 </TR>
@@ -354,7 +466,28 @@ is a parameter profile with the form given in the figure below.
 <TD> Parameter #<i>pcnt</i> type descriptor </TD>
 </TR>
 
+<TR>
+<TD> 4 bytes </TD>
+<TD> <font color=purple> First throw spec identifier (aligned) </font> </TD>
+</TR>
+
+<TR>
+<TD> 4 bytes </TD>
+<TD> <font color=purple> Second throw spec identifier </font> </TD>
+</TR>
+
+<TR>
+<TD> </TD>
+<TD> ... </TD>
+</TR>
+
+<TR>
+<TD> 4 bytes </TD>
+<TD> <font color=purple> Last throw spec identifier </font> </TD>
+</TR>
+
 </TABLE>
+<p><hr>
 
 <p>
 The structure of each type descriptor is given in the figure below.
@@ -382,70 +515,35 @@ The structure of each type descriptor is given in the figure below.
 </TR>
 
 <TR>
-<TD> 3 </TD>
+<TD> 3 or 3..6</TD>
+<TD> Size if indeterminate for type,
+<br>1 or 4 bytes (not aligned) depending on PDM_SIZE flag </TD>
+</TR>
+
+<TR>
+<TD> j..j+3 (3,4,7) </TD>
+<TD> <font color=purple>
+RTTI symbol index (4 bytes, not aligned) if PDM_RTTI flag is set
+</font> </TD>
+</TR>
+
+<TR>
+<TD> k (>=3) </TD>
 <TD> First qualifier </TD>
 </TR>
 
 <TR>
-<TD> 4 </TD>
+<TD> k+1 </TD>
 <TD> Second qualifier </TD>
 </TR>
 
 <TR>
-<TD> 5+ </TD>
+<TD> k+2 </TD>
 <TD> Additional qualifiers </TD>
 </TR>
 
 </TABLE>
-
-<p>
-To allow minimal overhead checking of varargs floating point parameters,
-as well as full parameter consistency checking,
-various parts of the parameter profile, as well as the whole profile,
-are optional.
-The following rules clarify which parts may be omitted:
-
-<ul>
-<p>
-<li>
-The entire profile is omitted if <b>SA_PARAMETERS</b> and 
-<b>SA_FREE_REGS</b> are not set, and <i>pcnt</i> is not 255.
-See the linker processing description of minimal checking below
-for the treatment in this case.
-
-<p>
-<li>
-If any profile component is present, the size field must be present.
-
-<p>
-<li>
-If <i>pcnt</i> is 255, the parameter count field must be present,
-equal to the number of parameters, including the result for functions.
-(Note that this is the number of parameter register equivalents if 
-<b>SA_PARAMETERS</b> is not set --
-see the linker processing description of minimal checking below.)
-If <i>pcnt</i> is smaller, but <b>SA_FREE_REGS</b> is set,
-the parameter count field is present (containing zero) for alignment.
-
-<p>
-<li>
-If <b>SA_FREE_REGS</b> is set, the free register mask must be present
-(as well as the parameter count field).
-
-<p>
-<li>
-If <b>SA_PARAMETERS</b> is set,
-the number of parameter type descriptors implied by <i>pcnt</i>
-or the parameter count field is present.
-The first one is the function result type if <b>SA_FUNCTION</b> is set.
-These descriptors are described in more detail below.
-
-<p>
-<li>
-Finally, if the full profile is not a multiple of eight bytes long,
-it is padded to a multiple of eight bytes with zeros
-(which are not included in the size).
-</ul>
+<p><hr>
 
 <p>
 Each parameter type descriptor begins with two bytes.
@@ -453,16 +551,20 @@ It contains several flags and a qualifier count in the first byte
 as described in Figure 4-34 below,
 and one of the fundamental types from Figure 4-35 below
 in the second byte.
-If the qualifier count is non-zero,
-it will be followed by that number of single-byte type qualifiers
-from Figure 4-36 below.
-Those types with indeterminate length (e.g. FT_struct, FT_union)
-are always followed by the actual length (in bytes)
-preceding the qualifier list.
+Next comes the actual parameter length (in bytes)
+for those types with indeterminate length (e.g. FT_struct, FT_union).
 If PDM_SIZE is not set, the length is an unsigned byte,
 where the maximum value (255) implies at least that length;
 if PDM_SIZE is set it is a 32-bit unsigned word (not necessarily aligned),
 where the maximum value (0xffffffff) implies at least that length.
+<font color=purple>
+If PDM_RTTI is set,
+the next 4-byte unaligned field is a symbol table index of the RTTI
+descriptor for the type.
+</font>
+If the qualifier count is non-zero,
+it will be followed by that number of single-byte type qualifiers
+from Figure 4-36 below.
 
 <p>
 The masks for the initial byte of each type descriptor are
@@ -486,7 +588,7 @@ given in the figure below.
 <TR>
 <TD><b> PDM_SIZE </b></TD>
 <TD align=center> 0x80 </TD>
-<TD> Reference parameter? </TD>
+<TD> Precise size present? </TD>
 </TR>
 
 <TR>
@@ -496,12 +598,19 @@ given in the figure below.
 </TR>
 
 <TR>
+<TD><b> PDM_RTTI </b></TD>
+<TD align=center> 0x20 </TD>
+<TD> RTTI symbol for type? </TD>
+</TR>
+
+<TR>
 <TD><b> PDM_QUALIFIERS </b></TD>
 <TD align=center> 0x0f </TD>
 <TD> Count of type qualifiers &gt;&gt;8 </TD>
 </TR>
 
 </TABLE>
+<p><hr>
 
 <p>
 The possible fundamental types for a type descriptor
@@ -694,6 +803,7 @@ are given in the figure below.
 </TR>
 
 </TABLE>
+<p><hr>
 
 <p>
 The fundamental types in Figure 4-35 may be modified by the qualifiers in 
@@ -751,9 +861,90 @@ the figure below, also based on [DWARF-1]:
 </TR>
 
 </TABLE>
+<p><hr>
 
 <p>
-<H3><A NAME="InterfaceLinking"></A>4.8.1 Linker Processing</H3>
+<font color=purple>
+If SA_THROW_SPEC is set,
+the parameter profiles are followed by an array of identifiers
+for the types that may be thrown by this routine (in C++).
+The offset field gives the offset from the size field of the first
+such identifier, at 4-byte alignment (with padding if necessary).
+The count field gives the number of identifiers present.
+Each identifier is the 4-byte symbol table index of an RTTI structure
+for the type.
+If the function has an empty throw specification,
+offset and count should both be zero.
+If SA_THROW_SPEC is not set,
+nothing may be assumed about the throw specification;
+it may not be checked.
+</font>
+
+<p>
+<H3><A NAME="OptionalFields"></A>Optional Fields</H3>
+
+<p>
+To allow minimal overhead checking of varargs floating point parameters,
+as well as full parameter consistency checking,
+various parts of the parameter profile, as well as the whole profile,
+are optional.
+The following rules clarify which parts may be omitted:
+
+<ul>
+<p>
+<li>
+The entire profile is omitted if <b>SA_PARAMETERS</b>,
+<b>SA_FREE_REGS</b>, and
+<font color=purple> <b>SA_THROW_SPEC</b> </font>
+are not set, and <i>pcnt</i> is not 255.
+See the linker processing description of minimal checking below
+for the treatment in this case.
+
+<p>
+<li>
+If any profile component is present, the size field must be present.
+
+<p>
+<li>
+If <i>pcnt</i> is 255, the parameter count field must be present,
+equal to the number of parameters, including the result for functions.
+(Note that this is the number of parameter register equivalents if 
+<b>SA_PARAMETERS</b> is not set --
+see the linker processing description of minimal checking below.)
+If <i>pcnt</i> is smaller, but <b>SA_FREE_REGS</b> is set,
+the parameter count field is present (containing zero) for alignment.
+
+<p>
+<li>
+If <b>SA_FREE_REGS</b> is set, the free register mask must be present
+(as well as the parameter count field).
+
+<p>
+<li>
+<font color=purple>
+If <b>SA_THROW_SPEC</b> is set,
+the throw specification offset and count must be present,
+and the indicated number of type identifiers must follow the parameter
+type descriptors.
+</font>
+
+<p>
+<li>
+If <b>SA_PARAMETERS</b> is set,
+the number of parameter type descriptors implied by <i>pcnt</i>
+or the parameter count field is present.
+The first one is the function result type if <b>SA_FUNCTION</b> is set.
+These descriptors are described in more detail below.
+
+<p>
+<li>
+Finally, if the full profile is not a multiple of eight bytes long,
+it is padded to a multiple of eight bytes with zeros
+(which are not included in the size).
+</ul>
+
+<p>
+<H3><A NAME="InterfaceLinking"></A>Linker Processing</H3>
 
 <i>
 <p>
@@ -784,7 +975,7 @@ For each parameter the sizes should match,
 and whether it is integer or floating point should match.
 <p>
 <li>
-For a 64-bit varargs routine (SA_VARARGS),
+For a varargs routine (SA_VARARGS),
 the fixed parameters should match
 (except perhaps for the last one,
 which may be a varargs.h va_alist dummy parameter),
@@ -793,7 +984,8 @@ unless the call site had a prototype visible (SA_PROTOTYPED).
 </ol>
 
 <p>
-Compatibility failures should result in warnings rather than hard errors.
+Compatibility failures should result in warnings rather than hard errors
+by default.
 
 <p>
 Once checking has been done,
