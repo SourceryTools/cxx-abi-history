@@ -15,7 +15,7 @@ C++ ABI for IA-64: Mangling
 
 <font size=-1>
 <p>
-<i>Revised 3 April 2000</i>
+<i>Revised 13 April 2000</i>
 
 </center>
 
@@ -36,6 +36,7 @@ C++ ABI for IA-64: Mangling
 <tr><td>type</td> <td>A</td> <td></td> <td> array type </td> </tr>
 <tr><td>type</td> <td>b</td> <td></td> <td> builtin type bool </td> </tr>
 <tr><td>type</td> <td>c</td> <td></td> <td> builtin type char </td> </tr>
+<tr><td>type</td> <td>c</td> <td></td> <td> COMDAT group ID </td> </tr>
 <tr><td>oper</td> <td>c</td> <td> l </td> <td> Operator () </td> </tr>
 <tr><td>oper</td> <td>c</td> <td> m </td> <td> Operator , </td> </tr>
 <tr><td>oper</td> <td>c</td> <td> o </td> <td> Operator ~ </td> </tr>
@@ -137,6 +138,7 @@ C++ ABI for IA-64: Mangling
 <tr><td>obj </td> <td>T</td> <td> D </td> <td> typeinfo common proxy </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> h </td> <td> virtual function non-virtual override thunk </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> I </td> <td> typeinfo structure </td> </tr>
+<tr><td>obj </td> <td>T</td> <td> S </td> <td> RTTI name (NTBS) </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> T </td> <td> VTT table </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> v </td> <td> virtual function virtual override thunk </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> V </td> <td> virtual table </td> </tr>
