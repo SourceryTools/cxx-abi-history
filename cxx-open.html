@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 5 January 2000</i>
+<i>Revised 12 January 2000</i>
 
 </center>
 
@@ -25,6 +25,16 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000112]</font>
+Closed <a href=#A15>A-15</a>, <a href=#A16>A-16</a>,
+<a href=#D2>D-2</a>, <a href=#D3>D-3</a>,
+<a href=#D8>D-8</a>, <a href=#D15>D-15</a>.
+Additions to <a href=#A17>A-17</a>, <a href=#A18>A-18</a>,
+<a href=#D9>D-9</a>, <a href=#D11>D-11</a>,
+<a href=#D13>D-13</a>, <a href=#D14>D-14</a>, <a href=#D16>D-16</a>.
+New issues <a href=#A19>A-19</a> (split from A-17).
 
 <p>
 <font color=blue>[000105]</font>
@@ -165,7 +175,7 @@ The identifiers used are:
 Where is the Vptr stored in an object (first or last are the usual answers).
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A1> Resolution </a></b>:
 First.
 </td> </tr>
 
@@ -194,7 +204,7 @@ Where are the virtual base subobjects placed in the class layout?
 How are data member accesses to them handled?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A2> Resolution </a></b>:
 Virtual base subobjects are normally placed at the end (see issue A-9).
 The Vtable will contain an offset to the beginning of the base object
 for use by member accesses to them (see issue B-6).
@@ -226,7 +236,7 @@ for use by member accesses to them (see issue B-6).
 Define the class layout in the presence of multiple base classes.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A3> Resolution </a></b>:
 See the class layout description in closed issue A-9.
 Briefly, empty bases will normally go at offset zero,
 non-virtual base classes at the beginning,
@@ -257,7 +267,7 @@ and virtual base classes at the end.
 Where are empty base classes allocated?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A4> Resolution </a></b>:
 At offset zero if possible.  See A-9.
 </td> </tr>
 
@@ -286,7 +296,7 @@ When passing a parameter with an empty class type by value,
 what is the convention?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A5> Resolution </a></b>:
 Except for cases of non-trivial copy constructors (see C-7),
 and parameters in the variable part of varargs lists,
 no parameter slot will be allocated to empty parameters.
@@ -322,7 +332,7 @@ Define the data structure to be used for RTTI, that is:
 </ul>
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A6> Resolution </a></b>:
 Defined in the
 <a href=abi-layout.html#rtti>ABI data layout document</a>.
 </tr>
@@ -354,7 +364,7 @@ polymorphic base class (the <i>primary</i> base class).
 Which base class do we use for this?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A7> Resolution </a></b>:
 Share with the first non-virtual polymorphic base class,
 or if none with the first nearly empty virtual base class.
 </td> </tr>
@@ -385,7 +395,7 @@ derived class.
 Do we agree to extend the alignment constraint to the derived class?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A8> Resolution </a></b>:
 The derived class will have at least the alignment of any base class.
 </td> </tr>
 
@@ -415,9 +425,8 @@ they are not separated by an access clause.
 Do we use an access clause as an opportunity to fill the gaps left by padding?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
-See <a href=cxx-closed.html#A9>closed issue list</a> and the
-<a href=abi-layout.html#class-types>ABI Data Layout Specification</a>.
+<b><a href=cxx-closed.html#A9> Resolution </a></b>:
+See <a href=abi-layout.html#class-types>ABI Data Layout Specification</a>.
 </td> </tr>
 
 </table>
@@ -446,7 +455,7 @@ Does this apply to small non-POD C++ objects passed by value?
 What about the copy constructor and <code>this</code> pointer in that case?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A10> Resolution </a></b>:
 Non-POD C++ objects are passed like C structs,
 except for cases with non-trivial copy constructors identified in C-7.
 </td> </tr>
@@ -475,7 +484,7 @@ except for cases with non-trivial copy constructors identified in C-7.
 How should pointers to member functions be represented?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A11> Resolution</a></b>:
 As a pair of values, a "pointer" and a this adjustment.
 See the closed list for a more detailed description.
 </td> </tr>
@@ -508,7 +517,7 @@ minimizing the number of external symbols required in linking,
 in the GOT, etc.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A12> Resolution</a></b>:
 Concatenate the Vtables associated with a class in the same order
 that the corresponding base subobjects are allocated in the object.
 </td> </tr>
@@ -542,7 +551,7 @@ Which should be done, and if the latter,
 what are the rules for identifying "small" classes?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A13> Resolution</a></b>:
 No special treatment will be specified by the ABI.
 </td> </tr>
 
@@ -571,7 +580,7 @@ No special treatment will be specified by the ABI.
 How should pointers to data members be represented?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#A14> Resolution</a></b>:
 Represented as one plus the offset from the base address.
 </td> </tr>
 
@@ -590,48 +599,23 @@ Represented as one plus the offset from the base address.
 <tr class=small> <a name=A15></a> <td> A-15 </td>
 <td> Empty bit-fields </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 991214 </td>
-<td>  </td>
+<td> 000106 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How are zero-length bit-fields handled?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A15> Resolution</a></b>:
+Zero-length bit-fields do not prevent a class from being considered
+empty or nearly empty.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[991214 CodeSourcery -- Mark]</font>
-<p>
-<b>Question</b>:
-Does the presence of a zero-width bit-field prevent a class from
-being empty?
-
-<p>
-<b>Suggested Resolution</b>:
-
-No.  Amend the definition of an "empty class" to read:
-
-<p>
-<dl>
-<dd>
-A class with no non-static data members other than zero-width bitfields,
-no virtual functions, no virtual base classes,
-and no non-empty non-virtual base classes.
-</dd>
-</dl>
-
-<p>
-Amend the definition of a "nearly empty class" to read:
-
-<p>
-<dl>
-<dd>
-A class, the objects of which contain only a Vptr and zero-width bitfields.
-</dd>
-</dl>
 
 
 <p>
@@ -646,16 +630,21 @@ A class, the objects of which contain only a Vptr and zero-width bitfields.
 <tr class=small> <a name=A16></a> <td> A-16 </td>
 <td> Nearly empty virtual bases </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 991228 </td>
-<td>  </td>
+<td> 000106 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 May a class with non-empty, non-primary, virtual base classes
 be treated as nearly empty (and thus eligible to be a primary base)
 if its only non-vptr data is in its virtual base classes?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A16> Resolution</a></b>:
+Virtual base classes do not prevent a class from being considered
+nearly empty.
 </td> </tr>
 
 </table>
@@ -778,6 +767,64 @@ Thus, the benefit of doing so is probably not large.
 To get some idea of the effect on the layout definition,
 look at dsize and nvsize, and assume a similar pair of alignment values.
 
+<p>
+<font color=blue>[000106 All]</font>
+No strong opinions were expressed on this issue.
+We will decide it at the next meeting after people have a chance to
+think it over.
+The bias will be to keep the current simpler definition.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A19></a> <td> A-19 </td>
+<td> Primary indirect virtual base choice </td>
+<td> data </td>
+<td> open </td>
+<td> All </td>
+<td> 000106 </td>
+<td>  </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+In allocating class C,
+when the first nearly empty virtual base class A is allocated as the
+primary base class of a later nearly empty virtual base class B,
+should A or B become the primary base class of C?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000106 All]</font>
+This issue was initially confused in the discussion with A-17,
+but is independent.
+Recall that non-virtual bases have priority over virtual bases for
+selection as the primary base.
+Assuming that no non-virtual base is suitable,
+this issue involves which virtual base should be selected.
+Our original decision was to use the first in left-to-right order.
+
+<p>
+The proposal here is that,
+if this initial candidate A is itself already a primary base class of
+a later virtual base B,
+then B will be used instead, unless it is already a primary base class
+of a later virtual base, and so on.
+See <a href=abi-layout.html#a19>proposed wording</a>
+in the ABI layout document.
+
+<p>
+Noone can identify a case in which this approach is worse than the
+original definition.
+
 
 <p> <hr> <p>
 <h3> Virtual Function Handling Issues </h3>
@@ -811,7 +858,7 @@ a slightly unusual approach such as using secondary entry points
 to perform the adjustment may actually prove interesting. 
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#B1> Resolution</a></b>:
 See the <a href=abi-layout#vcall>writeup in the ABI data layout
 specification.
 </td> </tr>
@@ -845,7 +892,7 @@ Return thunks might be especially costly on IA64,
 so a solution based on returning multiple pointers may prove more interesting.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#B2> Resolution</a></b>:
 Provide a separate Vtable entry for each return type.
 </td> </tr>
 
@@ -880,7 +927,7 @@ such as code loading a shared library that replaces a virtual function.
 Can we all agree when caching is allowed? 
 </td> </tr>
 <tr> <td colspan=7>
-<b> Resolution </b>:
+<b><a href=cxx-closed.html#B3> Resolution</a></b>:
 Caching is allowed within a member function.
 </td> </tr>
 
@@ -914,7 +961,7 @@ Another is to include only the address of a thunk which loads the GP
 before doing the actual call.
 </td> </tr>
 <tr> <td colspan=7>
-<b> Resolution </b>:
+<b><a href=cxx-closed.html#B4> Resolution</a></b>:
 The Vtable will contain a function address/GP pair.
 </td> </tr>
 
@@ -956,7 +1003,7 @@ it also applies to things like vtables and RTTI info.
 (We call this <i>vague linkage</i>.)
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#B5> Resolution</a></b>:
 Vtables will be emitted with the key function (first virtual function
 that is not inline at the point of class definition), if any.
 If no key function, emit everywhere used (i.e. referred to by name).
@@ -988,7 +1035,7 @@ Place in a comdat group in all cases.
 What is the layout of the Vtable?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#B6> Resolution</a></b>:
 See the ABI data layout document,
 <a href=abi-layout.html#vtable>abi-layout.html</a>.
 </td> </tr>
@@ -1020,7 +1067,7 @@ For polymorphic objects, this implies that the Vtable must also be
 in shared memory.
 </td> </tr>
 <tr> <td colspan=7>
-<b> Resolution </b>:
+<b><a href=cxx-closed.html#B7> Resolution</a></b>:
 No special representation is useful in support of shared memory.
 </td> </tr>
 
@@ -1051,7 +1098,7 @@ from pointer-to-base to pointer-to-derived (including detection of
 ambiguous base classes) and (b) dynamic_cast to void*?
 </td> </tr>
 <tr> <td colspan=7>
-<b> Resolution </b>:
+<b><a href=cxx-closed.html#B8> Resolution</a></b>:
 The vtable will contain an offset to the beginning of the complete object,
 and a pointer to the typeinfo object.
 </td> </tr>
@@ -1099,7 +1146,7 @@ The gABI, and the IA-64 psABI, will support both,
 with DT_INIT being executed before the DT_INIT_ARRAY elements.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#C1> Resolution</a></b>:
 Use .init_array and .fini_array sections.
 </td> </tr>
 
@@ -1601,6 +1648,10 @@ depend on section naming rather than section types and attributes.
 Jim will attempt to frame the issue and get feedback from the base ABI
 group.
 
+<p>
+<font color=blue>[000106 All]</font>
+We will wait for base ABI feedback before deciding.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -1637,7 +1688,7 @@ Furthermore, the potential for dynamic unloading of a DSO
 requires a mechanism for early destruction of a subset.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#C3> Resolution</a></b>:
 Accept SGI proposal for a simple API which registers destructors and
 atexit calls.
 </td> </tr>
@@ -2280,7 +2331,7 @@ Is delete() integrated with the destructor call or separate?
 How is delete() handled when invoked on a base subobject?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#C5> Resolution</a></b>:
 Destructors are called with a reference to <i>this</i>.
 Virtual destructors have two versions, and two entries in the vtable,
 one that deletes the object after destruction, and one that doesn't.
@@ -2317,7 +2368,7 @@ in the full class, or about object allocation,
 must be transmitted to the constructor in parameters?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#C6> Resolution</a></b>:
 None.
 Two versions, and two entrypoints,
 of the constructor will be created:
@@ -2353,7 +2404,7 @@ copy constructor to pass value parameters of that type by performing
 the copy at the call site and passing a reference.
 </td> </tr>
 <tr> <td colspan=7>
-<b> Resolution </b>:
+<b><a href=cxx-closed.html#C7> Resolution</a></b>:
 Whenever a class type has a non-trivial copy constructor,
 pass value parameters of that type by performing
 the copy at the call site and passing a reference.
@@ -2384,7 +2435,7 @@ the copy at the call site and passing a reference.
 How do we return classes with non-trivial copy constructors?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#C8> Resolution</a></b>:
 The caller allocates space,
 and passes a pointer as an implicit first parameter
 (prior to the implicit <i>this</i> parameter).
@@ -2415,8 +2466,7 @@ Where do allocation, construction, destruction, and deallocation occur
 for value parameters?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Summary</b>:
-See the description in the
+<b><a href=cxx-closed.html#C9> Resolution</a></b>:
 <a href=cxx-closed.html#C9>closed issues list</a>.
 </td> </tr>
 
@@ -2445,7 +2495,7 @@ Should we specify special treatment for synthesized copy assignments,
 to avoid multiple copies of virtual bases?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#C10> Resolution</a></b>:
 No.
 </td> </tr>
 
@@ -2480,7 +2530,7 @@ including Level I (psABI unwinding API)
 and Level II (C++ ABI exception handling API).
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#D0> Resolution</a></b>:
 See the <a href=exceptions.pdf> HP proposal</a>,
 accepted as a working paper,
 and discussions in the closed issues page.
@@ -2573,10 +2623,10 @@ The treatment of predefined types must be specified.
 <tr> <a name=D2></a> <td> D-2 </td>
 <td> Unwind personality routines </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 000106 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -2588,23 +2638,14 @@ locating a handler (non-destructively)
 and destroying automatic objects while unwinding.
 This issue involves specification of the API (see also D-3).
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D2> Resolution</a></b>:
+See the <a href=abi-eh.pdf> exception handling specification</a>,
+level 1, and the <a href=exceptions.pdf>working paper</a>.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[990826 Intel/HP]</font>
-The Software Conventions document is claimed to specify the interface,
-with the parameters indicating which action is required.
-(I can't find it, but this would be an acceptable solution -- Jim.)
-
-<p>
-<font color=blue>[991209 all]</font>
-Observe that this issue is part of a
-<a href=#exception-level1>level 1 specification</a>,
-i.e. part of the base ABI.
-It is being described as part of the
-<a href=http://reality.sgi.com//dehnert_engr/cxx/exceptions.pdf>
-proposed common EH interface from HP</a>.
 
 <p>
 <table border=on cellpadding=3>
@@ -2618,10 +2659,10 @@ proposed common EH interface from HP</a>.
 <tr> <a name=D3></a> <td> D-3 </td>
 <td> Unwind process clarification </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 000106 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -2630,17 +2671,13 @@ pointer for language-specific actions when unwinding the stack.
 However, they are quite muddy about the precise sequence of calls.
 This issue involves specification of unwind process (see also D-2).
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D3> Resolution</a></b>:
+See the <a href=abi-eh.pdf> exception handling specification</a>.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[991209 all]</font>
-Observe that this issue is part of a
-<a href=#exception-level1>level 1 specification</a>,
-i.e. part of the base ABI.
-It is being described as part of the
-<a href=http://reality.sgi.com//dehnert_engr/cxx/exceptions.pdf>
-proposed common EH interface from HP</a>.
 
 <p>
 <table border=on cellpadding=3>
@@ -2666,7 +2703,7 @@ to behave like a routine nested in the routine raising an exception.
 Is that the preferred definition?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#D4> Resolution</a></b>:
 This is not required, nor included in the proposed common implementation.
 However, a conforming implementation could add this option in the
 personality routine and tables.
@@ -2704,7 +2741,7 @@ catch(...) ends with a rethrow?
 Does it allow even more?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#D5> Resolution</a></b>:
 In general, foreign exceptions will cause normal destructor invocation
 and other cleanup in C++ code, and will pass through C++ frames except
 where explicit exception specifications do not allow them.
@@ -2740,7 +2777,7 @@ Example: do we allow a handler to cleanup and resume at the point
 where the exception was thrown?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#D6> Resolution</a></b>:
 Moot -- resume-type exceptions are more appropriately handled by
 registering trap handlers and processing them in place.
 No interaction with stack traceback should be necessary.
@@ -2788,7 +2825,7 @@ Or we could allow even an exception to be thrown,
 if it does not exit the handler.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#D7> Resolution</a></b>:
 This ABI requires no support beyond the Standard requirements.
 </td> </tr>
 
@@ -2807,16 +2844,25 @@ This ABI requires no support beyond the Standard requirements.
 <tr> <a name=D8></a> <td> D-8 </td>
 <td> Interaction with threads packages </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990603 </td>
-<td> </td>
+<td> 000106 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 What happens when an exception is not caught in the thread where raised?
-What does uncaught_exception() return if another thread is currently
-processing an exception?
+What does <code>uncaught_exception()</code>
+return if another thread is currently processing an exception?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D8> Resolution</a></b>:
+With one exception, exception handling is entirely per-thread --
+exceptions must be caught in the thread where raised,
+and queries about them (e.g. <code>uncaught_exception()</code>)
+are answered only with respect to the thread doing the query.
+The only global exception behavior is handler registration --
+see <a href=cxx-closed#D15>issue D-15</a>.
 </td> </tr>
 
 </table>
@@ -2995,6 +3041,19 @@ Use the name <code>longjmp_unwind</code> for the alternate
 <code>longjmp</code> that always does full C++ unwinding.
 The issue of where to put it (namespace and header) remains.
 
+<p>
+<font color=blue>[000106 All]</font>
+We agreed to define a new header for ABI definitions,
+initially containing this and the special exception objects agreed upon.
+SGI will create an initial version.
+We also agreed to put ABI-defined new features in an "abi" namespace.
+Therefore, for this issue, we have a prototype in <code>cxxabi.h</code>:
+<code><pre>
+    namespace abi {
+	extern "C" void longjmp_unwind (jmp_buf env, int val);
+    }
+</pre></code>
+
 
 <p>
 <table border=on cellpadding=3>
@@ -3063,6 +3122,11 @@ the pthreads library is not present.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[000106 All]</font>
+Christophe will extract a list of what the HP library expects and send
+it.
 
 
 <p>
@@ -3172,6 +3236,10 @@ Define the interface of _Unwind_ForcedUnwind.
 
 </table>
 
+<p>
+<font color=blue>[000106 All]</font>
+Coleen will send a description of their thread cancellation mechanism.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -3203,6 +3271,103 @@ and <code>__cxa_end_catch</code>.
 Define how <code>__cxa_begin_catch</code>
 and <code>__cxa_end_catch</code> identify the thrown exception.
 
+<p>
+<font color=blue>[991216 Compaq - Coleen]</font>
+If you need to clean up more than one live exception from a
+catch handler, don't you need a 'count' parameter to
+__cxa_end_catch?  In this case, you destroy both X and
+Y objects (whether or not they're both on the stack,
+or just X is).
+
+<p>
+Our equivalent of end_catch has a count parameter which
+is set to the number of live exception objects to
+delete and is used for branching out of the nested catch
+clause (not by rethrow).
+
+<p>
+<code><pre>
+struct X {
+   X(); ~X(); };
+struct Y {
+   Y(); ~Y(); };
+extern "C" int printf(const char *,...);
+main()
+{
+  try {
+    throw X();
+  } catch (X x) {
+    try {
+        throw Y();
+    } catch(...) {
+        //generates __cxa_end_catch(/*levels=*/2)
+        return 1;
+    }
+  }
+}
+</pre></code>
+
+<p>
+<font color=blue><hr><p>[991217 HP -- Christophe]</font>
+
+The reason __cxa_end_catch does not need the exception argument is that
+the exceptions it is interested in are in the "caught stack".
+When you rethrow,
+the exception you rethrow is also on this caught stack
+(it is indeed the top of the stack).
+So you don't need a separate copy or argument.
+
+<p>
+All you need is a flag set by __rethrow,
+saying "this top exception is the one being just rethrown".
+In that case, when __end_catch finds that the exception
+exits its last catch block, it will not delete it.
+Instead, the exception will just be popped from the stack.
+As a result, the exception being rethrown remains on the caught
+stack until you exit the last catch that caught it,
+and then becomes referred to only through the exception object
+passed in the runtime
+(that is, it becomes similar to a new exception being thrown:
+it does not appear in the caught stack.)
+This is the "stack + 1" model I mentioned...
+
+<p>
+__begin_catch clears the flag,
+in case you catch the rethrown exception before
+exiting the last catch handler.
+
+<p>
+This mechanism is actually correctly specified in the description of
+__cxa_end_catch (see in particular the last bullet):
+
+<p>
+Upon exit from the handler by any means,
+the epilogue calls __cxa_end_catch(),
+which:
+<ul>
+<li>
+Locates the most recently caught exception and decrements its handler count.
+<li>
+Removes the exception from the "caught" stack if the handler count
+goes to zero.
+<li>
+Destroys the exception if the handler count goes to zero,
+and the exception was not re-thrown by throw.
+</ul>
+
+<p>
+What is unclear, though,
+is the fact that __rethrow needs to pass a flag to
+__end_catch for that purpose,
+and also that the flag is stored in the high bit of the handlerCount
+(which is why it did not appear in the specification...).
+
+<p>
+<font color=blue><hr><p>[000112 editor]</font>
+Does this mean that the specification on pg. 16 of the HP document
+is the desired definition?
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -3216,35 +3381,22 @@ and <code>__cxa_end_catch</code> identify the thrown exception.
 <tr> <a name=D15></a> <td> D-15 </td>
 <td> Terminate handler and threads </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> all </td>
 <td> 991216 </td>
-<td> </td>
+<td> 000106 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Define how the terminate and unexpected handler registration
 interacts with threads.
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D15> Resolution</a></b>:
+Handler registration applies to all threads.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[991216 All]</font>
-C++ allows the user to register <code>terminate()</code> and
-<code>unexpected()</code> handlers,
-but does not specify how the registration interacts with threading.
-There are (at least) three possibilities:
-
-<ul>
-<li> Registration defines a single global handler used by all threads.
-<li> Registration defines a handler used only by the current thread.
-<li> The user can choose which of these to use.
-</ul>
-
-<p>
-Several members believe the second choice (per-thread) would be very
-surprising to many users and is therefore a highly undesirable default.
 
 
 <p>
@@ -3276,6 +3428,13 @@ represented in the action records?
 <font color=blue>[991216 All]</font>
 The working paper specifies this,
 but HP wishes to propose a different representation.
+
+<p>
+<font color=blue>[000106 All]</font>
+Christophe believes the submitted version may actually be the desired one.
+He will attempt to determine this,
+and others should look at it closely to determine whether it has a
+large combinatorial impact on the compiler.
 
 
 <p> <hr> <p>
@@ -3860,7 +4019,7 @@ as well as for any static data they contain.
 The latter includes string constants per [7.1.2]/4.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#G3> Resolution</a></b>:
 Out-of-line instances are emitted where required,
 using COMDAT (issue B-5).
 Static data referenced will be placed in COMDAT sections as well.
@@ -4299,7 +4458,7 @@ How should we pass references or class objects?
 Is any runtime library support required?
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#G5> Resolution</a></b>:
 No special cases required -- C++ will follow the C varargs ABI.
 </td> </tr>
 
@@ -4330,7 +4489,7 @@ Choices are to pass them like ABI ints,
 or in predicate registers or register pairs.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#G6> Resolution</a></b>:
 No special treatment -- pass bool like char.
 </td> </tr>
 
