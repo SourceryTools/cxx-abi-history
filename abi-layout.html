@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 17 February 2000</i>
+<i>Revised 28 February 2000</i>
 
 </center>
 
@@ -49,10 +49,12 @@ which are defined in the <i><b>Definitions</b></i> section below.
 <li> <a href=#member-pointers> Member Pointers </a>
 <li> <a href=#class-types> Non-POD Class Types </a>
 <li> <a href=#vtable> Virtual Table Layout </a>
+<li> <a href=#vcall> Virtual Function Calling Conventions </a>
 <li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
 <li> <a href=#array-new> Array Operator new Cookies </a>
 <li> <a href=#rtti> Run-Time Type Information (RTTI) </a>
 <li> <a href=#mangling> External Names (a.k.a. Mangling)</a>
+<li> <a href=#revisions> Revision History</a>
 </ul>
 
 <p> <hr> <p>
@@ -74,87 +76,17 @@ clarified:
 <h3> Revisions </h3>
 
 <p>
-<font color=blue>[000217]</font>
-Add excess-size bitfield specification.
-Add namespace/header section.
-Touch up array new cookies.
-Remove construction vtable example to new file.
-Add mangling proposal.
+<font color=blue>[000228]</font>
+Add thunk definition.
+Revise inheritance graph order definition.
+Fix member function pointer description (no division by two).
+Move bitfield allocation description (much modified)
+to the non-virtual-base allocation description.
+Replace virtual function calling convention description.
 
 <p>
-<font color=blue>[000214]</font>
-Complete array new cookie specification.
-Remove unnecessary RTTI flags.
-Correct repeated inheritance flag description.
-Move all type_info subclasses in namespace abi, not namespace std.
-Note requirements for an implementation to prevent users from emitting
-invalid vtables for RTTI classes.
-Include construction vtable proposal.
+<a href=#revisions>Revision History</a>
 
-<p>
-<font color=blue>[000203]</font>
-Incorporate discussion of 3 Febrary.
-Remove __reference_type_info (issue A-22).
-Restructure struct RTTI and flags (issue A-23).
-Clarify __base_class_info layout.
-
-<p>
-<font color=blue>[000125]</font>
-Incorporate discussion of 20 January, generally clarifications.
-Resolved A-19 (choice of a primary virtual base).
-Answered Nathan's questions about RTTI.
-Included RTTI "Deliberations" as rationale notes in the specification,
-or removed redundant ones.
-Added array operator new section.
-
-<p>
-<font color=blue>[000119]</font>
-Clarify when virtual base offsets are required.
-Note that a vtable has offset-to-top and RTTr entries for classes with
-virtual bases even if there are no virtual functions.
-Resolve allocation of a virtual base class that is a primary base for
-another base (A-17).
-Resolve choice of a primary virtual base class that is a primary base for
-another base (A-19).
-Describe the (non-)effect of virtual bases on the alignment of the
-non-virtual part of a class as the base of another class (A-18).
-
-<p>
-<font color=blue>[991230]</font>
-Integrate proposed resolution of A-16, A-17 in base class layout.
-Add outstanding questions list, and clean up questions in text.
-
-<p>
-<font color=blue>[991229]</font>
-Clarify definition of nearly empty class, layout of virtual bases.
-
-<p>
-<font color=blue>[991203]</font>
-Added description of vfunc calling convention from Jason.
-
-<p>
-<font color=blue>[991104]</font>
-Noted pair of vtable entries for virtual destructors.
-
-<p>
-<font color=blue>[991019]</font>
-Modified RTTI proposal for 14 October decisions.
-
-<p>
-<font color=blue>[991006]</font>
-Added RTTI proposal.
-
-<p>
-<font color=blue>[990930]</font>
-Updated to new vtable layout proposal.
-
-<p>
-<font color=blue>[990811]</font>
-Described member pointer representations, virtual table layout.
-
-<p>
-<font color=blue>[990730]</font>
-Selected first variant for empty base allocation; removed others.
 
 <p> <hr> <p>
 <a name=definitions>
@@ -198,13 +130,36 @@ A class with no non-static data members other than zero-width bitfields,
 no virtual functions, no virtual base classes,
 and no non-empty non-virtual base classes.
 
+<font color=red>
+<p>
+<dt> <i>inheritance graph</i> </dt>
+<dd>
+A graph with nodes representing a class and all of its subobjects,
+and arcs connecting each node with its direct bases.
+
 <p>
 <dt> <i>inheritance graph order</i> </dt>
 <dd>
-When all base classes of a class, direct and indirect,
-are viewed as an ordered set,
-the order assumed that obtained by a depth-first, left-to-right
-walk of the inheritance graph.
+The ordering on a class object and all its subobjects obtained
+by a depth-first traversal of its inheritance graph,
+where:
+
+<ul>
+<p>
+<li> No node is visited more than once.
+(So, a virtual base subobject, and all of its base subobjects,
+will be visited only once.)
+
+<p>
+<li>
+The subobjects of a node are visited in the order in which they
+were declared.
+(So, given <code>class A : public B, public C</code>,
+A is walked first,
+then B and its subobjects,
+and then C and its subobjects.)
+</ul>
+</font>
 
 <p>
 <a name=q3></a>
@@ -233,6 +188,20 @@ at offset 0.
 <dd>
 The instance of a vtable for a base class
 that is embedded in the vtable of a class derived from it.
+
+<p>
+<dt> <i>thunk</i> </dt>
+<dd>
+A segment of code associated (in this ABI) with a target function,
+which is called instead of the target function for the purpose of
+modifying parameters (e.g. <code>this</code>)
+or other parts of the environment
+before transferring control to the target function,
+and possibly making further modifications after its return.
+A thunk may contain as little as an instruction to be executed prior to
+falling through to an immediately following target function,
+or it may be a full function with its own stack frame that does
+a full call to the target function.
 
 <p>
 <dt> <i>virtual table</i> (or <i>vtable</i>) </dt>
@@ -282,7 +251,6 @@ It is always equal to <i>align</i>(O) for types without virtual bases.
 
 </ul>
 
-<font color=red>
 <p> <hr> <p>
 <a name=namespace>
 <h3> Namespace and Header </h3>
@@ -299,9 +267,6 @@ It is expected that users will use the alias,
 and the remainder of the ABI specification will use it as well.
 
 
-</font>
-
-
 <p> <hr> <p>
 <a name=pod>
 <h3> POD Data Types </h3>
@@ -312,18 +277,6 @@ Type bool has size and alignment 1.
 All of these types have data size and non-virtual size equal to their size.
 (We ignore tail padding for PODs because the Standard does not allow us
 to use it for anything else.)
-
-<font color=red>
-<p>
-When a bitfield member of a class is specified with a size greater than
-the field type declared, e.g. <code>char c: 32</code>,
-it is allocated as follows.
-The field alignment used is that of the largest integer type that will
-fit in the given size,
-and the first bits of the field (low-order for little-endian IA-64)
-are used to contain the actual data.
-
-</font>
 
 
 <p> <hr> <p>
@@ -345,9 +298,12 @@ A pointer to member function is a pair <ptr, adj> as follows:
 <dd> For a non-virtual function, this field is a simple function pointer.
      (Under current base IA-64 psABI conventions,
      that is a pointer to a GP/function address pair.)
+<font color=red>
      For a virtual function,
-     it is 1 plus twice the Vtable offset of the function.
+     it is 1 plus the Vtable offset (in bytes) of the function,
+     represented as a <code>ptrdiff_t</code>.
      The value zero is a NULL pointer.
+</font>
 
 <p>
 <dt> <code>adj</code>:
@@ -425,8 +381,49 @@ allocate as follows:
 
   <ol type=1>
 
+<font color=red>
   <p>
-  <li> If D is not an empty base class,
+  <li> If D is a bitfield, i.e. declared as "<code>T [b]: n;"</code>,
+       for some integral POD type T and bit count n,
+       there are two cases depending on <code>sizeof(T)</code>
+       and <code>n</code>:
+
+       <ol>
+       <p>
+       <li>
+       If <code>sizeof(T)*8 >= n</code>,
+       the bitfield is allocated as required by the underlying C psABI.
+       That is, it will be placed in the next available n bits,
+       subject to the constraint that it does not cross an alignment
+       boundary for type <code>T</code>.
+       The next available n bits are at offset dsize(C),
+       unless the preceding byte is only partially filled by a bitfield,
+       in which case the bitfield allocation can begin in that byte.
+	<p>
+	Update align(C) to max (align(C), align(T)).
+
+       <p>
+       <li>
+       If <code>sizeof(T)*8 < n</code>,
+       let T' be the largest integral POD type with
+       <code>sizeof(T')*8 <= n</code>.
+       The bitfield is allocated starting at the next offset aligned
+       appropriately for T', with length n bits.
+       The first <code>sizeof(T)*8</code> bits are used to hold the
+       value of the bitfield,
+       followed by <code>n - sizeof(T)*8</code> bits of padding.
+	<p>
+	Update align(C) to max (align(C), align(T')).
+       </ol>
+
+       <p>
+       In either case,
+       update sizeof(C) and dsize(C) to include the last byte
+       containing (part of) the bitfield.
+</font>
+
+  <p>
+  <li> Otherwise, if D is not an empty base class,
 	start at offset dsize(C),
 	incremented if necessary to alignment nvalign(type(D)).
 	Place D at this offset unless doing so would result in two
@@ -935,79 +932,207 @@ nor for S because it is already present as a virtual base of T.
 <p>
 This section sketches the calling convention for virtual functions,
 based on the above virtual table layout.
+<font color=red>
+<i>See also the <a href=abi-examples.html#vcall>ABI examples</a>
+document for motivating examples and potential implementations.</i>
 
 <p>
-Note: for virtual functions not inherited from a virtual base, 
-regular thunks are a suitable implementation,
-since the implementation can emit them immediately before the
-function to avoid the indirect branch penalty.
-We use offsets in the vtable for functions that come from a virtual base,
-because it is impossible to predict what the offset between the
-current class and its virtual base will
-be in classes derived from the current class.
+We explain, at a high level,
+what information must be present in the vtable for a class A
+which declares a virtual function f in order that,
+given an pointer of type A*,
+the caller can call the virtual function f.
+This section does not specify exactly where that information is located
+(see above),
+nor does it specify how to convert a pointer to a class
+derived from A to an A*,
+if that is required.
+
+<p>
+When this section uses the term <i>function pointer</i> it is understood
+that this term may refer either to a traditional function pointer
+(i.e., a pointer to a GP/address pair) or a GP/address pair itself.
+Which of these alternatives is actually used
+is specified elsewhere in the ABI,
+but is independent of the description in this section.
+
+<p>
+Throughout this section,
+we assume that A is the class for which we are creating a vtable,
+B is the most derived class in the hierarchy,
+and C is the class that contains C::f,
+the unique final overrider for A.
+This section specifies the contents of the f entry in the A-in-B vtable.
+(If A is primary base in the hierarchy,
+then the A-in-B vtable will be shared with the derived class vtable --
+but the contents of the A portion of that vtable
+will still be as specified here.)
+
+<p>
+In all cases, the <i>non-adjusting entry point</i> for a virtual
+function expects the `this' pointer to point to an instance of the
+class in which the virtual function is defined.
+In other words, the non-adjusting entry point for C::f will expect
+that its `this' pointer points to a C object.
+
+<p>
+We say that a subobject X is a <i>morally virtual</i> base of Y
+if X is an indirect or direct base class of Y,
+and if X is either a virtual base of Y,
+or the direct or indirect base of a virtual base of Y.
+
 
 <p>
 The calling convention is as follows:
 
 <ul>
-<li>vtable layout:
+<li>Vtable Components:
 <p>
-For each virtual function defined in a class,
-we add an entry to the primary vtable if one is not already there.
+For each virtual function defined in a class C,
+we add an entry to its vtable if one is not already there
+(i.e. if it is not overriding a function in its primary base).
 In particular, a definition which overrides a function inherited from
 a secondary base gets a new slot in the primary vtable.
 We do this to avoid useless adjustments when calling a virtual
 function through a pointer to the most derived class.
 
 <p>
+The content of this entry for class A is a function pointer,
+as determined by one of the following cases.
+Recall that we are dealing with a hierarchy where B is most derived,
+A is a direct (or indirect) base of B defining f,
+and C contains the unique final overrider C::f of A::f.
+
+<ol type=1>
+<p>
+<li> A = C
+<p>
+(In this case, we are creating either the primary vtable for A,
+or the A-in-B secondary vtable.)
+<p>
+The vtable contains a function pointer pointing to the
+non-adjusting entry point for A::f.
+
+<p>
+<li> A = C
+<p>
+In this case, we are creating the A-in-B secondary vtable.
+<p>
+The vtable contains a pointer to an entry point that performs the
+adjustment from an A* to a C*,
+and then transfers control to the non-adjusting entry point for C::f.
+</ol>
+
+<p>
 When a class is used as a virtual base,
 we add a vcall offset slot to the beginning of its vtable for each of
 the virtual functions it provides,
 whether in its primary or secondary vtables.
-Derived classes which override these functions will use the slots to
+Derived classes which override these functions may use the slots to
 determine the adjustment necessary.
-
-<p>
-<li>Caller:
-<p>
-The caller adjusts the 'this' argument to point to the class
-that contains the unique final overrider (as defined in [class.virtual])
-for the function being called.
-The result provides both the 'this' argument and the vtable pointer
-for finding the function we want.
 
 <p>
 <li>Callee:
 <p>
-Each virtual function 'f' defined in a class 'A'
-has one entry point which takes an A*,
-and performs no adjustment.
-The primary vtable for A points to this entry point.
+For each direct or indirect base A of C that is not a morally virtual
+base of C,
+the compiler must emit, in the same object file as the code for C::f,
+an <i>A-adjusting entry point</i> for C::f.
+This entry point will expect that its <code>this</code> pointer
+points to an A*,
+and will convert it to a C* before transferring control
+to the non-adjusting entry point for C::f.
 
 <p>
-For each secondary vtable
-from a non-virtual base class 'B' which defines f,
-an additional entry point is generated
-which performs the constant adjustment from
-<font color=red>A* to B*</font>.
+For each direct or indirect virtual base V of C such that either V declares f,
+or is derived from a class that declares f,
+the compiler must emit, in the same object file as the code for C::f,
+a <i>V-adjusting entry point</i> for C::f.
+This entry point will expect that its <code>this</code> pointer
+points to the unique virtual V subobject of C.
+(Note that there may in general be multiple V subobjects of C,
+but that only one of them will be virtual.)
+This entry point must examine the V vtable given by its
+<code>this</code> pointer,
+extract the vcall offset corresponding to f located in that vtable,
+and add this offset to the <code>this</code> pointer.
+(Note that, as specified in the data layout document,
+when V is used as a virtual base,
+its vtable contains vcall offsets for every virtual function
+declared in V or any of its bases.)
+Then,
+this entry point must transfer control to the non-adjusting entry point.
 
 <p>
-For each secondary vtable from a virtual base class 'C' which defines f,
-an additional entry point is generated which performs the adjustment from
-<font color=red>
-A* to C* by adding the vcall offset for f stored in the secondary
-vtable for A</font>.
+For each morally virtual base M of C such that M is <i><b>not</b></i>
+a virtual base,
+and such that M declares f,
+the compiler must emit,
+in the same object file as the code for C::f,
+an <i>M-adjusting entry point</i> for C::f.
+This entry point will expect that its <code>this</code> pointer
+points to an A*,
+and will convert it to a V*,
+where V is the nearest virtual base to M along the path from C to M.
+Then, it will convert the V* to a C* by using the vcall offset
+stored in the V's vtable.
+(Note that one implementation of the M-adjusting entry point
+is to convert from M* to V*
+and then transfer control to the V-adjusting entry point.)
 
 <p>
-For each secondary vtable from a base 'D' which is a non-virtual base
-of a virtual base 'E',
-an additional entry point is generated
-<font color=red>
-in the secondary vtable for 'E'
-</font>
-which first performs the constant adjustment from D* to E*,
-then the adjustment from E* to A* by adding the vcall offset for f stored
-in the secondary vtable for E.
+<li>Caller:
+<p>
+When calling a virtual function f,
+through a pointer of static type B*,
+the caller
+
+<ul>
+<p>
+<li>Selects a (possibly improper) subobject A of B
+    such that A declares f.
+    (In general, A may be the same as B.)
+    (Note that A need not define f;
+    it may contain either a definition of f,
+    or a declaration of f as a pure virtual function.)
+
+<p>
+<li>Converts the B* to point to this subobject.
+    (Call the resulting pointer `a'.)
+
+<p>
+<li>Uses the vtable pointer contained in the A subobject to locate
+    the function pointer through which to perform the call.
+
+<p>
+<li>Calls through this function pointer,
+    passing `a' as the <code>this</code> pointer.
+</ul>
+
+<i>
+<p>
+(Note that in general it will be optimal to select the class which
+contained the final overrider (i.e., C)
+as the class to which the B* should be converted.
+This class is always a satisfactory choice,
+since it is known to contain a definition of f.
+In addition, if the dynamic type of the object is B,
+then C::f will be the function ultimately selected by the call,
+which means that C's vtable will
+contain a pointer to the non-adjusting entry point,
+meaning that no additional adjustments to the <code>this</code>
+pointer will be required.
+
+<p>
+However, there may be cases in which choosing a different base
+subobject could be superior.
+For example, if there is an alternate base D which also declares f,
+and a pointer to the D subobject is already available,
+then it may be better to use the D subobject rather
+than converting the B* to a C*,
+in order to avoid the cost of the conversion.)
+</i>
+
 
 <p>
 <li>Implementation
@@ -1018,10 +1143,13 @@ An existing compiler which uses thunks could be converted to use this
 ABI by only adding support for the vcall offsets.
 A more efficient implementation would be to emit all of the thunks
 immediately before the non-adjusting entry point to the function.
-Another might use predication rather than branches to reach the main function.
 Another might emit a new copy of the function for each entry point;
 this is a quality of implementation issue.
+<i>See further discussion of implementation in the
+<a href=abi-examples.html#vcall-impl>ABI examples</a> document.</i>
 </ul>
+
+</font>
 
 
 <p> <hr> <p>
@@ -1257,12 +1385,10 @@ Specifically:
   <li> The cookie will have size <code>sizeof(size_t)</code>.
   <li> Let <code>align</code> be the maximum alignment of
   <code>size_t</code> and an element of the array to be allocated.
-<font color=red>
   <li> Let <code>padding</code> be the maximum of
   <code>sizeof(size_t)</code> and <code>align</code> bytes.
   <li> The space allocated for the array will be the space required
   by the array itself plus <code>padding</code> bytes.
-</font>
   <li> The alignment of the space allocated for the array will be
   <code>align</code> bytes.
   <li> The array data will begin at an offset of <code>align</code> bytes
@@ -1568,9 +1694,7 @@ It is derived from abi::__class_type_info, and adds fields:
 	<li> 0x01: class has non-diamond repeated inheritance
 	<li> 0x02: class is diamond shaped
 	<li> 0x04: class has non-publicly inherited base(s)
-<font color=red>
 	<li> 0x08: class has publicly inherited base(s)
-</font>
 	</ul>
       All of these flags refer to both direct and indirect bases.
       The type of the _VMI_flags field is defined by each psABI,
@@ -1645,11 +1769,9 @@ member is defined, if any, or everywhere referenced if none.
 Therefore, an implementation should include at least one
 non-inline virtual function member and define it in the library,
 to avoid having user code inadvertently preempt the vtable.
-<font color=red>
 Since the Standard requires a virtual destructor,
 and it will rarely be called,
 it is a good candidate for this role.
-</font>
 </i>
 
 
@@ -1776,6 +1898,7 @@ no interfaces need to be specified in this document
 <li> Revise examples.
 <li> Mangling of special entities: VT, VTT, typeinfo, "TID", helper variables
         to ensure one-time initialization and thread protection, ...
+<li> Virtual call thunk names.
 <li> ILP-32 conventions?
 <li> Complete glossary of Sx abbreviations.
 <li> Escape mechanism for extended operator like __alignof?
@@ -2203,6 +2326,96 @@ For example:
 </ul>
 
 </font>
+
+<p>
+<hr>
+
+<p> <hr> <p>
+<a name=revisions>
+<h3> Revision History </h3>
+
+<p>
+<font color=blue>[000217]</font>
+Add excess-size bitfield specification.
+Add namespace/header section.
+Touch up array new cookies.
+Remove construction vtable example to new file.
+Add mangling proposal.
+
+<p>
+<font color=blue>[000214]</font>
+Complete array new cookie specification.
+Remove unnecessary RTTI flags.
+Correct repeated inheritance flag description.
+Move all type_info subclasses in namespace abi, not namespace std.
+Note requirements for an implementation to prevent users from emitting
+invalid vtables for RTTI classes.
+Include construction vtable proposal.
+
+<p>
+<font color=blue>[000203]</font>
+Incorporate discussion of 3 Febrary.
+Remove __reference_type_info (issue A-22).
+Restructure struct RTTI and flags (issue A-23).
+Clarify __base_class_info layout.
+
+<p>
+<font color=blue>[000125]</font>
+Incorporate discussion of 20 January, generally clarifications.
+Resolved A-19 (choice of a primary virtual base).
+Answered Nathan's questions about RTTI.
+Included RTTI "Deliberations" as rationale notes in the specification,
+or removed redundant ones.
+Added array operator new section.
+
+<p>
+<font color=blue>[000119]</font>
+Clarify when virtual base offsets are required.
+Note that a vtable has offset-to-top and RTTr entries for classes with
+virtual bases even if there are no virtual functions.
+Resolve allocation of a virtual base class that is a primary base for
+another base (A-17).
+Resolve choice of a primary virtual base class that is a primary base for
+another base (A-19).
+Describe the (non-)effect of virtual bases on the alignment of the
+non-virtual part of a class as the base of another class (A-18).
+
+<p>
+<font color=blue>[991230]</font>
+Integrate proposed resolution of A-16, A-17 in base class layout.
+Add outstanding questions list, and clean up questions in text.
+
+<p>
+<font color=blue>[991229]</font>
+Clarify definition of nearly empty class, layout of virtual bases.
+
+<p>
+<font color=blue>[991203]</font>
+Added description of vfunc calling convention from Jason.
+
+<p>
+<font color=blue>[991104]</font>
+Noted pair of vtable entries for virtual destructors.
+
+<p>
+<font color=blue>[991019]</font>
+Modified RTTI proposal for 14 October decisions.
+
+<p>
+<font color=blue>[991006]</font>
+Added RTTI proposal.
+
+<p>
+<font color=blue>[990930]</font>
+Updated to new vtable layout proposal.
+
+<p>
+<font color=blue>[990811]</font>
+Described member pointer representations, virtual table layout.
+
+<p>
+<font color=blue>[990730]</font>
+Selected first variant for empty base allocation; removed others.
 
 <p>
 <hr>
