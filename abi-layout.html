@@ -15,13 +15,22 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 3 January 2000</i>
+<i>Revised 10 January 2000</i>
 
 </center>
 
 </HEAD>
 
 <BODY>
+
+
+<p> <hr> <p>
+<a name=intro>
+<h3> Introduction </h3>
+
+In this document, we define the memory layout for C++ data objects,
+including both predefined and user-defined data types,
+as well as internal compiler generated object such as virtual tables.
 
 <p> <hr> <p>
 <h3> Contents </h3>
@@ -58,15 +67,19 @@ fields if it has virtual bases but not virtual functions?
 </a>
 
 <p>
-<li> <a href=#q3>A-16:
-Should a class containing only virtual bases be considered nearly empty?
-</a>
-
-<p>
 <li> <a href=#q4>A-17:
 Should a nearly empty virtual base class E that is the primary base
 class of another base class D of the class C being laid out,
 be re-allocated in C, or should its allocation as part of D in C be reused?
+</a>
+
+<p>
+<li> <a href=#a19>A-19:
+Suppose a nearly empty virtual direct base class E is the primary base
+class of a later nearly empty virtual direct base class D
+of the class C being laid out.
+Should E be the primary base (because first),
+or should D (because this saves a vptr)?
 </a>
 
 <p>
@@ -119,6 +132,58 @@ Described member pointer representations, virtual table layout.
 <font color=blue>[990730]</font>
 Selected first variant for empty base allocation; removed others.
 
+<p> <hr> <p>
+<a name=definitions>
+<h3> Definitions </h3>
+
+<p>
+The descriptions below make use of the following definitions:
+
+<dl>
+
+<p>
+<dt> <i>alignment</i> of a type T (or object X)</dt>
+<dd>
+A value A such that any object X of type T has an address satisfying
+the constraint that &X modulo A == 0.
+
+<p>
+<dt> <i>empty class</i> </dt>
+<dd>
+A class with no non-static data members other than zero-width bitfields,
+no virtual functions, no virtual base classes,
+and no non-empty non-virtual base classes.
+
+<p>
+<a name=q3></a>
+<dt> <i>nearly empty class</i> </dt>
+<dd>
+A class that contains no data except its virtual pointer (if any) or
+virtual bases.  In particular, it:
+<ul>
+<li> has no non-static data members other than zero-width bitfields,
+<li> has no base classes that are not either empty, nearly empty,
+     or virtual, and
+<li> has at most one non-virtual, nearly empty base class.
+</ul>
+Such classes may be primary base classes even if virtual,
+sharing a virtual pointer with the derived class.
+
+<p>
+<dt> <i>polymorphic class</i> </dt>
+<dd>
+A class requiring a virtual table pointer
+(because it or its bases have one or more virtual member functions or
+virtual base classes).
+
+<p>
+<dt> <i>primary base class</i> </dt>
+<dd>
+For a polymorphic class,
+the unique base class (if any) with which it shares the Vptr at offset 0.
+
+</dl>
+
 
 <p> <hr> <p>
 <a name=general>
@@ -148,60 +213,6 @@ the <i>non-virtual size</i> of an object,
 which intuitively is dsize(O) minus the size of virtual bases.
 
 </ul>
-
-<p> <hr> <p>
-<a name=definitions>
-<h3> Definitions </h3>
-
-<p>
-The descriptions below make use of the following definitions:
-
-<dl>
-
-<p>
-<dt> <i>alignment</i> of a type T (or object X)</dt>
-<dd>
-A value A such that any object X of type T has an address satisfying
-the constraint that &X modulo A == 0.
-
-<p>
-<dt> <i>empty class</i> </dt>
-<dd>
-A class with no non-static data members other than zero-width bitfields,
-no virtual functions, no virtual base classes,
-and no non-empty non-virtual base classes.
-
-<p>
-<a name=q3></a>
-<dt> <i>nearly empty class</i> </dt>
-<dd>
-A class that:
-<ul>
-<li> has no non-static data members other than zero-width bitfields,
-<li> has no base classes that are not either empty, nearly empty,
-     <font color=blue>or virtual</font>,
-<li> has at most one nearly empty base class, and
-<li> has at least one virtual function, possibly inherited from a base class.
-</ul>
-
-Such a class contains only a Vptr.
-<p>
-<font color=blue>The blue text above is the proposed resolution of A-16.</font>
-
-<p>
-<dt> <i>polymorphic class</i> </dt>
-<dd>
-A class requiring a virtual table pointer
-(because it or its bases have one or more virtual member functions or
-virtual base classes).
-
-<p>
-<dt> <i>primary base class</i> </dt>
-<dd>
-For a polymorphic class,
-the unique base class (if any) with which it shares the Vptr at offset 0.
-
-</dl>
 
 <p> <hr> <p>
 <a name=pod>
@@ -257,8 +268,13 @@ of a class containing those two members, in that order.
 
 For non-POD class types C, assume that all component types
 (i.e. base classes and non-static data member types)
-have been laid out, defining size, data size, and alignment.
+have been laid out, defining size, data size, non-virtual size, and alignment.
+(See the description of these terms in
+<a href=#general><b>General</b></a> above.)
 Layout (of type C) is done using the following procedure.
+
+<p><a name=a19><font color=blue>
+The proposed resolution of A-19 is in blue below.</font></a>
 
 <ol type=I>
 <p>
@@ -273,11 +289,23 @@ Layout (of type C) is done using the following procedure.
       <li> If C has a polymorphic base class,
 	   attempt to choose a primary base class B.
 	   It is the first non-virtual polymorphic base class, if any,
-	   or else the first nearly empty virtual base class.
-	   Allocate it at offset zero, and set
-	   sizeof(C) to sizeof(B), align(C) to align(B), dsize(C) to nvsize(B).
+	   or else <font color=blue>
+	   <s>the first nearly empty virtual base class</s>
+	   a nearly empty virtual base class chosen as follows.
+	   Scan the direct virtual bases in declaration order, left to right.
+	   The first nearly empty one becomes the first <i>candidate</i>.
+	   After a candidate is found,
+	   if the current candidate A is a primary base class of a later
+	   nearly empty direct virtual base B,
+	   B becomes the new candidate.
+	   The last candidate so chosen becomes the primary base.
+	   All of the candidates in this sequence are considered primary
+	   bases in subsequent allocations.
+	   </font>
 
 	   <p>
+	   Allocate the chosen primary base at offset zero, and set
+	   sizeof(C) to sizeof(B), align(C) to align(B), dsize(C) to nvsize(B).
 	   This step allocates only B's non-virtual part,
 	   i.e. excluding any direct or indirect bases.
 
@@ -352,11 +380,13 @@ allocate as follows:
   After all such components have been allocated,
   set nvsize(C) = dsize(C).
 
-<p><a name=q4></a>
+<p><a name=q4></a><a name=a174></a>
 <li> <h5> Virtual Base Allocation </h5>
 <p>
 <font color=green>
-The green text below is the proposed resolution of A-17.</font>
+The green text below is the original proposed resolution of A-17.</font>
+<font color=red>
+The red text below is Mark's alternate proposed resolution of A-17.</font>
 
 <p>
 Finally allocate any direct or indirect virtual base classes
@@ -379,6 +409,16 @@ in step III),
 shall be treated as allocated as part of that class F
 (the first such in the allocation order if there is more than one),
 and not reallocated here.
+</font>
+
+<p><font color=red>
+Any nearly empty virtual base class E of the current class C that has
+been chosen as the primary base class of some other base class (direct
+or indirect, virtual or non-virtual) of C,
+will allocated as part of that other base class, and is not allocated here.
+If E is a primary base class of more than one other base,
+the instance used as its allocation in C shall be the first such
+in the depth-first, left-to-right base declaration order.
 </font>
 
 <p>
