@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 21 March 2000</i>
+<i>Revised 27 March 2000</i>
 
 </center>
 
@@ -25,6 +25,11 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000323]</font>
+New issues <a href=#F8>F-8</a>, <a href=#F9>F-9</a>.
+Additions to <a href=#C4>C-4</a>, <a href=#F1>F-1</a>.
 
 <p>
 <font color=blue>[000321]</font>
@@ -2778,6 +2783,85 @@ She should be out to California in two weeks,
 so we can finalize this issue.
 
 <p>
+<font color=blue>[000323 All]</font>
+Discussion clarified the two proposals and their relative merits:
+<ul>
+
+<p>
+<li>
+Proposal A has a VTT with pointers only to full vtable groups,
+which are special construction vtable groups except for those bases
+where the entire group can be the normal complete object group.
+
+<p>
+<li>
+Proposal B has a VTT with pointers to all the vtables in the vtable
+groups for all of the bases,
+but individual vtable pointers can reference the normal group
+(or even construction groups for other bases).
+
+<p>
+<li>
+Therefore, B will have a larger VTT but smaller construction vtables.
+Overall, we should expect much less space required by proposal B.
+Because of this in particular,
+and the sharing of vtables for the construction of various bases as
+well as normal post-construction usage,
+B should have better cache behavior.
+
+<p>
+<li>
+In A, the vpointers are populated by loading a group address from the VTT
+and doing an add and store for each base.
+In B, we must do a load/store pair for each base.
+
+<p>
+<li>
+B breaks the ability to assume that,
+if you have a vpointer for one secondary non-virtual vtable,
+you can use it to access the other secondary vtables at known offsets.
+We know of noone that does this optimization today,
+and it only affects multiple inheritance.
+
+</ul>
+
+<p>
+It was decided that the space savings outweighed the lost optimizations,
+and proposal B was adopted.
+Jim will clean up the writeup for final adoption.
+
+<p>
+For the record,
+following are several issues that have been raised and resolved in the
+process of developing this proposal:
+
+<ul>
+<li>
+We could separate the VTT array from the vtable,
+and provide a new VTT data item.
+<font color=purple><i>
+We will do so.
+</i></font>
+<li>
+We could also make the VTT static so it has no linkage
+and is created in the modules that define the constructors and destructor
+of a class.  I don't think they would take that much space.
+<font color=purple><i>
+We will not do this.
+To avoid replicating the construction vtables, which are big,
+we need to allocate them with the main vtable with a known interface.
+So there's no benefit to putting the VTT elsewhere.
+</i></font>
+<li>
+The subobject construction vtables do not need to be contiguous to the
+normal vtable, since they will be accessed via the VTT.
+<font color=purple><i>
+We will not require them to be contiguous.
+</i></font>
+</ul>
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -4522,6 +4606,20 @@ Extensive discussions in the meeting,
 reflected in the updated
 <a href=abi-layout.html#mangling>ABI Layout</a> document.
 
+<p>
+<font color=blue>[000323 All]</font>
+Extensive discussions in the meeting,
+reflected in the updated
+<a href=abi-layout.html#mangling>ABI Layout</a> document.
+The principal decisions were:
+
+<ul>
+<li> CV-qualifiers must be ordered.
+<li> Substitution numbering starts from zero,
+    and is base 36 using upper-case letters.
+<li> Use "S_" for repeated substitutions.
+<li> Substitution candidates are added to dictionary only once.
+</ul>
 
 <p>
 <table border=on cellpadding=3>
@@ -4864,6 +4962,105 @@ static functions in case a compiler chooses to inline them?
 </td> </tr>
 
 </table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F8></a> <td> F-8 </td>
+<td> Identifiers with unicode letters </td>
+<td> call </td>
+<td> open </td>
+<td> HU-Berlin </td>
+<td> 000323 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should we mangle names containing unicode letters?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000323 HU-Berlin -- Martin]</font>
+2.2, [lex.charset]/2, allows usage of universal-character-names in
+C++ programs, especially in identifiers and strings.
+How do we mangle the variable pi below?
+
+<code><pre>
+   namespace newmath {
+      const long double \u03A0 = 3.14159265358979;
+   }
+
+</pre></code>
+
+<p>
+This is also an issue for C99, so it may be that the base ABI has a
+specification; we'd have to follow that at least for extern "C" names.
+If not, I propose that such names are encoded in UTF-8.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F9></a> <td> F-9 </td>
+<td> Strings with unicode letters </td>
+<td> call </td>
+<td> open </td>
+<td> HU-Berlin </td>
+<td> 000323 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should we handle the object file representation of narrow and wide
+string literals containing unicode letters?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000323 HU-Berlin -- Martin]</font>
+2.2, [lex.charset]/2, allows usage of universal-character-names in
+C++ programs, especially in identifiers and strings.
+Consider the example:
+
+<code><pre>
+    wchar_t MvL[]=L"Martin von L\u00F6wis";
+</pre></code>
+
+<p>
+First, what is sizeof(wchar_t) in the base ABI? I'll assume 4 for
+the moment. Then, the question comes down to: What is the execution
+character set, and the wide execution character set? 2.2/3 says
+they are implementation-defined, so I guess we must define
+them. Typically, people expect this to be a run-time setting (which
+is a reasonable assumption), but it kind-of breaks for string
+literals.
+
+<p>
+Proposal: The wide execution character set is UCS-4.
+The execution-character-set is "as-is",
+i.e. bytes from the source character set are
+copied unmodified to the object file.
+Universal-character-names appearing in narrow (ie. char)
+strings are not portable in this ABI
+(the other alternatives would be to say they are Latin-1,
+or encoded as UTF-8, I guess).
+
 
 
 
