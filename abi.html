@@ -231,13 +231,9 @@ sharing a virtual pointer with the derived class.
 <dt> <i>POD for the purpose of layout</i><dt>
 <dd>
 A type is considered a POD for the purposes of layout if it is a POD
-type (in the sense of [basic.types]), and is not:
-<ul>
-<li>a POD-struct or POD-union (in the sense of [class]) with a
-bitfield whose declared width is wider than the declared type of the
-bitfield, or
-<li>an array of a type which is not a POD for the purpose of layout.
-</ul>
+type (in the sense of [basic.types]), and is not a POD-struct or
+POD-union (in the sense of [class]) with a bitfield whose declared
+width is wider than the declared type of the bitfield
 </dd>
 </p>
 
