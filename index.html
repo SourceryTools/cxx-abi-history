@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 29 July 1999</i>
+<i>Revised 6 August 1999</i>
 
 </center>
 
@@ -46,22 +46,8 @@ C++ ABI Summary
 </tr>
 
 <tr class=small>
-<td> 22 July </td> <td> 10:00-12:00 PDT </td>
+<td> 5 August </td> <td> 10:00-12:00 PDT </td>
 <td align=left colspan=2> completed </td>
-</tr>
-
-<tr class=small>
-<td> 29 July </td>
-<td> 10:00-12:00 PDT </td>
-<td> SGI Sapphire 20L </td>
-<td> 650-933-7976 </td>
-</tr>
-
-<tr class=small>
-<td> 5 August </td>
-<td> 10:00-12:00 PDT </td>
-<td> SGI Sapphire 20L </td>
-<td> 650-933-7976 </td>
 </tr>
 
 <tr class=small>
@@ -293,9 +279,9 @@ the same support runtimes.
 <td> Write-up of Vfunc call protocol
 </td>
 <td> Christophe de Dinechin </td>
-<td> open </td>
+<td> closed </td>
 <td> 990610 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 
 <tr class=small> <td> 8 </td>
@@ -309,7 +295,7 @@ the same support runtimes.
 <tr class=small> <td> 9 </td>
 <td> Check with c++-core about empty base placement </td>
 <td> Jason Merrill </td>
-<td> open </td>
+<td> closed </td>
 <td> 990610 </td>
 <td> 990618 </td>
 </tr>
@@ -368,6 +354,30 @@ the same support runtimes.
 <td> closed </td>
 <td> 990715 </td>
 <td> 990729 </td>
+</tr>
+
+<tr class=small> <td> 17 </td>
+<td> Validate Christophe's B-6 Vtable layout </td>
+<td> Jim Dehnert </td>
+<td> open </td>
+<td> 990729 </td>
+<td> </td>
+</tr>
+
+<tr class=small> <td> 18 </td>
+<td> Check Sun dynamic cast algorithm </td>
+<td> Michael Lam </td>
+<td> open </td>
+<td> 990805 </td>
+<td>  </td>
+</tr>
+
+<tr class=small> <td> 19 </td>
+<td> Write up C-3 destructor proposal </td>
+<td> Jim Dehnert </td>
+<td> open </td>
+<td> 990805 </td>
+<td> </td>
 </tr>
 
 
@@ -541,10 +551,10 @@ The identifiers used are:
 <tr class=small> <td> A-12 </td>
 <td> Merging secondary vtables </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> Sun </td>
 <td> 990610 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 
 <tr class=small> <td> A-13 </td>
@@ -559,10 +569,10 @@ The identifiers used are:
 <tr class=small> <td> A-14 </td>
 <td> Pointers to data members </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990729 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 
 <tr class=small> </tr>
@@ -592,19 +602,19 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> B-3 </td>
 <td> Allowed caching of vtable contents </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 
 <tr class=small> <td> B-4 </td>
 <td> Function descriptors in vtable </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 
 <tr class=small> <td> B-5 </td>
@@ -628,10 +638,10 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> B-7 </td>
 <td> Objects and Vtables in shared memory </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990624 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 
 <tr class=small> <td> B-8 </td>
@@ -706,10 +716,10 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> C-7 </td>
 <td> Passing value parameters by reference </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> All </td>
 <td> 990625 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 
 <tr class=small> <td> C-8 </td>
@@ -938,112 +948,25 @@ Virtual Function Handling </a> </th>
 <hr>
 
 <p>
-<h4>Notes from 3 June 1999 </h4>
+<h4> Procedure Notes from 3 June 1999 </h4>
 
 <ul>
-<p>
-<li> Introductions
-
-<p>
-<li> Objectives: see above
-
-<p>
-<li> Procedure
-
-  <ul>
-  <li> Meetings:  10-12 Thursdays at SGI for the near term.
-  <li> Intel NDA:  Generally unnecessary.  Priti will set up n-way
-       for eligible members for cases where needed.  Cary expects RT
-       architecture/software conventions document to be released in the
-       next month or two, removing most of the issues.
-  <li> Communication:  Use of reflector encouraged for discussion.
-       NDA communication will be handled with password-protected PDF
-       once Intel sets up n-way.
-  <li> Available documents:  Parties with existing, relevant documents
-       (includes Sun, HP) will send them to group.
-  <li> Intellectual property:  Participants don't expect problems with
-       release of any of their IP.  Microsoft has extensive patents in
-       the area, but they are excessively broad (covering obvious ideas
-       and prior art), so expectation is that they are not a problem.
-       Nonetheless, we should be aware of them.
-  </ul>
-
-<p>
-<li> Issue Identification:  new issues reflected in status table.
-
+<li> Meetings:  10-12 Thursdays at SGI for the near term.
+<li> Intel NDA:  Generally unnecessary.  Priti will set up n-way
+     for eligible members for cases where needed.  Cary expects RT
+     architecture/software conventions document to be released in the
+     next month or two, removing most of the issues.
+<li> Communication:  Use of reflector encouraged for discussion.
+     NDA communication will be handled with password-protected PDF
+     once Intel sets up n-way.
+<li> Available documents:  Parties with existing, relevant documents
+     (includes Sun, HP) will send them to group.
+<li> Intellectual property:  Participants don't expect problems with
+     release of any of their IP.  Microsoft has extensive patents in
+     the area, but they are excessively broad (covering obvious ideas
+     and prior art), so expectation is that they are not a problem.
+     Nonetheless, we should be aware of them.
 </ul>
-
-<p>
-<h4>Notes from 10 June 1999 </h4>
-
-<p>
-Matt Austern presented an initial assessment of the object layout issues.
-He categorized them as trivial
-(requiring agreement, but without significant performance implications)
-or significant.  The trivial issues are:
-
-<ol>
-<p>
-<li> (A-1) Where is the Vptr stored in an object?
-Given the absence of addressing modes with displacements on IA-64,
-the consensus is at the beginning of the object.
-
-<p>
-<li> (A-9) What is the order of members in an object?
-Discussion of the possibilities for reordering between access
-specifications suggests that we might find significance here.
-
-<p>
-<li> (A-4) Empty base class optimization:
-when can an empty base class be stored at the same offset as another member?
-
-<p>
-<li> (A-1) What is the order of the Vtable?
-
-<p>
-<li> (B-5) What is the external name of a global Vtable?
-
-<p>
-<li> (B-5) Where is a global Vtable emitted?
-
-</ol>
-
-<p>
-The significant issues are:
-
-<ol>
-<p>
-<li> (A-3) How are virtual functions handled given multiple inheritance?
-That is, where is the "this" pointer adjusted?
-
-<p>
-<li> (A-2) How are virtual functions handled given virtual base types?
-
-<p>
-<li> (B-2) How are virtual functions with covariant return types handled?
-That is, where is the result pointer adjusted?
-
-<p>
-<li> (A-6) How does RTTI interact with exceptions?
-
-</ol>
-
-<p>
-<h4>Notes from 17 June 1999 </h4>
-
-<p>
-<b> Issues A-1, A-2, A-9</b> (Matt):
-See the open issues list.
-
-<p>
-<b> Actions</b>:
-Christophe will write a Vtable layout definition strawman,
-including a description of covariant returns,
-and more generally the virtual function protocol.
-Daveed will write up the issue with dynamic casts and inaccessible bases.
-
-<p>
-Michael Lam will write summaries for the ctor/dtor issues for next week.
 
 <p>
 <hr>
