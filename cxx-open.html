@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 1 September 1999</i>
+<i>Revised 3 September 1999</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990908]</font>
+New issue <a href=#D9>D-9</a>.
+Additions to <a href=#B1>B-1</a>, <a href=#D0>D-*</a>,
+<a href=#D2>D-2</a>, <a href=#D4>D-4</a>,
+<a href=#D5>D-5</a>, <a href=#D6>D-6</a>.
 
 <p>
 <font color=blue>[990901]</font>
@@ -1363,6 +1370,118 @@ A::f:
 Discussion of B-6 raises questions of impact on the above approach.
 Christophe will look at the issues.
 
+<p>
+<font color=blue>[990826 Cygnus -- Jason]</font>
+[An alternative suggestion from Jason via email.]
+
+<p>
+Rather than per-function offsets, we have per-target type offsets.
+These offsets (if any) are stored at a negative index from the vptr.
+When a derived class D overrides a virtual function F from a base class B,
+if no previously allocated offset slot can be reused,
+we add one to the beginning of the vtable(s) of the closest base(s)
+which are non-virtually derived from B.
+In the case of non-virtual inheritance, that would be D's vtable;
+in simple virtual inheritance, it would be B's.
+The vtables are written out in one large block,
+laid out like an object of the class,
+so if B is a non-virtual base of D,
+we can find the D vtable from the B vptr.
+
+<p>
+D::f then recieves a B*, loads the offset from the vtable,
+and makes the adjustment to get a D*.
+The plan is to also have a non-adjusting vtable entry in D's vtable,
+so we don't have to do two adjustments to call D::f with a D*;
+the implementation of this is up to the compiler.
+I expect that for g++,
+we will do the adjustment in a thunk which just falls into the main function.
+
+<p>
+The performance problems with classic thunks occur when the thunk is
+not close enough to the function it jumps to for a pc-relative branch.
+This cannot be avoided in certain cases of virtual inheritance,
+where a derived class must whip up a thunk for a new adjustment
+to a method it doesn't override.
+
+<p>
+In this case, we will only ever have one thunk per function,
+so we don't even have to jump.
+Except in the case of covariant returns, that is,
+where we will have one per return adjustment.
+But we know all necessary adjustments at the
+point of definition of the function,
+so they can all be within pc-relative branch range.
+
+<p>
+[Extensive discussion followed by email --
+this suggestion is not completely correct,
+but may be the basis of a workable solution.]
+
+<p>
+<font color=blue>[990831 Cygnus -- Ian]</font>
+A couple of observations ...
+
+<p>
+<b>On the state of the art:</b>
+
+<p>
+The Microsoft approach is worth mentioning.
+(I haven't seen it discussed --
+though perhaps that is because of the patent situation.)
+
+<p>
+It allows zero-adjusting (i.e. non-thunking) calls for (almost)
+every virtual function call in a non-virtual,
+multiple inheritance hierarchy.
+
+<p>
+For those that are unfamiliar,
+the idea is that all calls go via the base class vft and overriding
+functions expect a pointer to the base class type.
+(That is, if D::f overrides B::f, it expects the first
+parameter to be of type B*, not D*.)
+The callee does the necessary static adjustment to get to the
+derived class 'this' pointer as needed.
+
+<p>
+It avoids requiring a thunk,
+and it's often the case that the cost is zero in the callee because
+the this-adjustment can be folded into other offset computations.
+
+<p>
+On the balance,
+it could well win over all the other approaches being discussed here.
+[Though, it may lose in some specific cases vs. Christophe's approach
+where one would create additional extra entries in
+the derived class vft.]
+
+<p>
+<b>On when to make extra virtual function table entries for functions:</b>
+
+<p>
+One of Cristophe's suggestions is sort-of separate
+from the rest of the discussion:
+making extra entries in the derived class' vft for some
+overridden virtual functions.
+It has the benefit of giving you a faster calls if you happen to be in
+(or near) the derived class -- at the expense of space in the vft.
+
+<p>
+Of course, you can always make the call through the introducing base class,
+so these extra entries are a pure space/time performance trade off
+(w/ some unpredictable D-cache effects) and the cost/benefit analysis
+will depend a little on what the rest of the strategy looks like.
+
+<p>
+The same idea is potentially applicable,
+no matter what strategy you actually use for vft layout,
+and different criteria for deciding what extra entries to make are possible.
+For example,
+creating an extra entry when overriding a function introduced in a
+virtual base has the added benefit of avoiding a cast to a virtual
+base at the call site.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -2412,7 +2531,7 @@ It was decided to follow the IBM approach, including:
 	The default will map to 0,
 	and larger numbers are lower priority.
 
-<li> Priorities MIN_INT .. MIN_INT+1000 are reserved to the implementation.
+<li> Priorities MIN_INT .. MIN_INT+1023 are reserved to the implementation.
 
 <li> The object representation will use a 32-bit unsigned priority,
 	obtained from the source priority by subtracting INT_MIN.
@@ -2989,6 +3108,101 @@ For reference, we have design information as follows:
 
 </ul>
 
+<p>
+<font color=blue>[990902 All]</font>
+We observed that there are three levels at which we can discuss EH
+compatibility.
+
+<p>
+The first, minimal level is effectively that of the definition in the
+IA-64 Software Conventions document.
+It describes a framework which can be used by an arbitrary implementation,
+with a complete definition of the stack unwind mechanism,
+but no significant constraints on the language-specific processing.
+In particular, it is not sufficient to guarantee that two object files
+compiled by different C++ compilers could interoperate,
+e.g. throwing an exception in one of them and catching it in the other.
+
+<p>
+The second level is the minimum that must be specified to allow
+interoperability in the sense described above.
+This level requires agreement on:
+
+<ul>
+<p>
+<li>
+Standard runtime initialization,
+e.g. pre-allocation of space for out-of-memory exceptions.
+
+<p>
+<li>
+The layout of the exception object created by a throw and processed by
+a catch clause.
+
+<p>
+<li>
+When and how the exception object is allocated and destroyed.
+
+<p>
+<li>
+The API of the personality routine,
+i.e. the parameters passed to it,
+the logical actions it performs,
+and any results it returns
+(either function results to indicate success, failure, or continue,
+or changes in global or exception object state),
+for both the phase 1 handler search and the phase 2 cleanup/unwind.
+
+<p>
+<li>
+How control is ultimately transferred back to the user program at a
+catch clause or other resumption point.
+That is, will the last personality routine transfer control directly to
+the user code resumption point,
+or will it return information to the runtime allowing the latter to do so?
+
+<p>
+<li>
+Standard runtime initialization,
+e.g. pre-allocation of space for out-of-memory exceptions.
+
+<p>
+<li>
+Multithreading behavior.
+
+</ul>
+
+<p>
+The third level is a specification sufficient to allow all compliant
+systems to share the relevant runtime implementation.
+It includes, in addition to the above:
+
+<ul>
+<p>
+<li>
+Format of the C++ language-specific unwind tables.
+
+<p>
+<li>
+APIs of the functions named __allocate_exception, __throw, and
+__free_exception (and likely others) by HP, or their equivalents.
+
+<p>
+<li>
+API of landing pad code,
+and of any other entries back into the user code.
+
+<p>
+<li>
+Definition of what HP calls the exception class value.
+
+</ul>
+
+<p>
+The vocal attendees at the meeting wish to achieve the third level,
+and we will attempt to do so.
+Whether or not that is achieved, however,
+a second-level specification should be part of the ABI.
 
 <p>
 <table border=on cellpadding=3>
@@ -3077,6 +3291,12 @@ This issue involves specification of the API (see also D-3).
 </table>
 
 <p>
+<font color=blue>[990826 Intel/HP]</font>
+The Software Conventions document is claimed to specify the interface,
+with the parameters indicating which action is required.
+(I can't find it, but this would be an acceptable solution -- Jim.)
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -3130,6 +3350,29 @@ Is that the preferred definition?
 </table>
 
 <p>
+<font color=blue>[990902 All]</font>
+Discussion reveals that Intel and HP have very different models of how
+cleanup actions are handled.
+
+<p>
+Intel builds one or more routines which are called from the unwind runtime,
+based on action descriptors in the unwind tables,
+and acting on the stack contents or objects to be destroyed
+without actually modifying the stack pointer until the final transfer
+of control to the user handler.
+This approach avoids actually restoring registers until the final
+transfer to the handler.
+
+<p>
+HP transfers control back to a user landing pad whenever anything needs
+to be done -- descriptors or handlers --
+and reenters the unwind runtime if further processing is required.
+They believe this approach to use much less space than the action
+descriptors would,
+and most importantly,
+that it allows arbitrary fixup for code motion around the call that throws.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -3162,6 +3405,13 @@ Does it allow even more?
 </table>
 
 <p>
+<font color=blue>[990908 SGI -- Jim]</font>
+We propose that this be resolved by identifying the source language in
+the exception descriptor and specifying that the personality routine be
+able to perform cleanup actions during handling of foreign-language
+exceptions, but not attempt to catch them.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -3190,6 +3440,15 @@ where the exception was thrown?
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990908 SGI -- Jim]</font>
+The typical case of cleanup and resume is floating point trap handling,
+which is normally handled entirely in the original FP trap handler.
+Is there an example where stack walkback must occur to identify the
+handler, but resumption at the point-of-exception is required?
+I can't think of any, and I think the model of registering a trap
+handler is preferable for such purposes.
 
 <p>
 <table border=on cellpadding=3>
@@ -3249,6 +3508,107 @@ processing an exception?
 </td> </tr>
 
 </table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D9></a> <td> D-9 </td>
+<td> longjmp interaction </td>
+<td> lib ps </td>
+<td> open </td>
+<td> IBM </td>
+<td> 990908 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Does longjmp run destructors?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990908 IBM -- Mendell]</font>
+Does longjmp run destructors?
+I believe that the C ABI makes this optional.
+I would like to propose that it does run destructors.
+
+<p>
+<font color=blue>[990908 SGI -- Wilkinson]</font>
+The C++ standard, 18.7 paragraph 4,
+says a call to longjmp has undefined behavior if any automatic objects
+would have been destroyed by a
+throw/catch with the same source and destination.
+I don't see that this is something we need to fix.
+
+<p>
+<font color=blue>[990908 IBM -- Thomson]</font>
+Yes it does, but ANSI is not my customer.
+Meeting the bare minimum of function that ANSI requires
+doesn't necessarily mean that users can build robust applications.
+How can they know to avoid longjmp in their C code,
+because some third party library they are using has C++ buried in it?
+
+<p>
+<font color=blue>[990908 SGI -- Dehnert]</font>
+Implementation is a significant issue.
+The normal longjmp implementation is very simple --
+setjmp stores the register/stack state,
+and longjmp copies it back and branches.
+There is normally no traceback involved,
+so what you suggest is a dramatic change,
+and probably would make C people very unhappy.
+Furthermore, C++ users have the option of using C++ exceptions,
+which have the effect you seek.
+
+<p>
+<font color=blue>[990908 SGI -- Boehm]</font>
+The problem is that on the C side:
+
+<ol>
+<p>
+<li>A number of thread packages use setjmp/longjmp to perform context switches.
+    In this case,
+    the target sp is not on the same stack as the original sp,
+    and there should not be any destructor invocations,
+    since the original thread will be resumed,
+    and the original sp will eventually be restored.
+    (This isn't the optimal way to do thread switching,
+    but it's the only one that's semi-portable,
+    and hence it's moderately common.)
+
+<p>
+<li>Some variants of longjmp are often used to jump out of signal handlers,
+    which may not be invoked on the original user stack
+    (cf. sigaltstack on most Unix systems).
+    Thus unwinding may have to cross stack boundaries.
+
+<p>
+<li>Setjmp is often used to capture the register state,
+    e.g. for garbage collectors.
+    (The collector I'm responsible for optionally does this.
+    Last I looked, Guile did it unconditionally.)
+    A straightforward stack-unwinding implementation of setjmp/longjmp
+    would break this.
+</ol>
+
+<p>
+I don't know whether it's possible to avoid breaking these clients
+while providing the stack-unwinding semantics.
+
+<p>
+<font color=blue>[990908 IBM -- Mendell/Thomson]</font>
+[VisualAge C++] on OS/2 and Windows does do the unwinding.
+This is probably because unwinding support is in the OS.
+Also OS/390 and I believe AS/400 too.
+Our AIX implementation does not do the unwinding.
+
 
 <p> <hr> <p>
 <h3> Template Instantiation Model Issues </h3>
