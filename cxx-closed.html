@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 11 January 2000</i>
+<i>Revised 19 January 2000</i>
 
 </center>
 
@@ -1081,6 +1081,160 @@ nearly empty.
 <p>
 <font color=blue>[000106 All]</font>
 Accept the proposal.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A17></a> <td> A-17 </td>
+<td> Primary indirect virtual base allocation </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 991228 </td>
+<td> 000113 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+When a nearly empty virtual base class A is allocated as the primary
+base class of class B, and then B is allocated as a base class of C,
+should A (i.e. its vptr) be separately allocated in C,
+or should its first occurrence in a previously allocated base B be used
+as its allocation in C?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A17> Resolution</a></b>:
+Do not reallocate a nearly empty virtual base class that is the primary
+base class of any other base class, direct or indirect.
+Use the first primary base class instance in the inheritance hierarchy
+as its allocation, in the usual depth-first, left-to-right order.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991228 SGI -- Jim]</font>
+Specific wording for a proposed change is in the
+<a href=abi-layout.html#q4>data layout draft</a>.
+
+<p>
+<font color=blue>[000103 CodeSourcery -- Mark]</font>
+I think the current proposal for allocating virtual bases is still a
+little suboptimal.  In particular, given:
+<code><pre>
+  struct A { void f(); };
+  struct B : virtual public A { };
+  struct C : virtual public A, virtual public B { };
+</code></pre>
+
+we'll give `C' a larger size than for:
+
+<code><pre>
+  struct C : virtual public B, virtual public A { };
+</code></pre>
+
+where we'll reuse the `A' part of `B' rather than reallocating it.
+  
+<p>
+I know that ordering can already affect size (principally because of
+alignment issues) but I think that in this case we might as well not
+punish programmers for choosing the "wrong" ordering.
+
+<p>
+I think we should change the green A-17 proposed resolution to
+indicate that if one of the virtual bases is a (direct or indirect)
+primary base of one of the other virtual bases then we need not
+allocate a fresh copy.
+
+<p>
+FWIW, it turns out to actually be easier in GCC to code the more
+generous version.
+
+<p>
+The algorithm to do this is linear in the size of the hierarchy: just
+iterate through the inheritance DAG marking all primary bases.  Any
+virtual base classes that remain unmarked need to be allocated in step
+III.  A slight formalization of this sentence might be a good way to
+express which bases to choose for III.
+
+<p>
+<font color=blue><hr><p>[000113 All]</font>
+Do not reallocate a nearly empty virtual base class that is the primary
+base class of any other base class, direct or indirect.
+Use the first primary base class instance in the inheritance hierarchy
+as its allocation, in the usual depth-first, left-to-right order.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A18></a> <td> A-18 </td>
+<td> Virtual base alignment </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 991228 </td>
+<td> 000113 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should virtual bases have a different effect on class alignment than
+other components?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A18> Resolution</a></b>:
+Yes.  When allocating the non-virtual part of a base class,
+use its <i>non-virtual</i> allignment,
+i.e. ignoring its virtual bases' contributions.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991228 SGI -- Jim]</font>
+Since the allocation of virtual bases is "floating" relative to the
+classes in which they occur, it is possible for them to have
+independent alignment constraints.
+Specifically, when allocating a base class with a virtual base,
+we could treat its alignment as that obtained by ignoring the virtual
+base, and later allocate the virtual base with greater alignment.
+
+<p>
+Since the class with a virtual base already has a vptr,
+this only matters if the virtual base contains components more
+strictly aligned than a pointer.
+Thus, the benefit of doing so is probably not large.
+To get some idea of the effect on the layout definition,
+look at dsize and nvsize, and assume a similar pair of alignment values.
+
+<p>
+<font color=blue>[000106 All]</font>
+No strong opinions were expressed on this issue.
+We will decide it at the next meeting after people have a chance to
+think it over.
+The bias will be to keep the current simpler definition.
+
+<p>
+<font color=blue>[000113 All]</font>
+It turns out that both Compaq and someone else (Cygnus?)
+already do this, find it straightforward,
+and prefer to keep it.
+Therefore, accept the suggestion that
+when allocating the non-virtual part of a base class,
+we use its <i>non-virtual</i> allignment,
+i.e. ignoring its virtual bases' contributions.
 
 
 <p> <hr> <p>
@@ -4851,6 +5005,7 @@ to preserve the relative language neutrality of the EH framework?
 Example: do we allow a handler to cleanup and resume at the point
 where the exception was thrown?
 </td> </tr>
+<tr> <td colspan=7>
 <b>Resolution</b>:
 Moot -- resume-type exceptions are more appropriately handled by
 registering trap handlers and processing them in place.
@@ -4998,6 +5153,204 @@ see <a href=cxx-closed#D15>issue D-15</a>.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <a name=D9></a> <td> D-9 </td>
+<td> longjmp interaction </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> IBM </td>
+<td> 990908 </td>
+<td> 000113 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Does longjmp run destructors?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D9> Resolution</a></b>:
+Define an alternate routine, longjmp_unwind in namespace abi,
+defined in new header cxxabi.h,
+which always does full cleanup during unwinding.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990908 IBM -- Mendell]</font>
+Does longjmp run destructors?
+I believe that the C ABI makes this optional.
+I would like to propose that it does run destructors.
+
+<p>
+<font color=blue>[990908 SGI -- Wilkinson]</font>
+The C++ standard, 18.7 paragraph 4,
+says a call to longjmp has undefined behavior if any automatic objects
+would have been destroyed by a
+throw/catch with the same source and destination.
+I don't see that this is something we need to fix.
+
+<p>
+<font color=blue>[990908 IBM -- Thomson]</font>
+Yes it does, but ANSI is not my customer.
+Meeting the bare minimum of function that ANSI requires
+doesn't necessarily mean that users can build robust applications.
+How can they know to avoid longjmp in their C code,
+because some third party library they are using has C++ buried in it?
+
+<p>
+<font color=blue>[990908 SGI -- Dehnert]</font>
+Implementation is a significant issue.
+The normal longjmp implementation is very simple --
+setjmp stores the register/stack state,
+and longjmp copies it back and branches.
+There is normally no traceback involved,
+so what you suggest is a dramatic change,
+and probably would make C people very unhappy.
+Furthermore, C++ users have the option of using C++ exceptions,
+which have the effect you seek.
+
+<p>
+<font color=blue>[990908 SGI -- Boehm]</font>
+The problem is that on the C side:
+
+<ol>
+<p>
+<li>A number of thread packages use setjmp/longjmp to perform context switches.
+    In this case,
+    the target sp is not on the same stack as the original sp,
+    and there should not be any destructor invocations,
+    since the original thread will be resumed,
+    and the original sp will eventually be restored.
+    (This isn't the optimal way to do thread switching,
+    but it's the only one that's semi-portable,
+    and hence it's moderately common.)
+
+<p>
+<li>Some variants of longjmp are often used to jump out of signal handlers,
+    which may not be invoked on the original user stack
+    (cf. sigaltstack on most Unix systems).
+    Thus unwinding may have to cross stack boundaries.
+
+<p>
+<li>Setjmp is often used to capture the register state,
+    e.g. for garbage collectors.
+    (The collector I'm responsible for optionally does this.
+    Last I looked, Guile did it unconditionally.)
+    A straightforward stack-unwinding implementation of setjmp/longjmp
+    would break this.
+</ol>
+
+<p>
+I don't know whether it's possible to avoid breaking these clients
+while providing the stack-unwinding semantics.
+
+<p>
+<font color=blue>[990908 IBM -- Mendell/Thomson]</font>
+[VisualAge C++] on OS/2 and Windows does do the unwinding.
+This is probably because unwinding support is in the OS.
+Also OS/390 and I believe AS/400 too.
+Our AIX implementation does not do the unwinding.
+
+<p>
+<font color=blue>[990909 DEC -- Brender]</font>
+In addition to the systems already mentioned by
+others, these systems also do exception-handling compatible unwinding
+for C's setjmp/longjmp:
+
+<ul>
+<li> VMS/VAX and VMS/Alpha:
+    Tru64 Unix/Alpha [not originally, but at least as of V4]
+<li>
+    Microsoft Visual C on W95&WNT/IA32:
+       [to support SEH (structured exception handling) extensions]
+	(probably also on IA64 for compatibility reasons)
+<li>
+    Microsoft Visual C on WNT/Alpha (RIP):
+       [to support SEH]
+</ul>
+
+<p>
+If you believe in safe and compatible multi-language systems,
+there really is no choice but to do EH compatible unwinding for
+setjmp/longjmp -- at least by default.
+
+<p>
+I suppose it would be OK for an implementation to offer an alternate
+setjmp/longjmp that could be linked in for those who either know that
+it is safe in particular cases or are happy to trade safety for speed...
+
+<p>
+<font color=blue>[990909 All]</font>
+A brief discussion agreed that concensus is not absolutely necessary.
+An implementation could replace setjmp/longjmp with a version that
+either unwinds or justs restores and jumps,
+without breaking any code except that which assumed one or the other.
+(Ed.:  In fact, if setjmp stores enough information to either restore
+or to catch an exception, one could just swap longjmp,
+although that would not be optimal for the unwind and catch case,
+since setjmp doesn't need to save much information in that case
+as most of what is needed is in the unwind descriptors.)
+
+<p>
+<font color=blue>[990923 All]</font>
+We agreed that:
+<ul>
+<p>
+<li>
+We will use a single setjmp which retains enough information for a
+traditional C direct longjmp.
+
+<p>
+<li>
+We will define a new longjmp call which always does full unwinding.
+
+<p>
+<li>
+Implementations may implement longjmp as either the direct or the
+full-unwind form, as a default, or using a user option.
+
+<p>
+<li>
+catch(...) will catch all exceptions, including foreign-language ones.
+It will always rethrow.
+</ul>
+
+<p>
+See the HP low-level exception writeup at the beginning of the
+exception issues section.
+
+<p>
+<font color=blue>[991216 All]</font>
+Use the name <code>longjmp_unwind</code> for the alternate
+<code>longjmp</code> that always does full C++ unwinding.
+The issue of where to put it (namespace and header) remains.
+
+<p>
+<font color=blue>[000106 All]</font>
+We agreed to define a new header for ABI definitions,
+initially containing this and the special exception objects agreed upon.
+SGI will create an initial version.
+We also agreed to put ABI-defined new features in an "abi" namespace.
+Therefore, for this issue, we have a prototype in <code>cxxabi.h</code>:
+<code><pre>
+    namespace abi {
+	extern "C" void longjmp_unwind (jmp_buf env, int val);
+    }
+</pre></code>
+
+<p>
+<font color=blue>[000113 All]</font>
+Accept as described and close.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <a name=D15></a> <td> D-15 </td>
 <td> Terminate handler and threads </td>
 <td> lib ps </td>
@@ -5042,6 +5395,53 @@ It is observed that the global handler can be programmed to do
 thread-specific processing, e.g. by keying off a per-thread datum,
 but that many users would find it very surprising if the registration
 only worked for the calling thread.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D16></a> <td> D-16 </td>
+<td> Exception specifications </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> all </td>
+<td> 991216 </td>
+<td> 000113 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How is the type list for an exception specification
+represented in the action records?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D16> Resolution</a></b>:
+As specified in the HP document
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+The working paper specifies this,
+but HP wishes to propose a different representation.
+
+<p>
+<font color=blue>[000106 All]</font>
+Christophe believes the submitted version may actually be the desired one.
+He will attempt to determine this,
+and others should look at it closely to determine whether it has a
+large combinatorial impact on the compiler.
+
+<p>
+<font color=blue>[000113 All]</font>
+Noone has identified a problem with the proposal in the HP document.
+Close this issue, and it can be reopened if a problem surfaces.
 
 
 <p> <hr> <p>
