@@ -2816,7 +2816,7 @@ and will convert it to a C*
 before transferring control to the non-adjusting entry point for C::f.
 
 <p>
-For each direct or indirect virtual base V of C such that either V declares f,
+For each direct or indirect virtual base V of C such that V declares f,
 the compiler must emit, in the same object file as the code for C::f,
 a <i>V-adjusting entry point</i> for C::f.
 This entry point will expect that its <code>this</code> pointer
