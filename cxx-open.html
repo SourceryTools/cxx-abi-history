@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 11 April 2000</i>
+<i>Revised 19 April 2000</i>
 
 </center>
 
@@ -25,6 +25,14 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000419]</font>
+Additions to
+<a href=#A28>A-28</a>, <a href=#A29>A-29</a>,
+<a href=#E2>E-2</a>, <a href=#F3>F-3</a>, <a href=#F6>F-6</a>,
+<a href=#H2>H-2</a>.
+Closed <a href=#F8>F-8</a>, <a href=#F9>F-9</a>, <a href=#F10>F-10</a>.
 
 <p>
 <font color=blue>[000407]</font>
@@ -37,21 +45,6 @@ Additions to <a href=#D12>D-12</a>,
 <font color=blue>[000330]</font>
 Additions to <a href=#F4>F-4</a>, <a href=#F6>F-6</a>.
 Closed <a href=#A24>A-24</a>, <a href=#F1>F-1</a>.
-
-<p>
-<font color=blue>[000323]</font>
-New issues <a href=#F8>F-8</a>, <a href=#F9>F-9</a>.
-Additions to <a href=#C4>C-4</a>, <a href=#F1>F-1</a>.
-
-<p>
-<font color=blue>[000321]</font>
-Additions to <a href=#F1>F-1</a>, <a href=#F6>F-6</a>.
-
-<p>
-<font color=blue>[000313]</font>
-New issues <a href=#C13>C-13</a>, <a href=#C14>C-14</a>.
-Closed <a href=#C11>C-11</a>, <a href=#C12>C-12</a>.
-Additions to <a href=#A24>A-24</a>, <a href=#C4>C-4</a>, <a href=#F1>F-1</a>.
 
 <p>
 <a href=#ancient>Ancient revision history</a>.
@@ -1361,6 +1354,23 @@ whilst proposal B resolves issue 2 only,
 and will leave us (slightly) non-conformant.
 
 
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+The Standard committee members in the group are quite sure that Issues
+3 and 4 are not problems.
+Section 17.4.4.4 does not impose the suggested constraint
+(see footnote 173),
+and the intent of 5.2.8 is not to restrict  typeid to returning a
+single class.
+
+<p>
+Proposal B resolves the remaining issue,
+and the group is inclined to accept it,
+while considering whether to go further with A.
+Jim will (and has) integrated B into the
+<a href=abi-layout.html#rtti> ABI data layout</a> document.
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -1384,10 +1394,14 @@ and will leave us (slightly) non-conformant.
 <b>Summary</b>:
 Derive __pointer_to_member_type_info from __pointer_type_info.
 </td> </tr>
-
-<!--tr> <td colspan=7>
+<tr> <td colspan=7>
 <b><a href=cxx-closed.html#A29> Resolution</a></b>:
-</td> </tr -->
+Derive __pointer_to_member_type_info and __pointer_type_info from
+a common base class __pbase_type_info.
+Add a new flag to __pbase_type_info indicating that the class of a
+pointer-to-member is incomplete
+(propagated up a chain of pointers).
+</td> </tr>
 
 </table> 
 
@@ -1455,6 +1469,17 @@ Any pointer type inspections can check for both flags,
 even though only member pointers can cause one of them to be set up the
 chain.
 
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+Derive __pointer_to_member_type_info and __pointer_type_info from
+a common base class __pbase_type_info.
+Add a new flag to __pbase_type_info indicating that the class of a
+pointer-to-member is incomplete
+(propagated up a chain of pointers).
+
+<p>
+(Ed. note)  I've added updates to the
+<a href=abi-layout.html#rtti>ABI Layout</a> document.
 
 
 <p> <hr> <p>
@@ -4563,7 +4588,7 @@ compile step.
 </tr>
 
 <tr> <a name=E2></a> <td> E-2 </td>
-<td> Separate compilation model </td>
+<td> Export template model </td>
 <td> tools </td>
 <td> open </td>
 <td> SGI </td>
@@ -4572,10 +4597,21 @@ compile step.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[SGI]
+The Standard specifies a model of template instantiation that does not
+require the template definition to be visible at the point of
+instantiation.
+What is required for ABI support of this?
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+There are as yet no known implementations of this,
+which makes ABI standardization problematic.
+EDG is perhaps the furthest along.
+Ask Daveed about rumoured necessary mangling changes,
+and about where virtual/non-virtual member functions must be emitted.
 
 <p>
 <table border=on cellpadding=3>
@@ -4777,7 +4813,7 @@ could be left unhashed.
 <td> Consistency checks
 </td>
 <td> call g </td>
-<td> tabled </td>
+<td> open </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
@@ -4838,6 +4874,273 @@ messages.
 </ol>
 This issue is reduced to the first example,
 and tabled until and unless someone produces a specific proposal.
+
+<p>
+<font color=blue><hr><p>[000417 Compaq -- Coleen]</font>
+I propose that partial specializations should be mangled differently
+than template instantiations.  The reasons:
+
+<ol>
+<p>
+<li>
+It's the standard.  14.5.4 pp 3:
+
+<block>
+<p>
+Each class template partial specialization is a distinct template
+and definitions shall be provided for the members of a
+template partial specialization (temp.class.spec.mfunc). 
+
+<p>
+Note that the end of paragraph 1 in this section says
+"no diagnostic is required",
+but does that mean if a template instantiation can be linked
+instead of a specialization and not violate the standard?
+Or does that only mean that the compiler/linker is not required
+to diagnose the error and can call the wrong version of the function?
+</block>
+
+<p>
+<li>
+Since this is a new ABI, users must recompile.
+The correction to this problem is a source line change to declare
+the specialization.
+We should strive to be 100% standard-compliant with the new ABI,
+especially with a case we can diagnose.
+Users should expect the new ABI to be 100% compliant as well.
+</ol>
+
+<p>
+The argument against making partial instantiations link incompatible with
+is that users may depend on linking in the template instantiation when
+the definition of partial instantiation is not available.
+Two points:
+
+<ol>
+<p>
+<li>
+With the COMDAT model,
+if the partial instantiation is available in one compilation unit
+and the template instantiation comes from another,
+which will be picked?
+Isn't this really bad?
+
+<p>
+<li>
+As a data point, DEC/Compaq changed the mangling for partial
+specializations when using the new syntax (template <>)
+but kept the mangling for them the same when using the old
+non-standard syntax (omit the template <>).
+We don't have any entries about it in our database of complaints.
+(We realize more code is written for Sun, HP, g++, etc,
+so you may end up with complaints on code our compiler hasn't seen.)
+</ol>
+ 
+So I propose a mangling qualifier for partial specializations on each
+template argument that is specialized (maybe you don't need the 'E'):
+<code><pre>
+    &lt;template-args> ::= I &lt;template-arg>+ E
+    &lt;template-arg> ::= &lt;type>                     # type
+    &lt;template-arg> ::= D &lt;type> E                 # partially specialize'D'
+    &lt;template-arg> ::= L &lt;type> &lt;value number> E  # literal
+    &lt;template-arg> ::= LZ &lt;encoding> E            # external name
+    &lt;template-arg> ::= X &lt;expression> E           # expression
+</pre></code>
+
+<code><pre>
+//
+// Example of partial specialization [not] linking against template
+// instantiation.
+// 
+// spec.h 
+extern "C" int printf(const char *,...);
+template &lt;class T> class X {
+   public:
+   void f(); // { printf("X&lt;T>::f called\n"); }
+};
+// spec1.cxx
+
+#include "spec.h"
+main()
+{
+  X&lt;int> t;
+  t.f();
+}
+// spec2.cxx
+#include "spec.h"
+template &lt;> class X&lt;int> {
+   public:
+   void f();
+};
+template &lt;> void X&lt;int>::f() { printf("X&lt;int>::f();\n"); }
+
+void foo()
+{
+   X&lt;int> x;
+   x.f();
+}
+
+//
+// EDG/Compaq C++
+% exx spec1.cxx spec2.cxx
+spec1.cxx:
+spec2.cxx:
+ld:
+Unresolved:
+X&lt;int>::f(void)
+
+//
+// Sun
+33% CC spec1.cxx spec2.cxx
+spec1.cxx:
+spec2.cxx:
+34% a.out
+X&lt;int>::f();
+
+// G++
+781% g++ spec1.cxx spec2.cxx
+782% a.out
+X&lt;int>::f();
+</pre></code>
+
+
+<p>
+<font color=blue><hr><p>[000417 CodeSourcery -- Mark]</font>
+I'm not persuaded that we should mangle specializations and
+instantiations differently.  If I understand Colleen's proposal, these
+two functions:
+
+<code><pre>
+  template &lt;class T> void f(T);
+  template &lt;> void f&lt;int>(int) { }
+
+</pre></code>
+and
+
+<code><pre>
+  template &lt;class T> void f(T) { }
+  template void f&lt;int>(int);
+
+</pre></code>
+
+(the first a specialization, the second instantiation),
+would be mangled separately.
+If I misunderstood, then I apologize,
+and only some of it what follows is relevant.
+
+<p>
+Here are my objections:
+
+<ul>
+<p>
+<li>
+Real code depends on being able to intermix the two.  In fact,
+this is a historical way of putting instantiations in libraries:
+you declare a specialization, but then provide an explicit
+instantiation in the library.  That prevents clients of the
+library from doing implicit instantiations.
+
+<p>
+<li>
+I don't think the standard doesn't require a diagnostic.
+
+<p>
+<li>
+There are other wways of getting a diagnostic, if you want one,
+other than mangling.  In fact, mangling is probably not likely
+to yield useful diagnostics: the message will just be
+"xyz undefined", not "you mixed an instantiation and a
+specialization".  Other mechanisms could be used for that.
+(Analagous here is the ODR: you could mangle into every inline
+function its token sequence, and then check the ODR at link-time.
+But, you'd be better off to store this on the side.)
+
+<p>
+<li>
+Real implementations are underway.
+We have to start taking making
+changes to the draft ABI more seriously.
+We're already implementing the ABI in two different compilers,
+and I expect others are doing the same.
+It's important that we have compilers ready as quickly as possible;
+the chip is almost live,
+and we don't want there to be a substantial installed base of
+non-compliant compilers;
+that will substantially reduce the
+value of the work this committee has done.
+If it ain't broke, we really shouldn't be fixing it now.
+</ul>
+
+<p>
+<font color=blue><hr><p>[000418 SGI -- John]</font>
+I have come to the somewhat reluctant conclusion that attempting
+to diagnose this kind of error through name-mangling would be a mistake.
+If other ways can be found,
+I think they should probably be left to
+individual implementations and not made part of the ABI
+(but I am less committed to this point:
+I have not, however, thought of any promising approach to this).
+
+<ol>
+<p>
+<li>
+If the standard requires no diagnostic for a violation of the rules,
+then certainly  a standard-conforming implementation is permitted to
+link and execute the program.  (1.4, Paragraph 2).
+So this is a quality-of-implementation issue,
+not a standard-conformance issue.
+
+<p>
+<li>
+As Mark points out,
+if we use mangling to distinguish specializations from instantiations,
+the resulting diagnostics may be hard to interpret.
+I regard this as less important, however, than
+
+<p>
+<li>
+Providing distinct manglings may just allow definitions to coexist
+that are  forbidden from doing so.
+So it doesn't solve the problem of providing a diagnostic for this error;
+it only does so for one flavor of the error.
+
+<p>
+<li>
+The specific mangling scheme that Colleen proposes does not
+distinguish all the necessary variants.
+Consider the declarations
+<code><pre>
+   template &lt;class T> struct X     { void foo();};
+   template &lt;class T> struct X&lt;T*> { void foo();};
+   template &lt;> struct X&lt;int*>      { void foo();};
+
+</pre></code>
+<p>
+A program that declares
+
+<code><pre>
+  X&lt;int*> x;
+
+</pre></code>
+
+and invokes x.foo()
+will thereby reference a function with the signature
+
+<code><pre>
+  void X&lt;int*>::foo(void).
+
+</pre></code>
+
+<p>
+Three different functions can be invoked,
+depending on whether the program includes just the first declaration,
+just the first and second,
+or the first and third (with or without the second).
+Colleen's mangling scheme clearly distinguishes the first and third cases,
+but for the second case is forced to pick one of the other two manglings.
+It cannot distinguish all three.
+</ol>
+
 
 
 <p>
@@ -5198,6 +5501,15 @@ void abi::demangler::output(char c)
 
 </code></pre>
 
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+Most members strongly prefer a C-callable interface.
+Discussion centered around how to handle memory allocation
+(user, library, re-allocatable, etc.)
+and whether options like gcc's (e.g. list parameters or not)
+are desirable.
+Matt will consider these and modify his proposal.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -5221,6 +5533,13 @@ void abi::demangler::output(char c)
 What, if anything, should we do about mangling the names of objects in
 static functions in case a compiler chooses to inline them?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F7> Resolution</a></b>:
+Local objects are mangled with the name of the containing function
+followed by a discriminator,
+consisting of the object name and possibly a sequence ID.
+See the <a href=abi-layout.html#mangling-scope>ABI Layout</a> document.
+</td> </tr>
 
 </table>
 
@@ -5237,83 +5556,21 @@ static functions in case a compiler chooses to inline them?
 <tr> <a name=F8></a> <td> F-8 </td>
 <td> Identifiers with unicode letters </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> HU-Berlin </td>
 <td> 000323 </td>
-<td> </td>
+<td> 000413 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How should we mangle names containing unicode letters?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F8> Resolution</a></b>:
+Follow the underlying C ABI.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000323 HU-Berlin -- Martin]</font>
-2.2, [lex.charset]/2, allows usage of universal-character-names in
-C++ programs, especially in identifiers and strings.
-How do we mangle the variable pi below?
-
-<code><pre>
-   namespace newmath {
-      const long double \u03A0 = 3.14159265358979;
-   }
-
-</pre></code>
-
-<p>
-This is also an issue for C99, so it may be that the base ABI has a
-specification; we'd have to follow that at least for extern "C" names.
-If not, I propose that such names are encoded in UTF-8.
-
-<p>
-<font color=blue>[000405 Cygnus -- Jason]</font>
-UTF-8 is inappropriate for mangled names,
-as it uses values > 127 to encode non-ASCII characters.
-
-<p>
-GNU Java encodes names in UTF-8 internally.
-For the mangled name, if there are non-ASCII characters,
-it adds a 'U' to the beginning and encodes each
-such UCS-2 character as _%04x.
-See gcc/java/mangle.c.
-
-<p>
-This assumes that all interesting characters fall within the Basic
-Multilingual Plane (the low 16 bits);
-that is a valid assumption for us, since all the extended characters
-valid for use in C++ identifiers are part of the BMP.
-
-<p>
-<font color=blue>[000411 HU-Berlin -- Martin]</font>
-Why is [UTF-8] not appropriate?
-AFAICT, the gABI has no restriction in that respect.
-ch4.strtab.html says 
-<blockquote>
-String table sections hold null-terminated character sequences,
-commonly called strings.
-</blockquote>
-
-<p>
-I can see there are a number of alternatives. I think it is important
-that there is agreement on the rules, in a way that is also
-interoperable with C99 implementations. What those rules are is not
-that important.
-
-<blockquote>
-GNU Java encodes names in UTF-8 internally.
-For the mangled name, if there are non-ASCII characters,
-it adds a 'U' to the beginning and encodes each
-such UCS-2 character as _%04x.  See gcc/java/mangle.c.
-</blockquote>
-
-<p>
-In the C++ ABI, the natural adaptation of that approach would be to
-mangle non-ASCII-containing identifiers as _U instead of _Z, right?
-Unfortunately, that does not give a solution for C names. I believe
-the GNU Java approach also cannot be extended to C99.
-
 
 
 
@@ -5329,58 +5586,22 @@ the GNU Java approach also cannot be extended to C99.
 <tr> <a name=F9></a> <td> F-9 </td>
 <td> Strings with unicode letters </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> HU-Berlin </td>
 <td> 000323 </td>
-<td> </td>
+<td> 000413 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How should we handle the object file representation of narrow and wide
 string literals containing unicode letters?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F9> Resolution</a></b>:
+Follow the underlying C ABI.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000323 HU-Berlin -- Martin]</font>
-2.2, [lex.charset]/2, allows usage of universal-character-names in
-C++ programs, especially in identifiers and strings.
-Consider the example:
-
-<code><pre>
-    wchar_t MvL[]=L"Martin von L\u00F6wis";
-</pre></code>
-
-<p>
-First, what is sizeof(wchar_t) in the base ABI? I'll assume 4 for
-the moment. Then, the question comes down to: What is the execution
-character set, and the wide execution character set? 2.2/3 says
-they are implementation-defined, so I guess we must define
-them. Typically, people expect this to be a run-time setting (which
-is a reasonable assumption), but it kind-of breaks for string
-literals.
-
-<p>
-Proposal: The wide execution character set is UCS-4.
-The execution-character-set is "as-is",
-i.e. bytes from the source character set are
-copied unmodified to the object file.
-Universal-character-names appearing in narrow (ie. char)
-strings are not portable in this ABI
-(the other alternatives would be to say they are Latin-1,
-or encoded as UTF-8, I guess).
-
-<p>
-<font color=blue>[000405 Cygnus -- Jason]</font>
-I have been told that it is inappropriate to assume that wchar_t is
-always UCS-4;
-a suggestion was to convert from UCS-4 to the host locale character
-set using iconv(),
-and then if we're in a wide string,
-convert to wchar_t with mbtowc().
-This makes sense to me,
-though of course it requires iconv to know about UCS-4.
 
 
 <p>
@@ -5395,14 +5616,19 @@ though of course it requires iconv to know about UCS-4.
 <tr class=small> <a name=F10></a> <td> F-10 </td>
 <td> Mangling function return types </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> all </td>
 <td> 000330 </td>
+<td> 000413 </td>
 <td> </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Should we always mangle the return type of a function?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F10> Resolution</a></b>:
+No.  It is mangled only for template instantiations/specializations.
 </td> </tr>
 
 </table>
@@ -6084,8 +6310,34 @@ and their prototypes.
 
 </table>
 
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+Because of the extensive use of templates in the standard library,
+often with visible helper functions,
+it will be very difficult to separate vendor-independent from
+vendor-specific runtime support,
+and therefore to share a runtime library without at least sharing
+the header files.
+Committee members will contemplate the possibilities...
+
+
 <p> <hr> <p>
 <h3><a name=ancient> Ancient Revision History </a> </h3>
+
+<p>
+<font color=blue>[000323]</font>
+New issues <a href=#F8>F-8</a>, <a href=#F9>F-9</a>.
+Additions to <a href=#C4>C-4</a>, <a href=#F1>F-1</a>.
+
+<p>
+<font color=blue>[000321]</font>
+Additions to <a href=#F1>F-1</a>, <a href=#F6>F-6</a>.
+
+<p>
+<font color=blue>[000313]</font>
+New issues <a href=#C13>C-13</a>, <a href=#C14>C-14</a>.
+Closed <a href=#C11>C-11</a>, <a href=#C12>C-12</a>.
+Additions to <a href=#A24>A-24</a>, <a href=#C4>C-4</a>, <a href=#F1>F-1</a>.
 
 <p>
 <font color=blue>[000308]</font>
