@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 9 December 1999</i>
+<i>Revised 30 December 1999</i>
 
 </center>
 
@@ -25,6 +25,17 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[991230]</font>
+Clarify definition of nearly empty class.
+
+<p>
+<font color=blue>[991221]</font>
+New issues <a href=#A15>A-15</a>, <a href=#A16>A-16</a>,
+<a href=#A17>A-17</a>, <a href=#A18>A-18</a>.
+Reopened <a href=#C3>C-3</a>.
+Additions to <a href=cxx-closed.html#C3>C-3</a> (closed).
 
 <p>
 <font color=blue>[991209]</font>
@@ -81,14 +92,21 @@ The issues below make use of the following definitions:
 <p>
 <dt> <i>empty class</i> </dt>
 <dd>
-A class with no non-static data members,
+A class with no non-static data members other than zero-width bitfields,
 no virtual functions, no virtual base classes,
-and no non-empty non-virtual base classes.)
+and no non-empty non-virtual base classes.
 
 <p>
 <dt> <i>nearly empty class</i> </dt>
 <dd>
-A class, the objects of which contain only a Vptr.
+A class that:
+<ul>
+<li> has no non-static data members other than zero-width bitfields,
+<li> has no base classes that are not either empty or nearly empty,
+<li> has at most one nearly empty base class, and
+<li> has at least one virtual function, possibly inherited from a base class.
+</ul>
+Such a class contains only a Vptr.
 
 <p>
 <dt> <i>vague linkage</i> </dt>
@@ -583,6 +601,161 @@ Represented as one plus the offset from the base address.
 </table>
 
 
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A15></a> <td> A-15 </td>
+<td> Empty bit-fields </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 991214 </td>
+<td>  </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How are zero-length bit-fields handled?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991214 CodeSourcery -- Mark]</font>
+<p>
+<b>Question</b>:
+Does the presence of a zero-width bit-field prevent a class from
+being empty?
+
+<p>
+<b>Suggested Resolution</b>:
+
+No.  Amend the definition of an "empty class" to read:
+
+<p>
+<dl>
+<dd>
+A class with no non-static data members other than zero-width bitfields,
+no virtual functions, no virtual base classes,
+and no non-empty non-virtual base classes.
+</dd>
+</dl>
+
+<p>
+Amend the definition of a "nearly empty class" to read:
+
+<p>
+<dl>
+<dd>
+A class, the objects of which contain only a Vptr and zero-width bitfields.
+</dd>
+</dl>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A16></a> <td> A-16 </td>
+<td> Nearly empty virtual bases </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 991228 </td>
+<td>  </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+May a class with non-empty, non-primary, virtual base classes
+be treated as nearly empty (and thus eligible to be a primary base)
+if its only non-vptr data is in its virtual base classes?
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A17></a> <td> A-17 </td>
+<tr> <td colspan=7>
+<td> Primary indirect virtual base allocation </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 991228 </td>
+<td>  </td>
+</tr>
+<b>Summary</b>:
+When a nearly empty virtual base class A is allocated as the primary
+base class of class B, and then B is allocated as a base class of C,
+should A (i.e. its vptr) be separately allocated in C,
+or should its first occurrence in a previously allocated base B be used
+as its allocation in C?
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A18></a> <td> A-18 </td>
+<tr> <td colspan=7>
+<td> Virtual base alignment </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 991228 </td>
+<td>  </td>
+</tr>
+<b>Summary</b>:
+Should virtual bases have a different effect on class alignment than
+other components?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991228 SGI -- Jim]</font>
+Since the allocation of virtual bases is "floating" relative to the
+classes in which they occur, it is possible for them to have
+independent alignment constraints.
+Specifically, when allocating a base class with a virtual base,
+we could treat its alignment as that obtained by ignoring the virtual
+base, and later allocate the virtual base with greater alignment.
+
+<p>
+Since the class with a virtual base already has a vptr,
+this only matters if the virtual base contains components more
+strictly aligned than a pointer.
+Thus, the benefit of doing so is probably not large.
+To get some idea of the effect on the layout definition,
+look at dsize and nvsize, and assume a similar pair of alignment values.
+
+
 <p> <hr> <p>
 <h3> Virtual Function Handling Issues </h3>
 
@@ -1043,6 +1216,7 @@ we should make the facility more general.
 Jim will write up a more precise proposal.
 
 <p>
+<a name=c2-proposal></a>
 <font color=blue><hr><p>[990804 SGI -- Jim]</font>
 <h4> Proposal </h4>
 
@@ -1417,10 +1591,10 @@ group.
 <tr> <a name=C3></a> <td> C-3 </td>
 <td> Order of ctors/dtors w.r.t. DSOs </td>
 <td> ps </td>
-<td> closed </td>
+<td> open </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> 991202 </td>
+<td> reopened </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -1446,6 +1620,574 @@ atexit calls.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue><hr><p>[990804 SGI -- Jim]</font>
+<h4> Proposal </h4>
+
+<p>
+My objectives are:
+<ul>
+<li> Simple library interface.
+<li> Efficient handling during construction.
+<li> Standard-conforming treatment during normal program exit.
+<li> Reasonable treatment during early DSO unload (e.g. dlclose).
+<li> Minimal dynamic and static linker impact.
+</ul>
+
+<p>
+<h5> Runtime Data Structure </h5>
+
+<p>
+The runtime library shall maintain a list of termination functions
+with the following information about each:
+
+<ul>
+<li> A function pointer (a pointer to a function descriptor on IA-64).
+<li> A void* operand to be passed to the function.
+<li> A void* handle for the <i>home DSO</i> of the entry (below).
+</ul>
+
+<p>
+The representation of this structure is implementation defined.
+All references are via the API described below.
+
+<p>
+<h5> Runtime API </h5>
+
+<ol type=A>
+<p>
+<li> Object construction:
+<p>
+When a global or local static object is constructed,
+which will require destruction on exit,
+a termination function is <i>registered</i> as follows:
+<center><code>
+int __cxa_atexit ( void (*f)(void *), void *p, dso_handle d );
+</code></center>
+This registration, e.g. <code>__cxa_atexit(f,p,d)</code>,
+is intended to cause the call <code>f(p)</code> when DSO d is unloaded,
+before all such termination calls registered before this one.
+It returns zero if registration is successful, nonzero on failure.
+<font color=red>Should we use exceptions instead?</font>
+
+<p>
+The registration function is called separate from the constructor.
+
+<p>
+<li> User atexit calls:
+<p>
+When the user registers exit functions with <code>atexit</code>,
+they should be registered with NULL parameter and DSO handle, i.e.
+<center><code>
+__cxa_atexit ( f, NULL, NULL );
+</code></center>
+It is expected that implementations supporting both C and C++ will
+integrate this capability into the libc <code>atexit</code>
+implementation, so that C-only DSOs will nevertheless interact with C++
+programs in a C++-standard-conforming manner.
+No user interface to __cxa_atexit is supported,
+so the user is not able register an <code>atexit</code> function with a
+parameter or a home DSO.
+</font>
+
+<p>
+<li> Termination:
+<p>
+When linking any DSO containing a call to <code>__cxa_atexit</code>,
+the linker should define a hidden symbol <code>__dso_handle</code>,
+with a value which is an address in one of the object's segments.
+(It doesn't matter what address,
+as long as they are different in different DSOs.)
+It should also include a call to the following function in the FINI
+list (to be executed first):
+<center><code>
+void __cxa_finalize ( dso_handle d );
+</code></center>
+The parameter passed should be <code>__dso_handle</code>.
+
+<p>
+Note that the above can be accomplished either by explicitly providing
+the symbol and call in the linker, or by implicitly including a
+relocatable object in the link with the necessary definitions,
+using a .fini_array section for the FINI call.
+Also, note that these can be omitted for an object with no calls to
+<code>__cxa_atexit</code>, but they can be safely included in all objects.
+
+<p>
+Finally, a main program should be linked with a FINI call to
+<code>__cxa_finalize</code> with NULL parameter.
+
+<p>
+When <code>__cxa_finalize(d)</code> is called,
+it should walk the termination function list,
+calling each in turn if <code>d</code> matches
+<code>__dso_handle</code> for the termination function entry.
+If <code>d == NULL</code>, it should call all of them.
+Multiple calls to <code>__cxa_finalize</code> should not result in
+calling termination function entries multiple times;
+the implementation may either remove entries or mark them finished.
+
+<p>
+<font color=red>
+Issue: By passing a NULL-terminated vector of DSO handles to
+<code>__cxa_finalize</code> instead of one,
+we could deal with unloading multiple DSOs at once.
+However, <code>dlclose</code> closes one at a time,
+so I'm not sure the extra complexity is worthwhile.
+</font>
+
+</ol>
+
+<p>
+Since <code>__cxa_atexit</code> and <code>__cxa_finalize</code>
+must both manipulate the same termination function list,
+they must be defined in the implementation's C++ runtime library,
+rather than in the individual linked objects.
+
+
+<p>
+<font color=blue><hr><p>[991202 All]</font>
+The proposal above is accepted, with three changes (integrated above):
+<ul>
+<p>
+<li> The "__cxx_" prefixes are changed to "__cxa_".
+    This matches the prefix chosen for the exception handling API,
+    and stands (loosely) for "C++ ABI".
+<p>
+<li> Clarify that integration into the C libc library is expected.
+<p>
+<li> Clarify that no user interface to 
+    <code>__cxa_atexit</code> is supported.
+</ul>
+
+<p>
+During discussion, it was noted that this proposal will not deal
+effectively with DSOs which (a) have cross-DSO destructor interactions
+and (b) are unloaded dynamically.
+It is generally believed that such code would not reliably work on a
+variety of platforms today,
+and is not a robust methodology worthy of ABI support.
+However, note that if it becomes an issue,
+it would be possible to define a <code>__cxa_finalize</code> analog
+which takes a list of DSOs instead of a single DSO,
+and if the program or dynamic linker identifies a set of DSOs to be
+unloaded together, run their finalization entries in a single pass
+instead of one DSO at a time.
+
+
+<p>
+<font color=blue><hr><p>[991215 CodeSourcery -- Mark]</font>
+Note that the type of "__dso_handle" above is not specified.
+Since the simplest implementation is for the static linker to resolve
+it into an arbitrary address in the DSO, define it as "void *".
+
+
+<p>
+<font color=blue><hr><p>[991216 CodeSourcery -- Mark]</font>
+
+<p>
+What I'm suggesting (for exit finalization) is:
+
+<ul>
+<p>
+<li> As in the ABI, atexit calls __cxa_atexit.
+
+<p>
+<li> When `exit' is called, it invokes all the things registered with
+    all of __cxa_atexit, atexit, and (possibly) on_exit.
+
+<p>
+<li> When a shared library is unloaded, it calls __cxa_finalize, which
+    behaves exactly as in the ABI.
+
+<p>
+<li> When a main program exits, it does not call __cxa_finalize.
+    Instead, it just calls exit.  That does the things described
+    above.
+</ul>
+
+
+<p>
+<font color=blue><hr><p>[991217 CodeSourcery -- Mark]</font>
+I've attached the GNU libc source files.  Basically, none of these
+routines are implemented in terms of the others; instead, they just
+share a common data structure.  I think the source will make it clear;
+none of these files is more than 50 lines or so.
+
+<code><pre>
+================================
+=====  filename="cxa_atexit.c"
+================================
+
+/* Copyright (C) 1999 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <stdlib.h>
+#include "exit.h"
+
+/* Register a function to be called by exit or when a shared library
+   is unloaded.  This function is only called from code generated by
+   the C++ compiler.  */
+int
+__cxa_atexit (void (*func) (void *), void *arg, void *d)
+{
+  
+  struct exit_function *new = __new_exitfn ();
+
+  if (new == NULL)
+    return -1;
+
+  new->flavor = ef_cxa;
+  new->func.cxa.fn = func;
+  new->func.cxa.arg = arg;
+  new->func.cxa.dso_handle = d;
+  return 0;
+}
+
+================================
+=====  filename="cxa_finalize.c"
+================================
+
+/* Copyright (C) 1999 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <stdlib.h>
+#include "exit.h"
+
+/* If D is non-NULL, call all functions registered with `__cxa_atexit'
+   with the same dso handle.  Otherwise, if D is NULL, do nothing.  */
+
+void
+__cxa_finalize (void *d)
+{
+  struct exit_function_list *funcs;
+
+  if (!d)
+    return;
+
+  for (funcs = __exit_funcs; funcs; funcs = funcs->next)
+    {
+      struct exit_function *f;
+
+      for (f = &funcs->fns[funcs->idx - 1]; f >= &funcs->fns[0]; --f)
+        {
+          if (f->flavor == ef_cxa && d == f->func.cxa.dso_handle)
+            {
+              (*f->func.cxa.fn) (f->func.cxa.arg);
+              /* We don't want to run this cleanup again.  */
+              f->flavor = ef_free;
+            }
+        }
+    }
+}
+
+===========================
+=====  filename="atexit.c"
+===========================
+
+/* Copyright (C) 1991, 1996, 1999 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <bits/libc-lock.h>
+#include <stdlib.h>
+#include "exit.h"
+
+
+/* Register FUNC to be executed by `exit'.  */
+int
+atexit (void (*func) (void))
+{
+  struct exit_function *new = __new_exitfn ();
+
+  if (new == NULL)
+    return -1;
+
+  new->flavor = ef_at;
+  new->func.at = func;
+  return 0;
+}
+
+
+/* We change global data, so we need locking.  */
+__libc_lock_define_initialized (static, lock)
+
+
+static struct exit_function_list initial;
+struct exit_function_list *__exit_funcs = &initial;
+
+struct exit_function *
+__new_exitfn (void)
+{
+  struct exit_function_list *l;
+  size_t i = 0;
+
+  __libc_lock_lock (lock);
+
+  for (l = __exit_funcs; l != NULL; l = l->next)
+    {
+      for (i = 0; i < l->idx; ++i)
+        if (l->fns[i].flavor == ef_free)
+          break;
+      if (i < l->idx)
+        break;
+
+      if (l->idx < sizeof (l->fns) / sizeof (l->fns[0]))
+        {
+          i = l->idx++;
+          break;
+        }
+    }
+
+  if (l == NULL)
+    {
+      l = (struct exit_function_list *)
+        malloc (sizeof (struct exit_function_list));
+      if (l != NULL)
+        {
+          l->next = __exit_funcs;
+          __exit_funcs = l;
+
+          l->idx = 1;
+          i = 0;
+        }
+    }
+
+  /* Mark entry as used, but we don't know the flavor now.  */
+  if (l != NULL)
+    l->fns[i].flavor = ef_us;
+
+  __libc_lock_unlock (lock);
+
+  return l == NULL ? NULL : &l->fns[i];
+}
+
+===========================
+=====  filename="on_exit.c"
+===========================
+
+/* Copyright (C) 1991, 1996 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <stdlib.h>
+#include "exit.h"
+
+/* Register a function to be called by exit.  */
+int
+__on_exit (void (*func) (int status, void *arg), void *arg)
+{
+  struct exit_function *new = __new_exitfn ();
+
+  if (new == NULL)
+    return -1;
+
+  new->flavor = ef_on;
+  new->func.on.fn = func;
+  new->func.on.arg = arg;
+  return 0;
+}
+weak_alias (__on_exit, on_exit)
+
+========================
+=====  filename="exit.h"
+========================
+
+/* Copyright (C) 1991, 1996, 1997 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#ifndef _EXIT_H
+#define _EXIT_H 1
+
+struct exit_function
+  {
+    enum {
+       ef_free, ef_us, ef_on, ef_at, ef_cxa } flavor;
+		/* `ef_free' MUST be zero! */
+    union
+      {
+        void (*at) (void);
+        struct
+          {
+            void (*fn) (int status, void *arg);
+            void *arg;
+          } on;
+        struct
+          {
+            void (*fn) (void *arg);
+            void *arg;
+            void *dso_handle;
+          } cxa;
+      } func;
+  };
+struct exit_function_list
+  {
+    struct exit_function_list *next;
+    size_t idx;
+    struct exit_function fns[32];
+  };
+extern struct exit_function_list *__exit_funcs;
+
+extern struct exit_function *__new_exitfn (void);
+
+#endif  /* exit.h  */
+</pre></code>
+
+
+
+<p>
+<font color=blue><hr><p>[991220 SGI -- Jim]</font>
+<p>
+In the elf context assumed by the base IA-64 ABI, I expect that a C++
+program will typically be running with the C run-time library libc.so,
+the C++ runtime library libC.so, likely other system DSOs, and its own
+components.
+
+<p>
+In this context, achieving an integrated solution could be accomplished
+in a couple of ways.  The obvious one is to replace the routines
+atexit, on_exit, and exit in the C run-time library with routines that
+are cognizant of the C++ __cxa_atexit and __cxa_finalize facilities.
+a less obvious method, but still generally usable, would be to insert
+C++-specific versions of them in the C++ runtime library, and depend on
+preemption to achieve the replacement.  This works as long as libC.so
+precedes libc.so in the library list.
+
+<p>
+There are other possible non-integrated solutions, but given the
+assumption of the underlying IA-64 ABI, and the fact that the second
+solution above can work without changing the underlying C run-time
+library, it doesn't seem necessary to consider them.
+
+<p>
+What is an issue, however, is that the application could in theory be
+linked on a different system than the one where it ultimately runs,
+and therefore presumably on a different system than that which built
+the run-time library DSOs.  It is that interface which we need to pin
+down, namely (a) what routines (with what interfaces and semantics)
+must be present in libC.so/libc.so, and (b) what sequences of calls
+the libraries may assume the program will make.
+
+<p>
+We appear to be agreed on the presence of __cxa_atexit and
+__cxa_finalize in libC.so, on the registration of C++ destructors
+and C atexit cleanup with __cxa_atexit, and on the use of
+__cxa_finalize for destructor execution upon early unloading.
+The open questions are (1) whether (or how) on_exit registration can
+be integrated, and (2) how the final cleanup is invoked.
+
+<p>
+The original proposal adopted ignored (1) out of ignorance, and
+answered (2) by specifying a call to __cxa_finalize(NULL).  If (1) is
+addressed by calling __cxa_atexit for on_exit with a parameter, and
+passing an additional exit code parameter to __cxa_finalize (and thence
+to all the finalization actions it invokes), this works, i.e. on_exit
+works as currently defined by Sun and is properly integrated into the
+finalization order.  But that assumes that the exit code is available
+for passing to __cxa_finalize, which may imply calling it from exit if
+it's not available to a .fini_array routine (which was what the
+original proposal specified).
+
+<p>
+Mark points out that it works to just assume that exit does the
+call to __cxa_finalize, or performs the equivalent processing,
+eliminating the need for the explicit __cxa_finalize call in
+.fini_array.  This is slightly simpler in that it doesn't require
+generation of the .fini_array entry, and the library implementation
+can coordinate features like on_exit without exposing the interfaces
+necessary to implement them.  It also probably preserves more
+faithfully the traditional semantics that atexit routines are executed
+before the main program .fini_array, although doing __cxa_finalize
+first in the latter should produce the same effect.
+
+<p>
+Note that we can't just not choose -- one approach requires the builder
+of the main executable to insert a .fini_array entry, while the other
+doesn't -- unless we want to require the run-time to handle either,
+which doesn't seem useful.
+
+<p>
+My current preference is to proceed with Mark's proposal, requiring
+that exit handle the __cxa_atexit -registered calls (but _not_
+requiring that anyone explicitly register __cxa_finalize or anything
+else to accomplish that).  Upon re-reading all the mail, this seems
+quite workable.  In any case, I'll re-open the issue and we can discuss
+it next time.
+
 
 
 
