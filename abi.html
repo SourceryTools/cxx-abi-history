@@ -492,8 +492,8 @@ otherwise known as the <i>Generic ABI</i>.
 This document describes processor-independent object file formats
 and binary software interfaces for C under Unix.
 A somewhat out-of-date version is available from the SCO website,
-<a href=http://www.sco.com/developer/devspecs/>
-http://www.sco.com/developer/devspecs/</a>.
+<a href=http://www.caldera.com/developer/devspecs/>
+http://www.caldera.com/developer/devspecs/</a>.
 A newer version, produced in conjunction with the next document,
 should be released in the future.
 Included by reference in this ABI.
@@ -676,37 +676,36 @@ Layout (of type C) is done using the following procedure.
       </ol>
   </ol>
 
-<br>
+<p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-<span class="change"><strike>In case (2b) above, the</strike>Case (2b)
-above is now considered to be a mistake.  The</span> use of the first
-indirect primary base class as 
-the derived class' primary base does not save any space in the object,
-and will cause some duplication of virtual function pointers in the
-additional copy of the base classes virtual table.
+Case (2b) above is now considered to be an error in the design.  The
+use of the first indirect primary base class as the derived class'
+primary base does not save any space in the object, and will cause
+some duplication of virtual function pointers in the additional copy
+of the base classes virtual table.
 
-<div class="change">
-<p><strike>
+<p>
 The benefit is that using the derived class virtual pointer as the base
 class virtual pointer will often save a load,
 and no adjustment to the <code>this</code> pointer will be required for
 calls to its virtual functions.
-</strike>
-We used to think that this would allow us to avoid adjusting
-<code>this</code> in some cases, but this was incorrect, as the <a
-href=#vcall>virtual function call algorithm</a> requires that we look up
-the function through a pointer to a class that defines the function, not
-one that just inherits it.  Removing that requirement would not be a good
-idea, as then we would no longer be able to emit all thunks with the
-functions they jump to.  For instance, consider this example:
 
-<code><pre>
+<p> 
+It was thought that 2b would allow the compiler to avoid
+adjusting <code>this</code> in some cases, but this was incorrect, as
+the <a href=#vcall>virtual function call algorithm</a> requires that
+the function be looked up through a pointer to a class that defines
+the function, not one that just inherits it.  Removing that
+requirement would not be a good idea, as there would then no longer be
+a way to emit all thunks with the functions they jump to.  For
+instance, consider this example:
+<blockquote><code><pre>
 struct A { virtual void f(); };
 struct B : virtual public A { int i; };
 struct C : virtual public A { int j; };
 struct D : public B, public C {};
-</pre></code>
+</pre></code></blockquote>
 
 <p>
 When B and C are declared, A is a primary base in each case, so although
@@ -719,7 +718,6 @@ to <code>B::A*</code>, which would require a third-party thunk.  Since we
 require that a call to <code>C::f()</code> first convert to
 <code>A*</code>, C-in-D's copy of A's vtable is never referenced, so this
 is not necessary.
-</div>
 </i>
 
 <p>
@@ -4941,6 +4939,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[030313]</font>
+Correct broken links and incorrect formatting.
 
 <p>
 <font color=blue>[030103]</font>
