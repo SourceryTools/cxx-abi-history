@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 5 January 2000</i>
+<i>Revised 11 January 2000</i>
 
 </center>
 
@@ -980,6 +980,107 @@ represented as a <code>ptrdiff_t</code>.
 Such pointers are represented as one plus the offset from the base
 address of the class, as a <code>ptrdiff_t</code>.
 NULL pointers are zero.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A15></a> <td> A-15 </td>
+<td> Empty bit-fields </td>
+<td> data </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 991214 </td>
+<td> 000106 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How are zero-length bit-fields handled?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A15> Resolution</a></b>:
+Zero-length bit-fields do not prevent a class from being considered
+empty or nearly empty.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991214 CodeSourcery -- Mark]</font>
+<p>
+<b>Question</b>:
+Does the presence of a zero-width bit-field prevent a class from
+being empty?
+
+<p>
+<b>Suggested Resolution</b>:
+
+No.  Amend the definition of an "empty class" to read:
+
+<p>
+<dl>
+<dd>
+A class with no non-static data members other than zero-width bitfields,
+no virtual functions, no virtual base classes,
+and no non-empty non-virtual base classes.
+</dd>
+</dl>
+
+<p>
+Amend the definition of a "nearly empty class" to read:
+
+<p>
+<dl>
+<dd>
+A class, the objects of which contain only a Vptr and zero-width bitfields.
+</dd>
+</dl>
+
+<p>
+<font color=blue>[000106 All]</font>
+Accept the CodeSourcery proposal.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A16></a> <td> A-16 </td>
+<td> Nearly empty virtual bases </td>
+<td> data </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 991228 </td>
+<td> 000106 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+May a class with non-empty, non-primary, virtual base classes
+be treated as nearly empty (and thus eligible to be a primary base)
+if its only non-vptr data is in its virtual base classes?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Virtual base classes do not prevent a class from being considered
+nearly empty.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000106 All]</font>
+Accept the proposal.
 
 
 <p> <hr> <p>
@@ -4477,6 +4578,109 @@ and calls <code>terminate()</code> before starting Phase 2.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <a name=D2></a> <td> D-2 </td>
+<td> Unwind personality routines </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 000106 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The IA-64 runtime conventions provide for a personality routine
+pointer for language-specific actions when unwinding the stack.
+They do not specify its interface.
+There are typically two required actions for C++:
+locating a handler (non-destructively)
+and destroying automatic objects while unwinding.
+This issue involves specification of the API (see also D-3).
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D2> Resolution</a></b>:
+See the <a href=abi-eh.pdf> exception handling specification</a>,
+level 1, and the <a href=exceptions.pdf>working paper</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990826 Intel/HP]</font>
+The Software Conventions document is claimed to specify the interface,
+with the parameters indicating which action is required.
+(I can't find it, but this would be an acceptable solution -- Jim.)
+
+<p>
+<font color=blue>[991209 all]</font>
+Observe that this issue is part of a
+<a href=#exception-level1>level 1 specification</a>,
+i.e. part of the base ABI.
+It is being described as part of the
+<a href=http://reality.sgi.com//dehnert_engr/cxx/exceptions.pdf>
+proposed common EH interface from HP</a>.
+
+<p>
+<font color=blue>[000106 all]</font>
+Closed -- specified as part of the accepted
+<a href=abi-eh.html>exception handling specification</a>.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D3></a> <td> D-3 </td>
+<td> Unwind process clarification </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 000106 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The IA-64 runtime conventions provide for a personality routine
+pointer for language-specific actions when unwinding the stack.
+However, they are quite muddy about the precise sequence of calls.
+This issue involves specification of unwind process (see also D-2).
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D3> Resolution</a></b>:
+See the <a href=abi-eh.pdf> exception handling specification</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991209 all]</font>
+Observe that this issue is part of a
+<a href=#exception-level1>level 1 specification</a>,
+i.e. part of the base ABI.
+It is being described as part of the
+<a href=http://reality.sgi.com//dehnert_engr/cxx/exceptions.pdf>
+proposed common EH interface from HP</a>.
+
+<p>
+<font color=blue>[000106 all]</font>
+Closed -- specified as part of the accepted
+<a href=abi-eh.html>exception handling specification</a>.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <a name=D4></a> <td> D-4 </td>
 <td> Unwind routines nested? </td>
 <td> lib ps </td>
@@ -4747,6 +4951,97 @@ which would be bypassed by the proposed solution.
 Since making this work would involve significant performance penalties
 elsewhere, the group's concensus is that there is inadequate benefit
 from an attempted solution.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D8></a> <td> D-8 </td>
+<td> Interaction with threads packages </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990603 </td>
+<td> 000106 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What happens when an exception is not caught in the thread where raised?
+What does <code>uncaught_exception()</code>
+return if another thread is currently processing an exception?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D8> Resolution</a></b>:
+With one exception, exception handling is entirely per-thread --
+exceptions must be caught in the thread where raised,
+and queries about them (e.g. <code>uncaught_exception()</code>)
+are answered only with respect to the thread doing the query.
+The only global exception behavior is handler registration --
+see <a href=cxx-closed#D15>issue D-15</a>.
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D15></a> <td> D-15 </td>
+<td> Terminate handler and threads </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> all </td>
+<td> 991216 </td>
+<td> 000106 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define how the terminate and unexpected handler registration
+interacts with threads.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D15> Resolution</a></b>:
+Handler registration applies to all threads.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+C++ allows the user to register <code>terminate()</code> and
+<code>unexpected()</code> handlers,
+but does not specify how the registration interacts with threading.
+There are (at least) three possibilities:
+
+<ul>
+<li> Registration defines a single global handler used by all threads.
+<li> Registration defines a handler used only by the current thread.
+<li> The user can choose which of these to use.
+</ul>
+
+<p>
+Several members believe the second choice (per-thread) would be very
+surprising to many users and is therefore a highly undesirable default.
+
+<p>
+<font color=blue>[000106 All]</font>
+Handler registration is global, applying to all threads.
+It is observed that the global handler can be programmed to do
+thread-specific processing, e.g. by keying off a per-thread datum,
+but that many users would find it very surprising if the registration
+only worked for the calling thread.
 
 
 <p> <hr> <p>
