@@ -227,11 +227,24 @@ Such classes may be primary base classes even if virtual,
 sharing a virtual pointer with the derived class.
 
 <p>
-<dt> <i>primary base class</i> </dt>
+<a name="POD" />
+<dt> <i>POD for the purpose of layout</i><dt>
 <dd>
-For a dynamic class,
-the unique base class (if any) with which it shares the virtual pointer
-at offset 0.
+A type is considered a POD for the purposes of layout if it is a POD
+type (in the sense of [basic.types]), and is not:
+<ul>
+<li>a POD-struct or POD-union (in the sense of [class]) with a
+bitfield whose declared width is wider than the declared type of the
+bitfield, or
+<li>an array of a type which is not a POD for the purpose of layout.
+</ul>
+</dd>
+</p>
+
+<p>
+<dt> <i>primary base class</i> </dt> <dd> For a dynamic class, the
+unique base class (if any) with which it shares the virtual pointer at
+offset 0.
 
 <p>
 <dt> <i>secondary virtual table</i> </dt>
@@ -539,11 +552,13 @@ without virtual bases.
 <h3> 2.2 POD Data Types </h3>
 
 <p>
-The size and alignment of C POD types is as specified by the base (C) ABI.
-Type bool has size and alignment 1.
-All of these types have data size and non-virtual size equal to their size.
-(We ignore tail padding for PODs because the Standard does not allow us
-to use it for anything else.)
+
+The size and alignment of a type which is a <a href="#POD">POD for the
+purpose of layout<a> is as specified by the base (C) ABI.  Type bool
+has size and alignment 1.  All of these types have data size and
+non-virtual size equal to their size.  (We ignore tail padding for
+PODs because the Standard does not allow us to use it for anything
+else.)
 
 
 <p> <hr> <p>
@@ -589,10 +604,12 @@ of a class containing those two members, in that order.
 <a name=class-types>
 <h3> 2.4 Non-POD Class Types </h3>
 
-For non-POD class types C, assume that all component types
-(i.e. proper base classes and non-static data member types)
-have been laid out, defining size, data size, non-virtual size,
-alignment, and non-virtual alignment.
+For a class type C which is not a <a href="#POD">POD for the purpose
+of layout</a>, assume that all component types (i.e. proper base
+classes and non-static data member types) have been laid out, defining
+size, data size, non-virtual size, alignment, and non-virtual
+alignment.
+
 (See the description of these terms in
 <a href=#general><b>General</b></a> above.)
 Further, assume for data members that nvsize==size, and nvalign==align.
@@ -4895,6 +4912,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[030518]</font>
+Define &quot;POD for the purpose of layout.&quot;
 
 <p>
 <font color=blue>[030316]</font>
