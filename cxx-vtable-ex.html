@@ -13,7 +13,7 @@ C++ Vtable Example
 </b></i></font>
 
 <p>
-<i>Revised 1 September 1999</i>
+<i>Revised 8 September 1999</i>
 
 </center>
 
@@ -273,9 +273,9 @@ struct A {
 
 <td><code><pre>
 
--- A vtable address --
 A::offset_to_top (0)
 A::rtti
+-- A vtable address --
 A::f() [0]
 A::g() [0]
 </pre></code></td>
@@ -294,13 +294,14 @@ struct B: public virtual A {
 <td><code><pre>
 
 B::offset_to_A (16)
--- B vtable address --
 B::offset_to_top (0)
 B::rtti
-A::f() [16: offset_to_A]
--- A-in-B vtable address --
+-- B vtable address --
+B::f() [0]
+
 A::offset_to_top (-16)
 A::rtti
+-- A-in-B vtable address --
 B::f() [0]
 A::g() [16: offset_to_A]
 </pre></code></td>
@@ -319,13 +320,14 @@ struct C: public virtual A {
 <td><code><pre>
 
 C::offset_to_A (16)
--- C vtable address --
 C::offset_to_top (0)
 C::rtti
-A::g() [16: offset_to_A]
--- A-in-C vtable address --
+-- C vtable address --
+C::g() [0]
+
 A::offset_to_top (-16)
 A::rtti
+-- A-in-C vtable address --
 A::f() [16: offset_to_A]
 C::g() [0]
 </pre></code></td>
@@ -344,26 +346,156 @@ struct D: public B, public C {
 <td><code><pre>
 
 D::offset_to_A (32)
--- D, B-in-D vtable address --
 D::offset_to_top (0)
 D::rtti
-A::f() [32: offset_to_A]
--- A-in-B-in-D vtable address --
-A::offset_to_top (-32)
-A::rtti
+-- D, B-in-D vtable address --
 B::f() [0]
-C::g() [16: offset_to_C]
 
 C::offset_to_A (16)
--- C-in-D vtable address --
-C::offset_to_top (16)
+C::offset_to_top (-16)
 C::rtti
-A::g() [32: offset_to_A]
--- A-in-C-in-D vtable address --
+-- C-in-D vtable address --
+C::g() [0]
+
 A::offset_to_top (-32)
 A::rtti
+-- A-in-C-in-D vtable address --
+B::f() [offset at -80: thunk]
+C::g() [offset at -48: thunk]
+</pre></code></td>
+
+</tr>
+
+<tr>
+<td colspan=2>
+<font size=-1>
+<ol>
+<li> Numbers in parentheses after offset_to_top entries are actual values.
+<li> Class prefixes for functions identify class where defined.
+<li> Information in square brackets after function pointer entries
+    is the offset which must be added to <i>this</i>
+    in the function (or thunk),
+    assuming that the caller has already added offset_to_top.
+</ol>
+</font>
+</td>
+</tr>
+
+</table>
+
+<table align=center cellpadding=4 border=on>
+<caption> Table 1d: Example Vtable Layout
+	<br>(Jason and Brian's proposal)
+</caption>
+
+<tr>
+<th> Declarations </th>
+<th> Vtable <sup>1</sup> </th>
+</tr>
+
+<tr>
+<td><code><pre>
+
+struct A {
+  virtual void f ();
+  virtual void g ();
+  int ia;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+A::offset_to_top (0)
+A::rtti
+-- A vtable address --
+A::f() [0]
+A::g() [0]
+</pre></code></td>
+
+</tr>
+
+<tr>
+<td><code><pre>
+
+struct B: public virtual A {
+  void f ();
+  int ib;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+B::offset_to_A (16)
+B::offset_to_top (0)
+B::rtti
+-- B vtable address --
 B::f() [0]
-C::g() [16: offset_to_C]
+
+A::offset_to_top (-16)
+A::rtti
+-- A-in-B vtable address --
+B::f() [0]
+A::g() [16: offset_to_A]
+</pre></code></td>
+
+</tr>
+
+<tr>
+<td><code><pre>
+
+struct C: public virtual A {
+  void g ();
+  int ic;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+C::offset_to_A (16)
+C::offset_to_top (0)
+C::rtti
+-- C vtable address --
+C::g() [0]
+
+A::offset_to_top (-16)
+A::rtti
+-- A-in-C vtable address --
+A::f() [16: offset_to_A]
+C::g() [0]
+</pre></code></td>
+
+</tr>
+
+
+<tr>
+<td><code><pre>
+
+struct D: public B, public C {
+  int id;
+};
+</pre></code></td>
+
+<td><code><pre>
+
+D::offset_to_A (32)
+D::offset_to_top (0)
+D::rtti
+-- D, B-in-D vtable address --
+B::f() [0]
+
+C::offset_to_A (16)
+C::offset_to_top (-16)
+C::rtti
+-- C-in-D vtable address --
+C::g() [0]
+
+A::offset_for_g (-16)
+A::offset_for_f (-32)
+A::offset_to_top (-32)
+A::rtti
+-- A-in-C-in-D vtable address --
+B::f() [offset at -24: thunk]
+C::g() [offset at -32: thunk]
 </pre></code></td>
 
 </tr>
