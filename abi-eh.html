@@ -15,7 +15,7 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 12 January 2000</i>
+<i>Revised 18 January 2000</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI for IA-64: Exception Handling
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000118]</font>
+Integrate comments from 13 January meeting.
 
 <p>
 <font color=blue>[000112]</font>
@@ -43,17 +47,12 @@ Original version.
 <p> <hr> <p>
 <h3> Outstanding Questions </h3>
 
+<font color=red>
 <ul>
-<p>
-<li> W.r.t. <a href=#lsda><code>_Unwind_GetLanguageSpecificData</code></a>,
-I thought we agreed that
-we should have a query for the beginning of the unwind info block
-(from which the LSDA is easily obtained) instead.
-
-<p>
-<li> W.r.t. <a href=#landing>transferring control to the landing pad</a>,
-specify which registers are restored?
+<li> Should <code>_Unwind_Reason_Code</code> be a uint64?
+<li> Should we use _Unwind prefix for personality routine action masks?
 </ul>
+</font>
 
 
 <p> <hr> <p>
@@ -285,21 +284,21 @@ but the method of locating and restoring previous stack frames
 is language independent.
 
 <p>
-A two-pass exception-handling model is not strictly necessary to
+A two-phase exception-handling model is not strictly necessary to
 implement C++ language semantics,
 but it does provide some benefits.
-For example, the first pass allows an exception-handling mechanism
+For example, the first phase allows an exception-handling mechanism
 to <i>dismiss</i> an exception before stack unwinding begins,
 which allows <i>resumptive</i> exception handling
 (correcting the exceptional condition and resuming execution at
 the point where it was raised).
 While C++ does not support resumptive exception handling,
-other languages do, and the two-pass model allows C++ to coexist with
+other languages do, and the two-phase model allows C++ to coexist with
 those languages on the stack.
 
 <p>
-Note that even with a two pass model,
-we may execute each of the two passes more than once for a single exception,
+Note that even with a two-phase model,
+we may execute each of the two phases more than once for a single exception,
 as if the exception was being thrown more than once.
 For instance, since it is not possible to determine if
 a given catch clause will rethrow or not without executing it,
@@ -328,6 +327,25 @@ described in the following sections.
 <h4> Data Structures </h4>
 
 <p>
+<b> Reason Codes </b>
+<p>
+<font color=red>
+The unwind interface uses reason codes in several contexts to identify
+the reasons for failures or other actions, defined as follows:
+<code><pre>
+    typedef int _Unwind_Reason_Code;
+    const _Unwind_Reason_Code _Unwind_NO_REASON = 0;
+    const _Unwind_Reason_Code _Unwind_FOREIGN_EXCEPTION_CAUGHT = 1;
+    const _Unwind_Reason_Code _Unwind_FATAL_PHASE2_ERROR = 2;
+    const _Unwind_Reason_Code _Unwind_FATAL_PHASE1_ERROR = 3;
+    const _Unwind_Reason_Code _Unwind_NORMAL_STOP = 4;
+    const _Unwind_Reason_Code _Unwind_END_OF_STACK = 5;
+    const _Unwind_Reason_Code _Unwind_HANDLER_FOUND = 6;
+</pre></code>
+The interpretations of these codes is described below.
+</font>
+
+<p>
 <b> Exception Header </b>
 <p>
 The unwind interface uses a pointer to an exception header object
@@ -338,7 +356,8 @@ but it will be prefixed by a header understood by the unwind interface,
 defined as follows:
 <code><pre>
     typedef void (*<font color=red>_Unwind_Exception_Cleanup_Fn</font>)
-		(int reason, struct _Unwind_Exception *exc);
+		(<font color=red>_Unwind_Reason_Code</font> reason,
+		 struct _Unwind_Exception *exc);
 
     struct _Unwind_Exception {
 	    UInt64			 exception_class;
@@ -365,25 +384,27 @@ exception object needs to be destroyed by a different runtime than
 the runtime which created the exception object,
 for instance if a Java exception is caught by a C++ <i>catch</i>
 handler.
-In such a case, a reason code indicates why the
+In such a case, a reason code (see above) indicates why the
 exception object needs to be deleted:
 <ul>
 <p>
-<li> <code>EH_FOREIGN_EXCEPTION_CAUGHT</code> = 1:
+<li> <code>_Unwind_FOREIGN_EXCEPTION_CAUGHT</code> = 1:
     This indicates that a different runtime caught this exception.
     Nested foreign exceptions,
     or rethrowing a foreign exception,
     result in undefined behaviour.
 <p>
-<li> <code>EH_FATAL_PASS2_ERROR</code> = 2:
-    The personality routine encountered an error during pass 2,
+<li> <code>_Unwind_FATAL_PHASE2_ERROR</code> = 2:
+    The personality routine encountered an error during phase 2,
     for instance a stack corruption.
-    (Normally, all errors should be reported during pass 1 by returning
+    <p>
+    <img src=warning.gif alt="<b>NOTE</b>:">
+    Normally, all errors should be reported during phase 1 by returning
     from <code>_Unwind_RaiseException</code>.
     However, landing pad code could cause stack corruption
-    between pass 1 and pass 2.
+    between phase 1 and phase 2.
     For a C++ exception, the runtime should call <code>terminate()</code>
-    in that case.)
+    in that case.
 </ul>
 
 <p>
@@ -427,7 +448,7 @@ and passed to the personality routine during unwinding.
 <h5> _Unwind_RaiseException </h5>
 
 <code><pre>
-    uint64 _Unwind_RaiseException
+   <font color=red>_Unwind_Reason_Code</font> _Unwind_RaiseException
 	      ( struct _Unwind_Exception *exception_object );
 </pre></code>
 
@@ -444,16 +465,43 @@ except that it must contain an <code>_Unwind_Exception</code> struct
 unless an error condition is found
 (such as no handler accepting to handle the exception,
 bad stack format, etc.).
-In the case of C++,
-if <code>_Unwind_RaiseException</code> returns,
-<code>terminate()</code> should be called.
+<font color=red>
+In such a case, an <code>_Unwind_Reason_Code</code> value is returned.
+Possibilities are:
+<ul>
+<p>
+<li> <code>_Unwind_END_OF_STACK</code>:
+    The unwinder encountered the end of the stack during phase 1,
+    without finding a handler.
+    The unwind runtime will not have modified the stack.
+    The C++ runtime will normally call <code>uncaught_exception()</code>
+    in this case.
+<p>
+<li> <code>_Unwind_FATAL_PHASE1_ERROR</code>:
+    The unwinder encountered an unexpected error during phase 1,
+    e.g. stack corruption.
+    The unwind runtime will not have modified the stack.
+    The C++ runtime will normally call <code>terminate()</code> in this case.
+<p>
+<li> <code>_Unwind_FATAL_PHASE2_ERROR</code>:
+    The unwinder encountered an unexpected error during phase 1,
+    e.g. stack corruption.
+    The unwind runtime may have modified the stack,
+    e.g. popped frames from it,
+    or landing pad code may have caused stack corruption.
+    As a result, the caller of <code>_Unwind_RaiseException</code>
+    can normally make no assumptions about the state of its stack.
+    The C++ runtime will normally attempt to call
+    <code>terminate()</code> in this case.
+</ul>
+</font>
 
 <p>
 <a name=forced></a>
 <h5> _Unwind_ForcedUnwind </h5>
 
 <code><pre>
-    typedef bool (*_Unwind_Stop_Fn)
+    typedef <font color=red>_Unwind_Reason_Code</font> (*_Unwind_Stop_Fn)
 		(int version,
 		 int actions,
 		 Uint64 exceptionClass,
@@ -461,7 +509,7 @@ if <code>_Unwind_RaiseException</code> returns,
 		 struct _Unwind_Context *context,
 		 void *stop_parameter );
 
-    uint64 _Unwind_ForcedUnwind
+    <font color=red>_Unwind_Reason_Code</font> _Unwind_ForcedUnwind
 	      ( struct _Unwind_Exception *exception_object,
 		_Unwind_Stop_Fn stop,
 		void *stop_parameter );
@@ -478,28 +526,70 @@ except that it must contain an <code>_Unwind_Exception</code> struct
 (see <i>Exception Header</i> above).
 
 <p>
-Forced unwinding is a single-phase process.
+Forced unwinding is a single-phase process
+(phase 2 of the normal exception-handling process).
 The <code>stop</code> and <code>stop_parameter</code> parameters
 control the termination of the unwind process,
 instead of the usual personality routine query.
-If <code>stop</code> is non-NULL,
-it is called for each unwind frame,
-with the usual personality routine parameters (see below)
+The <code>stop</code> function parameter is called for each unwind frame,
+with the parameters described for the usual personality routine below,
 plus an additional <code>stop_parameter</code>.
-If it returns, always with a false result meaning don't stop,
-the frame's personality routine is called with the
-<code>EH_FORCE_UNWIND</code> and <code>EH_CLEANUP_PHASE</code> flags
-set in <code>actions</code>,
-and then unwinding proceeds to the next frame.
+
+<font color=red>
+<p>
+When the <code>stop</code> function identifies the destination frame,
+it transfers control (according to its own, unspecified, conventions)
+to the user code as appropriate without returning,
+normally after calling <code>_Unwind_DeleteException</code>.
+If not, it should return
+an <code>_Unwind_Reason_Code</code> value as follows:
+<ul>
+<p>
+<li> <code>_Unwind_NO_REASON</code>:
+    This is not the destination frame.
+    The unwind runtime will call
+    the frame's personality routine with the
+    <code>EH_FORCE_UNWIND</code> and <code>EH_CLEANUP_PHASE</code> flags
+    set in <code>actions</code>,
+    and then unwind to the next frame
+    and call the <code>stop</code> function again.
+<p>
+<li> <code>_Unwind_END_OF_STACK</code>:
+    In order to allow  <code>_Unwind_ForcedUnwind </code> to perform
+    special processing when it reaches the end of the stack,
+    the unwind runtime will call it after the last frame is rejected,
+    with a NULL stack pointer in the context,
+    and the <code>stop</code> function must catch this condition
+    (i.e. by noticing the NULL stack pointer).
+    It may return this reason code if it cannot handle end-of-stack.
+<p>
+<li> <code>_Unwind_FATAL_PHASE2_ERROR</code>:
+    The <code>stop</code> function may return this code for other fatal
+    conditions, e.g. stack corruption.
+</ul>
+If the <code>stop</code> function returns any reason code other than
+<code>_Unwind_NO_REASON</code>,
+<code>_Unwind_ForcedUnwind </code> should return that reason code.
+In such cases, the stack state is indeterminate,
+and it is expected that most callers will call <code>abort()</code>.
 
 <p>
-<code>_Unwind_ForcedUnwind</code> does not return,
-unless an error condition is found
-(such as no handler accepting to handle the exception,
-bad stack format, etc.).
-In the case of C++,
-if <code>_Unwind_ForcedUnwind</code> returns,
-<code>terminate()</code> should be called.
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i> Example:  <code>longjmp_unwind()</code>
+<p>
+The expected implementation of <code>longjmp_unwind()</code> is as follows.
+The <code>setjmp()</code> routine will have saved the state to be
+restored in its customary place, including the frame pointer.
+The <code>longjmp_unwind()</code> routine will call
+<code>_Unwind_ForcedUnwind </code> with a <code>stop</code> function
+that compares the frame pointer in the context record with the saved
+frame pointer.
+If equal, it will restore the <code>setjmp()</code> state as customary,
+and otherwise it will return <code>_Unwind_NO_REASON</code> or
+<code>_Unwind_END_OF_STACK</code>.
+</i>
+
+</font>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -704,9 +794,9 @@ fragment containing the call site in the current stack frame.
 
 <p>
 <code><pre>
-    int (*<font color=red>__personality_routine</font>)
+    <font color=red>_Unwind_Reason_Code</font> (*__personality_routine)
 	    (int version,
-	     int <font color=red>actions</font>,
+	     int actions,
 	     UInt64 exceptionClass,
 	     struct _Unwind_Exception *exceptionObject,
 	     struct _Unwind_Context *context);
@@ -789,7 +879,7 @@ a bitwise <code>OR</code> of one or more of the following constants:
 <dt><code> EH_SEARCH_PHASE </code> = 1
 <dd> Indicates that the personality routine should
 check if the current frame contains a handler,
-and if so return <code>EH_HANDLER_FOUND</code>,
+and if so return <code>_Unwind_HANDLER_FOUND</code>,
 or otherwise return <code>EH_CONTINUE_UNWIND</code>.
 <code>EH_SEARCH_PHASE</code> cannot be set
 at the same time as <code>EH_CLEANUP_PHASE</code>.
@@ -811,7 +901,7 @@ and return <code>EH_INSTALL_HANDLER</code>.
 indicates to the personality routine that the current frame is
 the one which was flagged as the handler frame during phase 1.
 The personality routine is not allowed to change its mind
-between phase 1 and phase 2,É
+between phase 1 and phase 2,
 i.e. it must handle the exception in this frame in phase 2.
 
 <p>
@@ -839,20 +929,34 @@ for entering the landing pad
 by calling the context management routines above.
 Prior to executing code in the landing pad,
 registers not altered by the personality routine will be restored
-to their exact state in that frame
-before the call that threw the exception.
+to their state in that frame
+before the call that threw the exception, as follows.
+<font color=red>
+All registers specified as callee-saved by the base ABI are restored,
+as well as scratch registers GR15, GR16, GR17 and GR18 (see below).
+Except for those exceptions,
+scratch (or caller-saved) registers are not preserved,
+and their contents are undefined on transfer.
+The accessibility of registers in the frame will be restored to that
+at the point of call,
+i.e. the same logical registers will be accessible,
+but their mappings to physical registers may change.
+Further,
+the state of stacked registers beyond the current frame is unspecified,
+i.e. they may be either in physical registers or on the register stack.
+</font>
 
 <p>
 The landing pad can either resume normal execution
 (as, for instance, at the end of a C++ catch),
-or resume unwinding by calling <code>_Unwind_Resume</code
-and passing it the <code>exceptionObject</code' argument
+or resume unwinding by calling <code>_Unwind_Resume</code>
+and passing it the <code>exceptionObject</code> argument
 received by the personality routine.
 <code>_Unwind_Resume</code> will never return.
 
 <p>
 <code>_Unwind_Resume</code> should be called if and only if
-the personality routine did not return <code>EH_HANDLER_FOUND</code>
+the personality routine did not return <code>_Unwind_HANDLER_FOUND</code>
 during phase 1.
 As a result, the unwinder can allocate resources (for instance memory)
 and keep track of them in the exception object reserved words.
@@ -873,7 +977,7 @@ which must be preserved to be passed to <code>_Unwind_Resume</code>.
 The landing pad may receive other arguments,
 for instance a <i>switch value</i>
 indicating the type of the exception.
-Four scratch registers are reserved for that use
+Four scratch registers are reserved for this use
 (GR15, GR16, GR17 and GR18.)
 
 <p>
@@ -901,7 +1005,7 @@ This is true even if it understands the exception object format
 <p>
 A runtime is not allowed to catch an
 exception if the <code>EH_FORCE_UNWIND</code> flag was passed to 
-he personality routine.
+the personality routine.
 
 <p>
 <img src=warning.gif>

@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 10 January 2000</i>
+<i>Revised 19 January 2000</i>
 
 </center>
 
@@ -56,21 +56,7 @@ clarified:
 <ul>
 <p>
 <li> <a href=#q1>
-The vtable contains base offsets only for direct virtual base classes,
-correct?
-</a>
-
-<p>
-<li> <a href=#q2>
-Does a class vtable have offset-to-top and RTTI (typeinfo pointer)
-fields if it has virtual bases but not virtual functions?
-</a>
-
-<p>
-<li> <a href=#q4>A-17:
-Should a nearly empty virtual base class E that is the primary base
-class of another base class D of the class C being laid out,
-be re-allocated in C, or should its allocation as part of D in C be reused?
+Check the revised statement of when virtual base offsets are required.
 </a>
 
 <p>
@@ -82,18 +68,23 @@ Should E be the primary base (because first),
 or should D (because this saves a vptr)?
 </a>
 
-<p>
-<li> A-18:
-When allocating a base class D that has one or more virtual base classes,
-should we use its full standalone alignment (i.e. including the
-alignment constraints of the vitual base classes) as currently defined,
-or only the alignment constraint required by its non-virtual components?
-
 </ul>
 </font>
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000119]</font>
+Clarify when virtual base offsets are required.
+Note that a vtable has offset-to-top and RTTI entries for classes with
+virtual bases even if there are no virtual functions.
+Resolve allocation of a virtual base class that is a primary base for
+another base (A-17).
+Resolve choice of a primary virtual base class that is a primary base for
+another base (A-19).
+Describe the (non-)effect of virtual bases on the alignment of the
+non-virtual part of a class as the base of another class (A-18).
 
 <p>
 <font color=blue>[991230]</font>
@@ -170,17 +161,17 @@ Such classes may be primary base classes even if virtual,
 sharing a virtual pointer with the derived class.
 
 <p>
-<dt> <i>polymorphic class</i> </dt>
+<dt> <i>primary base class</i> </dt>
+<dd>
+For a super-polymorphic class,
+the unique base class (if any) with which it shares the Vptr at offset 0.
+
+<p>
+<dt> <i>super-polymorphic class</i> </dt>
 <dd>
 A class requiring a virtual table pointer
 (because it or its bases have one or more virtual member functions or
 virtual base classes).
-
-<p>
-<dt> <i>primary base class</i> </dt>
-<dd>
-For a polymorphic class,
-the unique base class (if any) with which it shares the Vptr at offset 0.
 
 </dl>
 
@@ -211,6 +202,13 @@ which intuitively is sizeof(O) minus the size of tail padding.
 <li> <i>nvsize</i>(O):
 the <i>non-virtual size</i> of an object,
 which intuitively is dsize(O) minus the size of virtual bases.
+It is always equal to <i>dsize</i>(O) for types without virtual bases.
+
+<p>
+<li> <i>nvalign</i>(O):
+the <i>non-virtual alignment</i> of an object,
+which intuitively is the alignment determined by ignoring virtual bases.
+It is always equal to <i>align</i>(O) for types without virtual bases.
 
 </ul>
 
@@ -233,8 +231,7 @@ to use it for anything else.)
 A pointer to data member is an offset from the base
 address of the class object containing it,
 represented as a <code>ptrdiff_t</code>.
-It has the size, data size, non-virtual size, and alignment
-of a <code>ptrdiff_t</code>.
+It has the size and alignment attributes of a <code>ptrdiff_t</code>.
 
 <p>
 A pointer to member function is a pair <ptr, adj> as follows:
@@ -256,9 +253,9 @@ A pointer to member function is a pair <ptr, adj> as follows:
 </dl>
 
 <p>
-It has the size, data size, non-virtual size, and alignment
+It has the size, data size, and alignment
 of a class containing those two members, in that order.
-(For 64-bit IA-64, that will be 16, 16, 16, and 8 bytes respectively.)
+(For 64-bit IA-64, that will be 16, 16, and 8 bytes respectively.)
 
 
 
@@ -268,7 +265,8 @@ of a class containing those two members, in that order.
 
 For non-POD class types C, assume that all component types
 (i.e. base classes and non-static data member types)
-have been laid out, defining size, data size, non-virtual size, and alignment.
+have been laid out, defining size, data size, non-virtual size,
+alignment, and non-virtual alignment.
 (See the description of these terms in
 <a href=#general><b>General</b></a> above.)
 Layout (of type C) is done using the following procedure.
@@ -283,29 +281,31 @@ The proposed resolution of A-19 is in blue below.</font></a>
   <p>
   <li> Initialize sizeof(C) to zero, align(C) to one, dsize(C) to zero.
   <p>
-  <li> If C is a polymorphic type:
+  <font color=blue>
+  <li> Identify all virtual base classes, direct or indirect,
+       that are primary base classes for some other direct or indirect
+       base class.
+       Call these <i>indirect primary base classes</i>.
+  </font>
+  <p>
+  <li> If C is a super-polymorphic type:
       <ol type=a>
       <p>
-      <li> If C has a polymorphic base class,
+      <li> If C has a super-polymorphic base class,
 	   attempt to choose a primary base class B.
-	   It is the first non-virtual polymorphic base class, if any,
-	   or else <font color=blue>
-	   <s>the first nearly empty virtual base class</s>
-	   a nearly empty virtual base class chosen as follows.
-	   Scan the direct virtual bases in declaration order, left to right.
-	   The first nearly empty one becomes the first <i>candidate</i>.
-	   After a candidate is found,
-	   if the current candidate A is a primary base class of a later
-	   nearly empty direct virtual base B,
-	   B becomes the new candidate.
-	   The last candidate so chosen becomes the primary base.
-	   All of the candidates in this sequence are considered primary
-	   bases in subsequent allocations.
+	   It is the first (in left-to-right declaration order)
+	   non-virtual super-polymorphic base class, if one exists.
+	   <font color=blue>
+	   Otherwise, it is a nearly empty virtual base class,
+	   the first one which is not an indirect primary base class
+	   if possible,
+	   or just the first one if they are all indirect primaries.
 	   </font>
 
 	   <p>
 	   Allocate the chosen primary base at offset zero, and set
-	   sizeof(C) to sizeof(B), align(C) to align(B), dsize(C) to nvsize(B).
+	   sizeof(C) to sizeof(B), align(C) to nvalign(B),
+	   dsize(C) to nvsize(B).
 	   This step allocates only B's non-virtual part,
 	   i.e. excluding any direct or indirect bases.
 
@@ -330,15 +330,15 @@ allocate as follows:
   <p>
   <li> If D is not an empty base class,
 	start at offset dsize(C),
-	incremented if necessary to alignment align(type(D)).
+	incremented if necessary to alignment nvalign(type(D)).
 	Place D at this offset unless doing so would result in two
 	components (direct or indirect) of the same type having the
 	same offset.
 	If such a component type conflict occurs,
-	increment the candidate offset by align(type(D)),
+	increment the candidate offset by nvalign(type(D)),
 	and try again,
 	repeating until success occurs
-	(which will occur no later than sizeof(C) incremented to the
+	(which will occur no later than sizeof(C) rounded up to the
 	required alignment).
 
 	<p>
@@ -347,7 +347,7 @@ allocate as follows:
 
 	<p>
 	Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
-	Update align(C) to max (align(C), align(D)).
+	Update align(C) to max (align(C), nvalign(D)).
 	If D is a base class (not empty in this case),
 	update dsize(C) to offset(D)+nvsize(D).
 	If D is a data member,
@@ -363,14 +363,14 @@ allocate as follows:
 	proceed with attempts at dsize(C) as for non-empty bases.
 	As for that case, if there is a type conflict at dsize(C)
 	(with alignment updated as necessary),
-	increment the candidate offset by align(type(D)),
+	increment the candidate offset by nvalign(type(D)),
 	and try again,
 	repeating until success occurs.
 
 	<p>
 	Once offset(D) has been chosen,
 	update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
-	Note that align(D) is 1, so no update of align(C) is needed.
+	Note that nvalign(D) is 1, so no update of align(C) is needed.
 	Similarly, since D is an empty base class,
 	no update of dsize(C) is needed.
 
@@ -378,48 +378,31 @@ allocate as follows:
 
   <p>
   After all such components have been allocated,
-  set nvsize(C) = dsize(C).
+  set nvsize(C) = dsize(C) and nvalign(C) = align(C).
+  These values will not change during virtual base allocation.
 
-<p><a name=q4></a><a name=a174></a>
+<p><a name=a17></a>
 <li> <h5> Virtual Base Allocation </h5>
 <p>
-<font color=green>
-The green text below is the original proposed resolution of A-17.</font>
-<font color=red>
-The red text below is Mark's alternate proposed resolution of A-17.</font>
 
 <p>
 Finally allocate any direct or indirect virtual base classes
-(except <font color=green><s>one selected as the primary base class in I-2a</s>
-primary base classes as specified below</font>, if any)
+(except the primary base class or any indirect primary base classes)
 as we did non-virtual base classes in step II-1,
-in depth-first (in the inheritance graph) declaration order.
+in depth-first (in the inheritance graph) left-to-right declaration order.
 Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
 If non-empty, also update align(C) and dsize(C) as in II-1.
 
-<p><font color=green>
-A nearly empty virtual base class E of the current class C that has
-been chosen as the primary base class has already been allocated in
-step I-2a, and is not allocated here.
-Furthermore, a nearly empty virtual base class E that has been chosen
-as the primary base class of another base F of the current class C,
-already allocated (i.e. as a non-virtual base in step II, or as a
-virtual base earlier in the depth-first left-to-right declaration order
-in step III),
-shall be treated as allocated as part of that class F
-(the first such in the allocation order if there is more than one),
-and not reallocated here.
-</font>
-
-<p><font color=red>
-Any nearly empty virtual base class E of the current class C that has
-been chosen as the primary base class of some other base class (direct
-or indirect, virtual or non-virtual) of C,
-will allocated as part of that other base class, and is not allocated here.
+<p>
+The primary base class has already been allocated in I-3a.
+Any indirect primary base class E of the current class C,
+has been chosen as the primary base class of some other base class
+(direct or indirect, virtual or non-virtual) of C,
+will be allocated as part of that other base class,
+and is not allocated here.
 If E is a primary base class of more than one other base,
 the instance used as its allocation in C shall be the first such
 in the depth-first, left-to-right base declaration order.
-</font>
 
 <p>
 <li> <h5> Finalization </h5>
@@ -485,9 +468,14 @@ Each vtable consists of the following components:
 the virtual bases of an object,
 Such an entry is a displacement to a virtual base subobject from the
 location within the object of the vtable pointer that addresses this vtable.
-These entries are only necessary if the class directly
-(or <font color=red>indirectly?</font>)
-inherits from virtual base classes.
+<font color=red>
+These entries are required for:
+  <ul>
+  <li>direct virtual base classes, or
+  <li>indirect virtual base classes inherited from a direct virtual base
+  class.
+  </ul>
+</font>
 The values can be positive or negative.
 
 <p>
@@ -580,11 +568,7 @@ they come next, with ordering as defined in categories 3 and 4 below.
 <li>
 <a name=q2></a>
 The offset to top field is next.
-It is present if the class has virtual functions.
-<font color=red>
-Question: Should we include the RTTI fields for classes with no virtual
-functions (only virtual bases), too?
-</font>
+It is present if the class has virtual functions or bases.
 
 <p>
 <li>
@@ -643,7 +627,8 @@ Structure:
 </ul>
 
 <p>
-The vtable contains an RTTI field followed by virtual function pointers.
+The vtable contains <font color=red>offset-to-top and</font> RTTI fields
+followed by virtual function pointers.
 There is one function pointer entry for each
 virtual function declared in the class.
 
@@ -663,7 +648,8 @@ The entries are the same, except:
 
 <ul>
 <p>
-<li> The RTTI fields contain information for the class,
+<li> The <font color=red>offset-to-top and</font> RTTI fields
+     contain information for the class,
      rather than for the base class. 
 
 <p>
@@ -757,13 +743,19 @@ It holds the following function pointer entries:
 <p>
 The primary vtable also has virtual base offset entries
 to allow finding the virtual base subobjects.
-There is one virtual base offset entry for each virtual base class.
-For a class that inherits only virtual bases,
-the entries are at increasing negative offsets from the address point
-of the vtable in the order in which the
-virtual bases appear in the class declaration,
-that is, the entry for the leftmost virtual
-base is closest to the address point of the vtable. 
+There is one virtual base offset entry for each virtual base class,
+<font color=red>
+direct or indirect.
+The entries are in the reverse order in which the virtual bases
+are encountered in a depth-first, left-to-right traversal
+of the inheritance graph.
+That is, the entry for the leftmost virtual
+base is closest to the address point of the vtable.
+In the secondary vtable for a base B,
+offsets are only included for those virtual bases present
+in the primary vtable for B,
+and are present in the same order.
+</font>
 
 
 <p>
@@ -784,23 +776,52 @@ However the rules for placing virtual base offset entries in the
 vtables requires elaboration. 
 
 <p>
-The primary vtable has virtual base offset entries for all virtual
-bases directly or indirectly inherited by the class.
-Each secondary vtable has entries only for virtual
-bases visible to the corresponding base class.
-The entries in the primary vtable are ordered so that entries for
-virtual bases visible to the primary base class are placed closest
-to the vtable address point, i.e. at higher addresses,
-while entries for virtual bases only visible to this class are further
-from the vtable address point, i.e. at lower addresses. 
+<font color=red>
+The primary vtable also has virtual base offset entries
+to allow finding the virtual base subobjects.
+There is one virtual base offset entry for each direct virtual base class,
+and one for each indirect virtual base class
+inherited via a direct virtual base class.
+(Indirect virtual base classes inherited via direct non-virtual base classes
+may be accessed via the the offset stored in the base's vtable.)
+If an indirect virtual base class is inherited via both virtual and
+non-virtual direct base classes,
+the first one in left-to-right declaration order determines whether we
+include a base offset for it.
+The entries are in the reverse order in which the virtual bases
+are encountered in a depth-first, left-to-right traversal
+of the inheritance graph.
+That is, the entry for the leftmost virtual
+base is closest to the address point of the vtable.
+In the secondary vtable for a base B,
+offsets are only included for those virtual bases present
+in the primary vtable for B,
+and are present in the same order.
 
 <p>
-For virtual bases only visible to this class,
-the entries are in the reverse order in which the virtual bases are
-encountered in a depth-first, left-to-right traversal of the
-inheritance graph formed by the class definitions.
-Note that this does not follow the
-order that virtual bases are placed in the object. 
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>For an S-as-T vtable,
+the vbase offset entries from the primary vtable for T
+are replaced with appropriate offsets given the completed hierarchy.
+</i>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>Consider the following inheritance hierarchy:
+<code><pre>
+  struct S {};
+  struct T : virtual public S {};
+  struct U : virtual public T {};
+  struct V : public T, virtual public U {};
+</pre></code>
+<p>
+T's vtable contains a virtual base offset for S.
+U's vtable contains virtual base offsets for S and T.
+V's vtable contains a virtual base offset for U,
+but not for T because it is non-virtual,
+nor for S because it is first encountered as a virtual base of T.
+</i>
+</font>
 
 <p>
 <a name=vcall>
@@ -926,9 +947,10 @@ that a complete object of a base class and a complete object of a
 derived class do not have virtual bases at the same offsets.
 
 <p>
-A construction vtable holds the virtual function addresses and the
-RTTI information associated with the base class and the virtual base  
-indexes and the addresses of adjustor entry points with this
+A construction vtable holds the virtual function addresses,
+<font color=red>offset-to-top</font>,
+and RTTI information associated with the base class,
+and virtual base offsets and addresses of adjustor entry points with their
 parameter adjustments associated with objects of the complete class.
 
 <p>
@@ -956,7 +978,7 @@ types be available at run time for three distinct purposes:
 <li> to match an exception handler with a thrown object, and
 <li> to implement the dynamic_cast operator.
 </ol>
-(c) only requires type information about polymorphic class types,
+(c) only requires type information about super-polymorphic class types,
 but (a) and (b) may apply to other types as well;
 for example, when a pointer to an int is thrown,
 it can be caught by a handler that catches "int const*".
@@ -1014,7 +1036,8 @@ the C++ IA-64 ABI group:
 <p>
 It is probably desirable to minimize the number of places where a
 particular bit of RTTI is emitted.
-For polymorphic types, a similar problem occurs for virtual function tables,
+For super-polymorphic types,
+a similar problem occurs for virtual function tables,
 and hence the information can be appended at the end
 of the primary vtable for that type.
 For other types, they must presumably be emitted at the location
@@ -1140,16 +1163,13 @@ even for classes having virtual bases but no virtual functions.
 
 <p>
 <li>
-Every vtable shall contain one entry pointing to an object derived
-from std::type_info.
+Every vtable shall contain one entry that is a pointer to an object
+derived from std::type_info.
 This entry is located at the word preceding the location
 pointed to by the vptr (i.e., entry "-1").
 The entry is allocated in all vtables;
 for classes having virtual bases but no virtual functions,
 the entry is zero.
-This entry is coded as an offset with respect to the virtual table origin,
-rather than as a pointer
-(thereby avoiding run-time relocations).
 
 <p>
 std::type_info contains just two pointers:
