@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 1 December 1999</i>
+<i>Revised 3 December 1999</i>
 
 </center>
 
@@ -38,7 +38,7 @@ C++ ABI Summary
 	<a href=cxx-closed.pdf>(PDF)</a>
 <li> Draft <a href=abi-layout.html>data layout</a> specification
 	<a href=abi-layout.pdf>(PDF)</a>
-<li> Proposed <a href=exception.pdf>exception handling</a> specification
+<li> Proposed <a href=exceptions.pdf>exception handling</a> specification
 	from HP, 1 December 1999.
 <li> Preliminary draft <a href=abi-eh.html>exception handling</a> specification
 	<a href=abi-eh.pdf>(PDF)</a>
@@ -389,6 +389,14 @@ the same support runtimes.
 <td> </td>
 </tr>
 
+<tr class=small> <td> 32 </td>
+<td> Raise sorting issue C-2 with base ABI group </td>
+<td> Jim Dehnert </td>
+<td> open </td>
+<td> 991202 </td>
+<td>  </td>
+</tr>
+
 
 </table>
 
@@ -593,10 +601,10 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> B-1 </td>
 <td> Adjustment of "this" pointer (e.g. thunks) </td>
 <td> data call </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 991202 </td>
 </tr>
 
 <tr class=small> <td> B-2 </td>
@@ -671,16 +679,16 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> C-1 </td>
 <td> Interaction with .init/.fini </td>
 <td> lif ps </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 991202 </td>
 </tr>
 
 <tr class=small> <td> C-2 </td>
 <td> Order of ctors/dtors w.r.t. link </td>
 <td> lif ps </td>
-<td> open </td>
+<td> active </td>
 <td> HP </td>
 <td> 990603 </td>
 <td> </td>
@@ -689,10 +697,10 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> C-3 </td>
 <td> Order of ctors/dtors w.r.t. DSOs </td>
 <td> ps </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 991202 </td>
 </tr>
 
 <tr class=small> <td> C-4 </td>
@@ -776,7 +784,7 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> D-2 </td>
 <td> Unwind personality routines </td>
 <td> lib ps </td>
-<td> open </td>
+<td> active </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
@@ -785,7 +793,7 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> D-3 </td>
 <td> Unwind process clarification </td>
 <td> lib ps </td>
-<td> open </td>
+<td> active </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
@@ -887,7 +895,7 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> F-1 </td>
 <td> Mangling convention </td>
 <td> call </td>
-<td> open </td>
+<td> active </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
@@ -896,7 +904,7 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> F-2 </td>
 <td> Mangled name size </td>
 <td> call g </td>
-<td> open </td>
+<td> active </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
@@ -949,10 +957,10 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> G-3 </td>
 <td> Inlined routine linkage </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> Sun </td>
 <td> 990603 </td>
-<td> </td>
+<td> 991202 </td>
 </tr>
 
 <tr class=small> <td> G-4 </td>
@@ -976,10 +984,10 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> G-6 </td>
 <td> bool parameters </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> all </td>
 <td> 991104 </td>
-<td> </td>
+<td> 991202 </td>
 </tr>
 
 <tr class=small> </tr>
