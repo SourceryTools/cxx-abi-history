@@ -15,7 +15,7 @@ C++ ABI for IA-64: Code Examples
 
 <font size=-1>
 <p>
-<i>Revised 17 February 2000</i>
+<i>Revised 29 February 2000</i>
 
 </center>
 
@@ -37,7 +37,355 @@ for the ABI specifications.
 <h3> Contents </h3>
 
 <ul>
+<li> <a href=#vcall> Virtual Function Calls </a>
 <li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
+</ul>
+
+
+
+<p> <hr> <p>
+<a name=vcall>
+<h3> Virtual Function Calls</h3>
+
+<p>
+The following class definitions are intended to illustrate various cases
+relevant to the entries found in vtables to support virtual functions.
+We define a number of classes, many of which define a virtual function f.
+We are interested only in the vtable contents supporting calls of f;
+other contents of the classes are generally elided,
+except where necessary to emphasize some situation,
+and we do not attempt to describe other contents of the vtables,
+including precise layout.
+
+<p>
+The left column of this table contains the class definitions.
+The right column(s) describe the corresponding vtable contents as they
+are required to support calls to f.
+We use the notation <code>&C::f</code> to mean a vtable entry for the
+instance of f defined in class C,
+in the form defined by the ABI (currently a function pointer/GP pair).
+We use the notation <code>&thunk(A*,C::f)</code> to mean a vtable entry
+for a thunk which converts <code>this</code> from A* to C* and then
+calls C::f.
+We use the notation <code>vcall(A*,C*,f)</code> to mean a vcall offset
+that is added to an A* to produce a C* for use by an f thunk.
+
+<p>
+<table border=1>
+
+<tr>
+<th> Class definition </th>
+<th> Vtable 1 contents </th>
+<th> Vtable 2 contents </th>
+</tr>
+
+<tr class=small>
+<td><code><pre>
+struct X {
+  virtual void u();
+}
+</pre></code></td>
+<td colspan=2 class=tiny>
+Class X is an auxiliary class to be used only to prevent interesting
+classes from being primary bases later.
+</td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct A {
+  virtual void f();
+}
+</pre></code></td>
+<td> <i>Vtable A</i> </td>
+</tr>
+<tr class=small>
+<td> &A::f </td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct B: public A { }
+</pre></code></td>
+<td> <i>Vtable A_in_B</i> </td>
+</tr>
+<tr class=small>
+<td> &A::f </td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct C: public A {
+  virtual void f();
+}
+</pre></code></td>
+<td> <i>Vtable A_in_C (primary)</i> </td>
+</tr>
+<tr class=small>
+<td> &C::f </td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct D:
+  public X, public A
+{ }
+</pre></code></td>
+<td> <i>Vtable A_in_D</i> </td>
+</tr>
+<tr class=small>
+<td> &A::f </td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct E:
+  public X, public A
+{
+  virtual void f();
+}
+</pre></code></td>
+<td> <i>Vtable A_in_E</i> </td>
+<td> <i>Vtable E</i> </td>
+</tr>
+<tr class=small>
+<td> &thunk(A*,E::f) </td>
+<td> &E::f </td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct G:
+  public virtual A
+{ }
+</pre></code></td>
+<td> <i>Vtable A_in_G</i> </td>
+</tr>
+<tr class=small>
+<td> &A::f </td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct H:
+  public X,
+  public virtual A
+{
+  virtual void f();
+}
+</pre></code></td>
+<td> <i>Vtable A_in_H</i> </td>
+<td> <i>Vtable H</i> </td>
+</tr>
+<tr class=small>
+<td> &thunk(A*,H::f)<br>vcall(H::A*,H*,f) </td>
+<td> &H::f </td>
+</tr>
+
+<tr class=small>
+<td rowspan=2><code><pre>
+struct I:
+  public H
+{ int i; }
+</pre></code></td>
+<td> <i>Vtable A_in_I</i> </td>
+<td> <i>Vtable H_in_I</i> </td>
+</tr>
+<tr class=small>
+<td> &thunk(A*,H::f)<br>vcall(I::A*,I::H*,f) </td>
+<td> &H::f </td>
+</tr>
+
+</table>
+
+<p>
+<a name=vcall-impl>
+<h4> Implementation </h4>
+
+<p>
+There are several possible implementations of the thunks given the
+above information.
+Note in the following that we assume that prior to calling any vtable entry,
+the <code>this</code> pointer has been adjusted to point to the
+subobject corresponding to the vtable from which the vptr is fetched.
+
+<ol type=A>
+<p>
+<li>
+Since the offsets are always known at compile time,
+even for virtual bases,
+each thunk could be distinct,
+adding the known offset to <code>this</code> and branching to the
+target function.
+<p>
+This would result in a thunk for each overrider at a distinct offset.
+As a result, a branch mispredict and possibly an instruction cache miss
+would occur each time the actual type changed for a reference at any
+given point in the code.
+
+<p>
+<li>
+In the case of virtual inheritance,
+the offset, although known when the overrider is declared,
+may differ depending on derivations from the overrider's class.
+H and I above are the simplest example.
+H is a primary base for I,
+but the int member of I means that A is at a different offset from H in
+I than it was from a standalone H.
+Because of this, the ABI specifies that the secondary vtable for a
+virtual base A contain a vcall offset to H,
+so that a shared thunk can load the vcall offset,
+adding it to <code>this</code>,
+and branch to the target function H::f.
+<p>
+This would result in fewer thunks,
+since for a inheritance hierarchy where A is a virtual base of H,
+and H::f overrides A::f,
+all instances of H in a larger hierarchy can use the same thunk.
+As a result, these thunks will cause fewer branch mispredictions and
+instruction cache misses.
+The tradeoff is that they must do a load before the offset add.
+Since the offset is smaller than the code for a thunk,
+the load should miss in cache less frequently,
+so better cache miss behavior should produce better results in spite of
+the 2 or more cycles required for the vcall offset load.
+
+<p>
+<li>
+In the case of non-virtual inheritance,
+when an overrider is declared,
+the entire set of associated overriding and overridden functions f is
+known along with their associated vcall offsets,
+and they are all constants.
+Therefore, it is possible to cascade the offset adds as follows.
+Suppose we have A::f, overridden by B::f at offset -16,
+and finally overridden by C::f at offset -32 from B, -48 from A.
+Assuming that <code>this</code> is in register <code>out0</code>,
+the IA-64 code can look like:
+<code><pre>
+    thunk-A-to-C::f :
+	add out0 = -16,out0 ;;
+    thunk-A-to-C::f :
+	add out0 = -32,out0 ;;
+    C::f :
+	# normal entry code...
+</pre></code>
+
+<p>
+This code will leave us with about the same number of branch
+mispredictions for the thunk calls,
+but should eliminate a large proportion of the instruction cache misses,
+and costs one cycle per level in the adjustment sequence.
+Note that there is no particular required order of the thunk entries,
+so the compiler could optimize by putting the most frequent one closest
+to the target function and so on.
+Also, if the sequence gets too long,
+any entry can add its entire offset at once and branch directly to the
+
+</ol>
+
+<p>
+In order to make these implementations practical,
+the ABI must specify:
+<ul>
+<li> where the vcall offsets are allocated in the secondary vtables,
+<li> where the thunks are required to be emitted, and
+<li> the names (mangled) of the thunks for reference elsewhere.
+</ul>
+
+The emission of the thunks is the most relevant issue here --
+the others are independent of this discussion.
+Cascading thunks as in (C) only works if they appear with the
+definition of the overriding function,
+so that seems to be the right answer.
+
+<p>
+Assuming that all of the above optimizations are implemented,
+we note a number of benefits of the design specified.
+
+<ul>
+<p>
+<li>
+In the case of single, non-virtual inheritance,
+calling a virtual function requires no adjustment to the `this' pointer,
+and no vcall offsets.
+This is in keeping with the guiding principle that
+"you shouldn't pay for features you don't use."
+
+<p>
+<li>
+If the static type of an object is the same as its dynamic type,
+then no adjustment to the `this' pointer is required.
+
+<p>
+<li>
+All thunks can be emitted in the same translation unit as the
+overriding function.
+
+<p>
+<li>
+Thunks from classes that are not morally virtual bases do not
+require a branch to the non-adjusting entry point.
+(We say that a subobject X is a "morally virtual" base of Y if X is an
+indirect or direct base class of Y,
+and if X is either a virtual base of Y,
+or the direct or indirect base of a virtual base of Y.)
+
+<p>
+Suppose we have classes M1 and M2, base classes of a third class V.
+Suppose V is a virtual base of C,
+and A2 and A1 are non-virtual bases of C.
+Suppose all of these classes have definitions of virtual function f.
+We suggest the following implementation:
+<code><pre>
+    m2: /* Thunk for morally virtual base M2.  */
+        this += offsetof (V, M1) - offsetof (V, M2)
+    m1: /* Thunk for morally virtual base M1.  */
+        this -= offsetof (V, M1)
+    v:  /* Thunk for virtual base V.  */
+        this += vcall offset stored in V vtable
+        goto f;
+    a2: /* Thunk for non-virtual base A2.  */
+        this += offsetof (B, A1) - offsetof (B, A2)
+        /* Fall through.  */
+    a1: /* Thunk for non-virtual base A1.  */
+        this += offsetof (B, C) - offsetof (B, A1)
+        /* Fall through.  */
+    f:  /* Non-adjusting entry point.  */
+</code></pre>
+<p>
+(Here `offsetof' is a compile-time computable function that gives
+the offset of its second parameter in its first parameter.)
+
+<p>
+(Alternatively the `v' entry point above could be of the form:
+<code><pre>
+    v: /* Thunk for virtual base V.  */
+       this += vcall offset stored in V vtable 
+               - offsetof (B, C) + offsetof (B, A2)
+       /* Fall through.  */
+</code></pre>
+Which alternative is better depends on how many adds follow at this
+point.
+In general, if many adds remain before the non-adjusting entry point,
+it may be better to suffer the consequences of the indirect branch.)
+
+<p>
+In this way, a virtual call through a base A1, A2, etc.,
+that is not a virtual base of C
+(or a direct or indirect base of a virtual base of C),
+does not require an additional branch,
+and is therefore more likely to avoid icache misses.
+Even the thunk for V may avoid severe icache penalties
+since it is located near the non-adjusting entry point for f.
+Furthermore, if there are no non-virtual bases,
+then the sequence can become just:
+<code><pre>
+    v: /* Thunk for virtual base V.  */
+       this += vcall offset stored in V vtable
+    f: /* Non-adjusting entry point.  */
+</code></pre>
+
 </ul>
 
 
