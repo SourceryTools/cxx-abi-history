@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 14 August 2000</i>
+<i>Revised 17 August 2000</i>
 
 </center>
 
@@ -25,7 +25,7 @@ C++ ABI for IA-64 (Draft)
 
 
 <p> <hr> <p>
-<h3> Contents </h3>
+<h2> Contents </h2>
 
 <ul>
 <li> <a href=#intro> Chapter 1: Introduction </a>
@@ -128,6 +128,10 @@ document to be clarified.
 
 <p>
 <h4> Recent Revisions </h4>
+
+<p>
+<font color=blue>[000817]</font>
+Updates from 17 August meeting, email.
 
 <p>
 <font color=blue>[000807]</font>
@@ -455,6 +459,13 @@ This allows a program to function properly if linked with the
 target's Standard Library implementation and the runtime support
 libraries from any implementations used to build components.
 
+<font color=red>
+<p>
+The Standard Library implementation shall be in a DSO named
+<code>libcxa.so</code> on IA-64 systems.
+</font>
+
+
 <a name=scope-templates>
 <h3> 1.4.2 Export Templates </h3>
 
@@ -468,7 +479,6 @@ experience is available.
 </i>
 
 
-<font color=red>
 <p> <hr> <p>
 <a name=scope>
 <h3> 1.5 Base Documents </h3>
@@ -528,7 +538,6 @@ are to this document.
 
 </ul>
 
-</font>
 
 
 <p> <hr> <p>
@@ -737,21 +746,17 @@ allocate as follows:
 
        <p>
        In either case,
-<font color=red>
        update dsize(C) to include the last byte
        containing (part of) the bitfield,
        and update sizeof(C) to max(sizeof(C),dsize(C)).
-</font>
 
   <p>
   <li> Otherwise, if D is not an empty base class
 	(including all data members),
 	start at offset dsize(C),
 	incremented if necessary for alignment
-<font color=red>
 	to nvalign(type(D)) for base classes or
 	to align(type(D)) for data members.
-</font>
 	Place D at this offset unless doing so would result in two
 	components (direct or indirect) of the same type having the
 	same offset.
@@ -1327,9 +1332,7 @@ which is not shared
 because there are no nearly empty virtual bases to be primary.
 It holds the following function pointer entries,
 following those of any primary base's virtual table,
-<font color=red>
 in the virtual functions' declaration order:
-</font>
 
 <ul>
 <p>
@@ -1819,7 +1822,7 @@ Specifically:
     then it is a member function whose second argument is of type size_t.
     The standard guarantees (12.5 [class.free])
     that this function will be passed the
-    number of bytes allocated with the previous array new expression.
+    number of bytes allocated with the previous array new expression.)
 
 <p>
 <li> No cookie is required if the <code>new</code> operator being used
@@ -1895,18 +1898,14 @@ to allow distinct instances of the function
 
 <p>
 The size of the guard variable is 64 bits.
-<font color=red>
 The first byte (i.e. the byte at the address of the full variable)
-</font>
 shall contain the value 0 prior to initialization of
 the associated variable, and 1 after initialization is complete.
 Usage of the other bytes of the guard variable is implementation-defined.
 
-<font color=red>
 <p>
 See <a href=once-ctor>Section 3.3.2</a>
 for the API for references to this guard variable.
-</font>
 
 
 
@@ -1984,10 +1983,10 @@ with the following public interface (18.5.1):
 <pre><code>
   struct std::type_info {
      virtual ~type_info();
-     bool operator==(type_info const&) const;
-     bool operator!=(type_info const&) const;
-     bool before(type_info const&) const;
-     char const* name() const;
+     bool operator==(const type_info &) const;
+     bool operator!=(const type_info &) const;
+     bool before(const type_info &) const;
+     const char * name() const;
   };
 </pre></code>
 
@@ -2133,7 +2132,7 @@ to <code>std::type_info</code>;
 <code>abi::__function_type_info</code> do not add data
 members to <code>std::type_info</code>
 (these types are only produced by the typeid operator;
-they decay in other contexts).
+they decay in other contexts).&nbsp;&nbsp;
 <code>abi::__enum_type_info</code> does not add data members either.
 
 <p>
@@ -2176,7 +2175,7 @@ declared "<code>__class_type_info const *type</code>".
 <pre><code>
       class __si_class_type_info : public __class_type_info {
 	public:
-	  __class_type_info const *__base_type;
+	  const __class_type_info *__base_type;
       };
 
 </pre></code>
@@ -2228,22 +2227,22 @@ It is derived from <code>abi::__class_type_info</code>:
        one for every direct proper base.
        Each description is of the type:
 <pre><code>
-      struct abi::__base_class_info {
+      struct abi::<font color=red>__base_class_type_info</font> {
 	public:
-         __class_type_info const *<font color=red>__base_type</font>;
+         const __class_type_info *__base_type;
 	 long __offset_flags;
 
 	 enum __offset_flags_masks {
 	   __virtual_mask = 0x1,
 	   __public_mask = 0x2,
-	   <font color=red>__offset_shift = 8</font>
+	   __offset_shift = 8
 	 };
 
       };
 </pre></code>
 
       <p>
-      The <font color=red><code>__base_type</code></font>
+      The <code>__base_type</code>
       member points to the RTTI for the base type.
 
       <p>
@@ -2289,10 +2288,10 @@ It adds two data members:
 <pre><code>
       class __pbase_type_info : public std::type_info {
 	public:
-	  unsigned int <font color=red>__flags</font>;
+	  unsigned int __flags;
 	  const std::type_info *__pointee;
 
-	  enum <font color=red>__masks</font> {
+	  enum __masks {
 	    __const_mask = 0x1,
 	    __volatile_mask = 0x2,
 	    __restrict_mask = 0x4,
@@ -2306,7 +2305,7 @@ It adds two data members:
 
 <ul>
   <p>
-  <li> <font color=red><code>__flags</code></font> is a flag word describing the
+  <li> <code>__flags</code> is a flag word describing the
       cv-qualification and other attributes of the type pointed to
       (e.g., "int volatile*" should have the
       "volatile" bit set in that word);
@@ -2318,19 +2317,18 @@ It adds two data members:
 </ul>
 
 <p>
-Note that the <font color=red><code>__flags</code></font>
+Note that the <code>__flags</code>
 bits should not be folded
 into the pointer to allow future definition of additional flags.
 It contains the following bits,
 and may be referenced using the flags defined in the
-<font color=red><code>__masks</code></font> enum:
+<code>__masks</code> enum:
 <ul>
-<li> 0x1: <font color=red><code>__pointee</code></font> type has const qualifier
-<li> 0x2: <font color=red><code>__pointee</code></font> type has volatile qualifier
-<li> 0x4: <font color=red><code>__pointee</code></font> type has restrict qualifier
-<li> 0x8: <font color=red><code>__pointee</code></font> type is incomplete
-<li> 0x10: class containing
-	  <font color=red><code>__pointee</code></font>
+<li> 0x1: <code>__pointee</code> type has const qualifier
+<li> 0x2: <code>__pointee</code> type has volatile qualifier
+<li> 0x4: <code>__pointee</code> type has restrict qualifier
+<li> 0x8: <code>__pointee</code> type is incomplete
+<li> 0x10: class containing <code>__pointee</code>
 	  is incomplete (in pointer to member)
 </ul>
 
@@ -2372,12 +2370,12 @@ to <code>abi::__pbase_type_info</code>:
 <pre><code>
       class __pointer_to_member_type_info : public __pbase_type_info {
 	public:
-	  <font color=red>const abi::__class_type_info *__context</font>;
+	  const abi::__class_type_info *__context;
       };
 
 </pre></code>
 <ul>
-<li> <font color=red><code>__context</code></font> is a pointer to an
+<li> <code>__context</code> is a pointer to an
     <code>abi::__class_type_info</code> corresponding to the class type
     containing the member pointed to (e.g., the "A" in "int A::*")
 </ul>
@@ -2467,7 +2465,7 @@ These tests are implemented by abi::__dynamic_cast:
     *       -3: src is a multiple public base type but never a
     *           virtual base type
     *    otherwise, the src type is a unique public nonvirtual
-    *    base type of dst at offset obj2sub_offset from the
+    *    base type of dst at offset src2dst_offset from the
     *    origin of dst.
     */
 
@@ -2575,7 +2573,7 @@ The callee calls any non-trivial copy constructor for the parameter
 before returning.
 (Note that, if there is no non-trivial copy constructor,
 this implies that the parameter was copied out of registers on entry,
-so at the constructor can be called with <code> this </code> in memory.
+so that the constructor can be called with <code> this </code> in memory.)
 
 <p>
 <li>
@@ -2624,8 +2622,11 @@ In general, C++ return values are handled just like C return values.
 This includes class type results returned in registers.
 However, if the return value type has a non-trivial copy constructor,
 the caller allocates space for a temporary,
-and passes a pointer to the temporary as an implicit first parameter,
-preceding the implicit <i> this </i> parameter for member functions).
+<font color=red>
+and passes a pointer to the temporary as an implicit parameter.
+On IA-64, the pointer is passed in <code>r8</code>,
+like large class result buffer pointers.
+</font>
 The callee constructs the return value into this temporary.
 
 
@@ -3068,7 +3069,7 @@ If not, return <code>true</code> (1) without releasing the lock.
 
 
 <dt><code><pre>
-extern "C" int __cxa_guard_release ( long long *guard_object );
+extern "C" <font color=red>void</font> __cxa_guard_release ( long long *guard_object );
 </pre></code></dt>
 <dd>
 The <code>guard_object</code> argument is the guard variable
@@ -3102,8 +3103,8 @@ load the flag.
 
 <p>
 The intent of specifying an 8-byte structure for the guard variable,
-but only describing one byte of its contents is to allow
-flexibility in the implementation of the API above.
+but only describing one byte of its contents,
+is to allow flexibility in the implementation of the API above.
 On systems with good small lock support,
 the second word might be used for a mutex lock.
 On others, it might identify (as a pointer or index)
@@ -3135,7 +3136,7 @@ extern "C" void * __cxa_vec_new (
 </pre></code></dt>
 <dd>
 Given the number and size of elements for an array,
-and the size of prefix padding for a cookie,
+and the non-negative size of prefix padding for a cookie,
 allocate space for the array preceded by the specified padding,
 initialize the cookie if the padding is non-zero,
 and call the given constructor on each element.
@@ -3233,7 +3234,7 @@ extern "C" void __cxa_vec_delete (
 </pre></code></dt>
 <dd>
 Given the (data) address of an array,
-the size of prefix padding for the cookie,
+the non-negative size of prefix padding for the cookie,
 and the size of its elements,
 call the given destructor on each element,
 using the cookie to determine the number of elements,
@@ -3251,7 +3252,7 @@ extern "C" void __cxa_vec_delete2 (
 	    void *array_address,
 	    size_t element_size,
 	    size_t padding_size,
-	    void (*destructor) ( void *this ) );
+	    void (*destructor) ( void *this ),
 	    void (*dealloc) ( void *obj ) );
 </pre></code></dt>
 <dd>
@@ -3265,7 +3266,7 @@ extern "C" void __cxa_vec_delete3 (
 	    void *array_address,
 	    size_t element_size,
 	    size_t padding_size,
-	    void (*destructor) ( void *this ) );
+	    void (*destructor) ( void *this ),
 	    void (*dealloc) ( void *obj, size_t size ) );
 </pre></code></dt>
 <dd>
@@ -3293,12 +3294,14 @@ source array to the destination array.
 The constructor pointer may not be NULL.
 If an exception occurs,
 call the given destructor on each (if non-NULL) and rethrow.
+<font color=red>
+If the destructor throws an exception, call <code>terminate()</code>.
+</font>
 </dd>
 
 </dl>
 
 
-<font color=purple>
 <p>
 <a name=ctor-order>
 <h4> 3.3.4 Controlling Object Construction Order </h4>
@@ -3331,14 +3334,13 @@ initialization ordering specified in the base ABI.
 <p>
 A user may specify the construction priority with the pragma:
 <code><pre>
-    #pragma init_priority ( &lt;priority> )
+    #pragma <font color=red>priority</font> ( &lt;priority> )
 </pre></code>
 
 The &lt;priority> parameter specifies a 32-bit signed initialization
 priority, with lower numbers meaning earlier initialization.
 The range of priorities [MIN_INT .. MIN_INT+1023] is reserved
 to the implementation.
-<font color=red>
 The pragma applies to all file scope variables in the file where it
 appears, from the point of appearance to the next priority pragma or
 the end of the file.
@@ -3354,7 +3356,6 @@ are in non-decreasing numeric (non-increasing priority) order.
 Initialization entries with the same priority from different files
 (or from other sources such as link command options)
 will be executed in an unspecified order.
-</font>
 
 <p>
 <h5> 3.3.4.3 Object File Representation </h5>
@@ -3373,7 +3374,6 @@ The elements are structs:
 	  ElfXX_Addr	pi_addr;
 	} ElfXX_Priority_Init;
 </pre></code>
-<font color=red>
 The field <code>pi_addr</code> is a function pointer,
 as defined by the base ABI
 (a pointer to a function descriptor on IA-64).
@@ -3381,11 +3381,9 @@ The function takes a single <code>unsigned int</code> priority parameter,
 which performs some initialization at priority <code>pi_pri</code>.
 The priority value is obtained from the signed int in the source pragma
 by subtracting MIN_INT, so the default priority is -MIN_INT.
-</font>
 The section header field <code>sh_entsize</code> is 8 for ELF-32,
 or 16 for ELF-64.
 
-<font color=red>
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
@@ -3394,7 +3392,7 @@ same prioriry as it chooses in a single such initialization function,
 as long as the sequence of such initialization entries for a given file
 preserves the source code order of objects to be initialized.
 </i>
-</font>
+
 
 <p>
 <h5> 3.3.4.4 Runtime Library Support </h5>
@@ -3452,7 +3450,6 @@ with no other entries in the <code>DT_INIT_ARRAY</code> section.
 
 </i>
 
-</font>
 
 
 <p>
@@ -3506,8 +3503,8 @@ All references are via the API described below.
 <p>
 <li> Object construction:
 <p>
-When a global or local static object is constructed,
-which will require destruction on exit,
+After construcing a global (or local static) object,
+that will require destruction on exit,
 a termination function is <i>registered</i> as follows:
 <center><code>
 extern "C" int __cxa_atexit ( void (*f)(void *), void *p, dso_handle d );
@@ -3526,13 +3523,13 @@ The registration function is not called from within the constructor.
 When the user registers exit functions with <code>atexit</code>,
 they should be registered with NULL parameter and DSO handle, i.e.
 <center><code>
-extern "C" __cxa_atexit ( f, NULL, NULL );
+    __cxa_atexit ( f, NULL, NULL );
 </code></center>
 It is expected that implementations supporting both C and C++ will
 integrate this capability into the libc <code>atexit</code>
 implementation, so that C-only DSOs will nevertheless interact with C++
 programs in a C++-standard-conforming manner.
-No user interface to __cxa_atexit is supported,
+No user interface to <code>__cxa_atexit</code> is supported,
 so the user is not able to register an <code>atexit</code> function
 with a parameter or a home DSO.
 
@@ -3574,6 +3571,11 @@ When the main program calls <code>exit</code>,
 it must call any remaining <code>__cxa_atexit</code>-registered functions,
 either by calling <code>__cxa_finalize(NULL)</code>,
 or by walking the registration list itself.
+
+<p>
+Note that the destructors must be called by <code>__cxa_finalize()</code>
+in the opposite of the order in which they were enqueued by
+<code>__cxa_atexit</code>.
 
 </ol>
 
@@ -3737,8 +3739,6 @@ The type is omitted for variables and static data members.
 	   ::= &lt;unscoped-name>
 	   ::= &lt;unscoped-template-name> &lt;template-args>
 	   ::= &lt;local-name>	# See <a href=#mangling-scope>Scope Encoding</a> below
-</font><font color=red><strike>
-	   ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below </strike>
 </font><font color=blue>
 
     &lt;unscoped-name> ::= &lt;unqualified-name>
@@ -4291,7 +4291,6 @@ it represents the source token stream.
 
 </pre></font></code>
 
-<font color=red>
 <p>
 Template arguments that could be pointer-to-member constants are
 difficult because it is often not possible to distinguish them from
@@ -4301,7 +4300,6 @@ Therefore, the <i>scope resolution</i> (sr) mangling operator is used
 if the LHS operand of :: involves a template parameter.
 Ignoring substitutions, <code>&T::j</code> as a template argument
 would be encoded <code>Xadsr1T1jE</code>.
-</font>
 
 <p>
 The encoding for a literal of an enumerated type is the encoding of the
@@ -4664,13 +4662,11 @@ We will refer to this simply as using a COMDAT group,
 and specify the symbol to be used to identify duplicates in the
 <code>SHT_GROUP</code> section.
 
-<font color=red>
 <p>
 Note that nothing in this section should be construed to require COMDAT
 usage for objects with internal linkage unless they may in fact be
 referenced outside the translation unit where they appear,
 for instance due to inlining.
-</font>
 
 
 <p>
@@ -4707,13 +4703,18 @@ identified by the symbol name described in the
 Each COMDAT group must be emitted in any object with references
 to the symbol for the object it contains, whether inline or out-of-line.
 
-<font color=red>
 <p>
 Local static data objects generally have associated guard variables
 used to ensure that they are initialized only once
 (see <a href=once-ctor>3.3.2</a>).
 If the object is emitted using a COMDAT group,
-the guard variable must be too, identified by its name.
+the guard variable must be too.
+<font color=red>
+It is suggested that it be emitted in the same COMDAT group as the
+associated data object,
+but it may be emitted in its own COMDAT group,
+identified by its name.
+In either case, it must be weak.
 </font>
 
 
@@ -4784,7 +4785,6 @@ are emitted where referenced,
 each in its own COMDAT group identified by the constructor or
 destructor name.
 
-<font color=red>
 <p>
 This ABI does not require the generation or use of allocating constructors,
 although it specifies names for them if an implementation chooses to use them.
@@ -4792,7 +4792,6 @@ If the object where a constructor is defined may be compiled by
 another implementation,
 an implementation using it must emit it whereever referenced,
 in a COMDAT group identified by the constructor name.
-</font>
 
 <p>
 <a name=vague-vfunc></a>
