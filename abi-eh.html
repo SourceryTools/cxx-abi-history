@@ -15,7 +15,7 @@ C++ ABI for Itanium: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 20 March 2001.
+<i>Revised 31 July 2001.
 <a href=#revisions>Revision history</a> at end of document.
 </i>
 
@@ -959,10 +959,10 @@ The <code>actions</code> argument to the personality routine is
 a bitwise <code>OR</code> of one or more of the following constants:
 <code><pre>
     typedef int _Unwind_Action;
-    const _Unwind_Action _UA_SEARCH_PHASE = 1;
-    const _Unwind_Action _UA_CLEANUP_PHASE = 2;
-    const _Unwind_Action _UA_HANDLER_FRAME = 4;
-    const _Unwind_Action _UA_FORCE_UNWIND = 8;
+    static const _Unwind_Action _UA_SEARCH_PHASE = 1;
+    static const _Unwind_Action _UA_CLEANUP_PHASE = 2;
+    static const _Unwind_Action _UA_HANDLER_FRAME = 4;
+    static const _Unwind_Action _UA_FORCE_UNWIND = 8;
 </pre></code>
 
 <dl>
@@ -2293,6 +2293,10 @@ and below.
 
 <p><a name=revisions></a> <hr> <p>
 <h3> Appendix R:  Revisions </h3>
+
+<p>
+<font color="blue">[010731]</font>
+Clarify linkage of constants.
 
 <p>
 <font color="blue">[010315]</font>
