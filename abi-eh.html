@@ -154,8 +154,14 @@ Exceptions are initially thrown, after creating an exception object,
 by calling:
 
 <code><pre>
+	typedef enum {
+	    EH_THROW_INITIAL,
+	    EH_THROW_RETHROW,
+	    EH_THROW_RESUME
+	} EH_THROW_KIND;
+
 	void __eh_throw (
-	    bool	rethrow,
+	    EH_THROW_KIND kind,
 	    __uint_64	exception_class,
 	    void *	exception_object,
 	    ...
@@ -201,7 +207,7 @@ the personality routine may:
 <p>
 <li>
 Determine that control should be passed to user code,
-for any purpose including a real catch or cleanup and rethrow,
+for any purpose including a real catch or cleanup and resume,
 in which case it returns EH_HANDLER.
 In this case, the framework starts over with the unwind process,
 now passing EH_CLEANUP_PHASE.
@@ -235,13 +241,13 @@ the personality routine may:
 <p>
 <li>
 Determine that control should be passed to user code,
-for any purpose including a real catch or cleanup and rethrow,
+for any purpose including a real catch or cleanup and resume,
 in which case it uses the API to set the PC and any registers
 which need to contain data, and returns EH_HANDLER.
 In this case, the framework restores the register state
 and transfers control to the PC in Unwind_State.
 This user code may either simply proceed with program execution,
-or may perform cleanup actions and rethrow.
+or may perform cleanup actions and rethrow/resume.
 
 <p>
 <li>
