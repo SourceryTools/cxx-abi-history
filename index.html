@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 16 June 1999</i>
+<i>Revised 22 June 1999</i>
 
 </center>
 
@@ -32,7 +32,7 @@ See also the full
 <h4>Meetings</h4>
 
 <p>
-<table border=on cellpadding=3>
+<table align=center border=on cellpadding=3>
 
 <tr class=small>
 <th colspan=2> When </th>
@@ -48,12 +48,9 @@ See also the full
 <td> 10 June </td> <td> 10:00-12:00 </td>
 <td align=left colspan=2> completed </td>
 </tr>
-
 <tr class=small>
-<td> 17 June </td>
-<td> 10:00-12:00 PDT </td>
-<td> SGI Garnet 20L </td>
-<td> 650-933-7976 </td>
+<td> 17 June </td> <td> 10:00-12:00 PDT </td>
+<td align=left colspan=2> completed </td>
 </tr>
 
 <tr class=small>
@@ -122,7 +119,7 @@ See also the full
 </table>
 
 <p>
-Note:  When calling the SGI telephone bridges (starting 17 June),
+Note:  When calling the SGI telephone bridges,
 the first caller continues to ring until the second party joins.
 To get rid of it, you can call from a second phone,
 and I believe you can hang it up right away.
@@ -261,7 +258,9 @@ the same support runtimes.
 </tr>
 
 <tr class=small> <td> 7 </td>
-<td> Write-up of Vtable issues </td>
+<td> Write-up of Vtable issues,
+     including Vtable layout, Vfunc call protocol
+</td>
 <td> Christophe de Dinechin </td>
 <td> open </td>
 <td> 990610 </td>
@@ -281,6 +280,22 @@ the same support runtimes.
 <td> Jason Merrill </td>
 <td> open </td>
 <td> 990610 </td>
+<td> 990618 </td>
+</tr>
+
+<tr class=small> <td> 10 </td>
+<td> Describe dynamic cast / inaccessible base issue </td>
+<td> Daveed Vandevoorde </td>
+<td> open </td>
+<td> 990617 </td>
+<td> </td>
+</tr>
+
+<tr class=small> <td> 11 </td>
+<td> Summarize ctor/dtor issues </td>
+<td> Michael Lam </td>
+<td> open </td>
+<td> 990617 </td>
 <td> </td>
 </tr>
 
@@ -447,7 +462,7 @@ The identifiers used are:
 <td> Representation of pointers to members </td>
 <td> data </td>
 <td> open </td>
-<td> Sun </td>
+<td> Cygnus </td>
 <td> 990603 </td>
 <td> </td>
 </tr>
@@ -559,7 +574,7 @@ Virtual Function Handling </a> </th>
 <td> Calling vfuncs in ctors/dtors </td>
 <td> call </td>
 <td> open </td>
-<td> Sun </td>
+<td> Cygnus </td>
 <td> 990603 </td>
 <td> </td>
 </tr>
@@ -586,8 +601,8 @@ Virtual Function Handling </a> </th>
 <tr class=small> </tr>
 <tr class=small> <th> D </th>
 <th colspan=6> Exception Handling </th>
+</tr>
 
-<ul>
 <tr class=small> <td> D-1 </td>
 <td> Language-specific data area format </td>
 <td> lib ps </td>
@@ -790,7 +805,7 @@ Virtual Function Handling </a> </th>
 <td> SGI </td>
 <td> 990616 </td>
 <td> </td>
-/tr>
+</tr>
 
 
 </table>
@@ -888,6 +903,23 @@ That is, where is the result pointer adjusted?
 <li> (A-6) How does RTTI interact with exceptions?
 
 </ol>
+
+<p>
+<h4>Notes from 17 June 1999 </h4>
+
+<p>
+<b> Issues A-1, A-2, A-9</b> (Matt):
+See the open issues list.
+
+<p>
+<b> Actions</b>:
+Christophe will write a Vtable layout definition strawman,
+including a description of covariant returns,
+and more generally the virtual function protocol.
+Daveed will write up the issue with dynamic casts and inaccessible bases.
+
+<p>
+Michael Lam will write summaries for the ctor/dtor issues for next week.
 
 <p>
 <hr>
