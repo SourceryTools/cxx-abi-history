@@ -1,0 +1,163 @@
+<HTML>
+
+<HEAD>
+<title>C++ ABI for IA-64: Code Examples</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+<link rel=stylesheet href=code.css type="text/css">
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ ABI for IA-64: Code Examples
+</b></i></font>
+
+<font size=-1>
+<p>
+<i>Revised 17 February 2000</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+
+<p> <hr> <p>
+<a name=intro>
+<h3> Introduction </h3>
+
+In this document,
+we provide a number of code examples as illustration or tests
+for the ABI specifications.
+
+
+<p> <hr> <p>
+<h3> Contents </h3>
+
+<ul>
+<li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
+</ul>
+
+
+
+<p> <hr> <p>
+<a name=vtable-ctor>
+<h3> Vtables During Object Construction</h3>
+<p>
+Following is a test program from Compaq, that breaks on many compilers.
+
+<code><pre>
+/* 
+This test program should output: 
+
+V1 called 
+V2 called 
+C called 
+C::foo called 7 
+PASSED this == cp 
+D called 
+~C called 
+C::foo called 7 
+PASSED this == cp 
+~V2 called 
+~V1 called 
+Int caught 
+*/ 
+
+extern "C" int printf(const char *,...); 
+struct V1 {
+        int v; 
+        virtual int foo(); 
+        V1(); 
+        ~V1(); 
+}; 
+struct V2 : virtual V1 {
+        int v2; 
+        virtual int foo(); 
+        V2(); 
+        ~V2(); 
+}; 
+struct C : virtual V1, virtual V2 {
+        int c; 
+        virtual int foo(); 
+        C(); 
+        ~C(); 
+}; 
+
+struct B {
+   int b; }; 
+struct D : B, C {
+        int d; 
+        virtual int bar(); 
+        D(); 
+        ~D(); 
+}; 
+extern "C" int printf(const char *,...); 
+main() 
+{
+  try {
+        D *d = new D; 
+        delete d; 
+  } catch (int) {
+        printf("Int caught\n"); 
+  } 
+} 
+
+int V1::foo() {
+   printf("V1::foo called\n"); return 1; } 
+V1::V1() : v(5) {
+   printf("V1 called\n"); } 
+V1::~V1() {
+   printf("~V1 called\n"); } 
+
+int V2::foo() {
+   printf("V2::foo called\n"); return 1; } 
+V2::V2() : v2(6) {
+   printf("V2 called\n"); } 
+V2::~V2() {
+   printf("~V2 called\n"); } 
+
+int C::foo() {
+   printf("C::foo called %d\n", c); return 1; } 
+C::C() : c(7) {
+        printf("C called\n"); 
+        V1 *vv = this; vv->foo(); 
+        C *cp = dynamic_cast&lt;C *>(vv); 
+        if (this == cp) {
+            printf("PASSED this == cp\n"); 
+        } else {
+            printf("FAILED this != cp\n"); 
+        } 
+} 
+C::~C() {
+        printf("~C called\n"); 
+        V1 *vv = this; vv->foo(); 
+        C *cp = dynamic_cast&lt;C *>(vv); 
+        if (this == cp) {
+            printf("PASSED this == cp\n"); 
+        } else {
+            printf("FAILED this != cp\n"); 
+        } 
+} 
+
+int D::bar() {
+   printf("D::bar called\n"); return 1; } 
+D::D() : d(8) {
+   printf("D called\n"); throw 5; } 
+D::~D() {
+   printf("~D called\n"); } 
+</pre></code>
+
+</font>
+
+
+<p>
+<hr>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+</BODY>
+</HTML>
