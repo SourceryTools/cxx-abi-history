@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 22 June 1999</i>
+<i>Revised 28 June 1999</i>
 
 </center>
 
@@ -29,8 +29,8 @@ C++ ABI Open Issues
 <p>
 <font color=blue>[990625]</font>
 Closed A-1, A-2, A-4, A-8, A-9.
-Additions to A-3, A-5, A-7, B-4.
-New issues B-6, B-7, C-7, C-8.
+Additions to A-3, A-5, A-7, B-4, B-5, B-7, G-3, G-4.
+New issues B-6, B-7, B-8, C-7, C-8.
 
 <p>
 <font color=blue>[990616]</font>
@@ -40,6 +40,40 @@ A-10 was intended by HP as something different than I described,
 so it was renamed, and a new issue A-13 opened as an SGI issue.
 HP did not submit A-12, so relabeled as Sun's (is that right?).
 Added library interface issues, H-1 and H-2.
+
+
+<p> <hr> <p>
+<h3> Definitions </h3>
+
+<p>
+The issues below make use of the following definitions:
+
+<dl>
+
+<p>
+<dt> <i>empty class</i> </dt>
+<dd>
+A class with no non-static data members,
+no virtual functions, no virtual base classes,
+and no non-empty non-virtual base classes.)
+
+<p>
+<dt> <i>nearly empty class</i> </dt>
+<dd>
+A class, the objects of which contain only a Vptr.
+
+<p>
+<dt> <i>vague linkage</i> </dt>
+<dd>
+The treatment of entities --
+e.g. inline functions, templates, vtables --
+with external linkage that can be
+defined in multiple translation units,
+while the ODR requires that the program
+behave as if there were only a single definition.
+
+</dl>
+
 
 <p> <hr> <p>
 <h3> Issue Status </h3>
@@ -232,8 +266,7 @@ Where are empty base classes allocated?
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-When passing a parameter by value,
-whose type is an empty class (see A-2 for definition),
+When passing a parameter with an empty class type by value,
 what is the convention?
 </td> </tr>
 
@@ -256,8 +289,8 @@ they perform the construction at the call site and pass the object by
 reference.
 
 <p>
-<font color=blue>[990625 SGI]</font>
-I (Jim) understand that the Standard explicitly allows elimination of
+<font color=blue>[990625 SGI -- Jim]</font>
+I understand that the Standard explicitly allows elimination of
 even non-trivial copy construction in some cases.
 Is this one of them?  Where should I look?
 Also, of course, varargs processing for elided empty parameters would
@@ -650,10 +683,185 @@ See B-7.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Jason]
+In C++, there are various things with external linkage that can be
+defined in multiple translation units,
+while the ODR requires that the program
+behave as if there were only a single definition.
+From the user's standpoint, this applies to inlines and templates.
+From the implementation's perspective,
+it also applies to things like vtables and RTTI info.
+(We call this <i>vague linkage</i>.)
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990624 Cygnus -- Jason]</font>
+There are several ways of dealing with vague linkage items:
+<ol>
+<li> Emit them everywhere and only use one.
+<li> Use some heuristic to decide where to emit them.
+<li> Use a database to decide where to emit them.
+<li> Generate them at link time.
+</ol>
+
+<p>
+#3 and #4 are feasible for templates,
+but I consider them too heavyweight to be used for other things.
+
+<p>
+The typical heuristic for #2 is "with the first non-inline,
+non-abstract virtual function in the class".
+This works pretty well,
+but fails for classes that have no such virtual function,
+and for non-member inlines.
+Worse, the heuristic may produce different results in different
+translation units,
+as a method could be defined inline after being declared non-inline
+in the class body.
+So we have to handle multiple copies in some cases anyway.
+
+<p>
+The way to handle this in standard ELF is weak symbols.
+If all definitions are marked weak,
+the linker will choose one
+and the others will just sit there taking up space.
+
+<p>
+Christophe mentioned the other day that the HP compiler used the
+typical heuristic above,
+and handled the case of different results by encoding the
+key function in the vtable name.
+But this seems unnecessary when we can just choose one of multiple defns.
+
+<p>
+A better solution than weak symbols alone would be to set things up so
+that the linker will discard the extra copies.
+Various existing implementations of this are:
+
+<ol>
+<p>
+<li>
+The Microsoft PE/COFF defn includes support for COMDAT sections,
+which key off of the first symbol defined.
+One copy is chosen, others are discarded.
+You can specify conditions to the linker
+(must have same contents, must have same size).
+
+<p>
+<li>
+The IBM XCOFF platform includes a garbage-collecting linker;
+sections that are not referenced in a sweep from main are discarded.
+In xlC, template instantiations are emitted in separate sections,
+with encoded names;
+at link time, one copy is renamed to the real mangled name,
+and the others are discarded by garbage collection.
+</ol>
+
+<p>
+The GNU ELF toolchain does a variant of #1 here;
+any sections with names beginning with ".gnu.linkonce."
+are treated as COMDAT sections.
+It seems more sensible to me to key off of the section name
+than the first symbol name as in PE.
+
+<p>
+The GNU linker recently added support for garbage collection,
+and I've been thinking about changing our handling of vague
+linkage to make use of it, but haven't.
+
+<p>
+I propose that the ia64 base ABI be extended to
+provide for either COMDAT sections or garbage collection,
+and that we use that support for vague linkage.
+
+<p>
+I further propose that we not use heuristics to
+cut down the number of copies ahead of time;
+they usually work fine, but can cause problems in some situations,
+such as when not all of the class's members are in the same symbol space.
+Does the ia64 ABI provide for controlling which symbols
+are exported from a shared library?
+
+<p>
+A side issue: What do we want to do with
+dynamically-initialized variables?
+The same thing, or use COMMON?
+I propose COMMON.
+
+<p>
+See also G-3, for vague linkage of inlined routines and their static variables.
+
+<p>
+<font color=blue>[990624 SGI summarizing others]</font>
+HP uses COMDAT for many cases, keying from the symbol names.
+HP also uses some heuristics.
+HP observes that IA-64 objects will already be large.
+From the base ABI discussions,
+any use of WEAK or COMMON symbols will need to take care not to depend
+on vendor-specific treatment.
+
+<p>
+Defining a COMDAT mechanism doesn't preclude using heuristics to avoid
+some copies up front.
+A COMDAT mechanism should also specify how to get rid of associated
+sections like debugging info, unless the identical mechanism works.
+
+<p>
+<font color=blue>[990629 HP -- Christophe]</font>
+First, the "usual" heuristic
+(which is usual because it dates back to Cfront)
+is to emit vtables in the translation unit that contains  
+the definition of the first non inline, non pure virtual function.  
+That is, for:
+<pre><code>
+        struct X {
+                void a();
+                virtual void f() { return; }
+                virtual void g() = 0;
+                virtual void h();
+                virtual void i();
+        };
+</code></pre>
+the vtable is emitted only in the TU that contains the definition of h().
+
+<p>
+This breaks and becomes non-portable if:
+<ul>
+<li>There is no such thing. In that case,
+    you generally emit duplicate versions of vtables
+<li>There is a "change of mind",
+    such as having the above class followed by:
+    <code><p>
+    <dd>inline void X::h() { f(); }
+    </code>
+
+<p>
+Now, the COMDAT issue is as follows:
+a COMDAT section is, in some cases, slightly more difficult to handle
+(at least, that's the impression Jason gave me).
+For statics with runtime initialization,  
+what you can do is reserve COMMON space ('easier'),
+then initialize that space at runtime.
+As I said, the problem is if two compilers disagree on whether this
+is a runtime or a compile time initialization, such as in :
+<pre><code>
+	int f() { return 1; }
+	int x = f();	// Static (COMDAT) or Dynamic (COMMON) initialization?
+</code></pre>
+
+<p>
+So I personally recommend that we put everything in COMDAT.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
 
 <tr> <td> B-6 </td>
 <td> Virtual function table layout </td>
@@ -674,6 +882,16 @@ What is the layout of the Vtable?
 <font color=blue>[990624]</font>
 Issue split from A-1.
 
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <td> B-7 </td>
 <td> Vtables in shared memory </td>
 <td> data </td>
@@ -693,6 +911,90 @@ Is it possible to put the Vtable in shared memory?
 <font color=blue>[990624 All]</font>
 Note that putting GP in the Vtable prevents putting it in shared memory.
 This interacts with B-4.
+
+<p>
+<font color=blue>[990624 HP -- Cary]</font>
+For a C++ object to be placed into shared memory,
+its vtable pointer must be valid in all processes
+that are sharing that object.
+
+<ol>
+<p>
+<li>
+If the vtable can be placed in text, that would be fine,
+but the vtable contains function pointers (or descriptors)
+that require runtime relocation, so it must be in data.
+
+<p>
+<li>
+We can place the vtables in shared memory,
+but only if the function pointers/descriptors are valid in all processes.
+The entry point addresses, which refer to shared text, should be shareable,
+but the gp values may not be identical for all processes.
+(RTTI pointers are also an issue,
+and could be solved by putting the RTTI information in shared memory as well.)
+
+<p>
+<li>
+We can place the vtables in private memory,
+provided they are at the same address in all processes.
+</ol>
+
+<p>
+One way or another,
+we need a way of ensuring that a pointer from shared 
+memory to private memory is valid in all processes,
+which means that we will need a means to ensure that certain shared
+library data segments can get mapped at the same address in all
+processes that load those certain libraries.
+
+<p>
+My wild idea a few years ago was to put the vtables in shared memory
+(by allocating and building them at load time, as Taligent did),
+and store a shared library index in place of the gp value
+in each function descriptor.
+Each process would have its own table of gp values,
+indexed by this shared library index,
+but the index space would be managed system-wide.
+The C++ runtime library would have been responsible for allocating
+a new index for each unique C++ shared library loaded on the system,
+then storing the process-local copy of the gp pointer in the 
+appropriate slot of the table.
+
+<p>
+<font color=blue>[990628 SGI -- Jim]</font>
+Note a further problem with vtables in shared memory (Cary's point 2).
+If a virtual function comes from another DSO,
+it may be pre-empted differently in different programs.
+Hence, the function pointer itself is a problem even if the GP isn't.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-8 </td>
+<td> dynamic_cast </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990628 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What information to we put in the vtable to enable (a) dynamic_cast
+from pointer-to-base to pointer-to-derived (including detection of
+ambiguous base classes) and (b) dynamic_cast to void*?
+</td> </tr>
+
+</table>
 
 <p> <hr> <p>
 <h3> Object Construction/Destruction Issues </h3>
@@ -1407,10 +1709,22 @@ possibly allowing portable makefiles?
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-[Jason]
+Inline routines with external linkage require a method of handling
+vague linkage (see B-5 for definition) for the out-of-line instance,
+as well as for any static data they contain.
+The latter includes string constants per [7.1.2]/4.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990624 Cygnus -- Jason]</font>
+How should we handle local static variables in inlines?
+G++ currently avoids this issue by suppressing
+inlining of functions with local statics.
+If we don't want to do that,
+we'll need to specify a mangling for the statics,
+and handle multiple copies like we do above.
 
 <p>
 <table border=on cellpadding=3>
@@ -1444,6 +1758,314 @@ exception during construction.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990607 SCO -- Jonathan]</font>
+The standard is mute on multiple threads of control in general, so 
+there is no requirement in the language to support what I'm talking
+about. But as a practical matter compilers have to do it (Watcom gave
+a paper on their approach during the standardization process, if I
+remember).  This example using UI/SVR4 threads will usually show
+whether a compiler does it or not: 
+
+<pre><code>
+thr5.C:
+// static local initialization and threads
+
+#include <stdlib.h>
+#define EXIT(a) exit(a)
+#define THR_EXIT() thr_exit(0)
+
+#include <thread.h>
+
+int init_count = 0;
+int start_count = 0;
+
+int init()
+{
+  
+        ::thr_yield();
+        return ++init_count;
+}
+
+void* start(void* s)
+{
+  
+        start_count++;
+        static int i = init();
+        if (i != 1) EXIT(5);
+        THR_EXIT();
+        return 0;
+}
+                
+int main()
+{
+  
+        thread_t t1, t2;
+        if (::thr_create(0, 0, start, 0, 0L, &t1) != 0) EXIT(1);
+        if (::thr_create(0, 0, start, 0, 0L, &t2) != 0) EXIT(2);
+        if (::thr_join(t1, 0, 0) != 0) EXIT(3);
+        if (::thr_join(t2, 0, 0) != 0) EXIT(4);
+        if (start_count != 2)
+                EXIT(6);
+        if (init_count != 1)
+                EXIT(7);
+        THR_EXIT();
+}
+</code></pre>
+
+<p>
+When compiled with CC -Kthread thr5.C on UnixWare 7, for instance,
+it passes by returning 0.  When compiled with CC -mt thr5.C on
+Solaris/x86 C++ 4.2 (sorry don't have the latest version!), it
+fails by returning 5.
+
+
+<p>
+<font color=blue>[990607 Sun -- Mike Ball]</font>
+As far as I can tell, the language says that the automatic blocking 
+issue isn't a valid approach.  It says what has to happen, and
+it isn't that.
+
+<p>
+If you look at the entire statement you find that it reads:
+<quote>
+"Otherwise such an object is initialized the first time control passes
+through its declaration; such an object is considered initialized upon
+the completion of its initialization.
+If the initialization exits by throwing an exception,
+the initialization is not complete,
+so it will be tried again the next time control enters the declaration.
+If control re-enters the declaration (recursively)
+while the object is being initialized,
+the behavior is undefined."
+</quote>
+
+<p>
+The word "recursively" is normative,
+so eliminates that sentence from consideration.
+
+<p>
+One can, of course, make any extension to the language,
+but in this case I think the extension invalidates some otherwise valid code.
+
+<p>
+The sentence I'm referring to is that the object is considered
+initialized upon the completion of its initialization.
+This is explicit, and the reason for it is covered in the following sentence,
+which discusses an initialization that terminates with an exception.
+A person catching such an exception has the right to try again
+without danger that the static variable will be initialized in the meantime.
+
+<p>
+I don't see anything at all to justify semantics that say,
+"after initialization is started, Any other threads of control are
+blocked until that thread completes the initialization,
+unless, of course, it executes by an exception,
+in which case the other thread can do the initialization before the
+exception handler gets a chance to try again, except...."
+ Take an attempt to define the semantics as far as you like.
+
+<p>
+The problem is that there is no way for the compiler writer to know
+what the programmer really wanted to do.
+I can (and will at some other date, if necessary)
+come up with scenarios justifying a variety of mutual exclusion policies,
+including none.
+
+<p>
+The solution is to let the programmer write the mutual exclusion, the
+same as we do for every other potential race condition.
+It's a real mess, and, I claim, an unwise one to put in as an extension.
+
+<p>
+<font color=blue>[990608 HP -- Christophe]</font>
+The semantics currently implemented in the HP aC++ compiler is as follows:
+<ul>
+<li> No two thread can enter a static initialization at the same time
+<li> Threads are blocked until immediately after the static  
+    initialization either succeeds or fails with an exception.
+</ul>
+
+<p>
+There are details of our implementation that I disagree with, but in  
+general, the semantics seem clear and sane, not as convoluted as you  
+seemed to imply. In particular, it correctly covers the case where  
+the static initialization fails with an exception. Any thread at that  
+point can attempt the initialization.
+
+<p>
+<font color=blue>[990608 SCO -- Jonathan]</font>
+Here's what the SCO UnixWare 7 C++ compiler does for IA-32,
+from a (slightly sanitized) design document.
+ It meets Jim's goal of having no overhead for non-threaded programs
+and minimal overhead for threaded programs unless
+actual contention occurs (infrequent),
+and meets Mike's goal of handling exceptions in the initialization correctly
+(although it doesn't guarantee that the thread getting the exception is
+the one that gets next crack at initializing the static).
+ It's also worth noting that dynamic initialization of local variables
+(static or otherwise) is very common in C++,
+since that's what most object constructions involve,
+so I don't think this case is as rare as Jim does.
+
+
+<p>
+[...] This is in local static variables with dynamic initialization,
+where the compiler generates out a static one-time flag to guard the
+initialization.
+Two threads could read the flag as zero before either of them set it,
+resulting in multiple initializations.
+
+<p>
+[...] Accordingly, when compilation is done with -Kthread on,
+a code sequence will be generated to lock this initialization.  
+[...] the basic idea is to have one guard saying whether the
+initialization is done (so that multiple initializations do not occur)
+and have another guard saying whether initialization is in progress
+(so that a second thread doesn't access what it thinks is
+an initialized value before the first thread has finished the
+initialization).  [...]
+
+<p>
+When compiled with -Kthread, the generated code for a dynamic
+initialization of a local static variable will look like the
+following. guard is a local static boolean, initialized to zero,
+generated by the [middle pass of the compiler]. 
+Two bits of it are used: the low-order 'done bit'
+and the next-low-order 'busy bit'.
+
+<pre><code>
+.again:
+        movl    $guard,%eax
+        testl   $1,(%eax)       // test the done bit
+        jnz     .done           // if set, variable is initialized,
+done
+        lock; btsl  $1,(%eax)   // test and set the busy bit
+        jc      .busy
+        < init code >           // not busy, do the initialization
+        movl    $guard,%eax
+        movl    $3,(%eax)       // set the done bit
+        jmp     .done
+.busy:
+        pushl   %eax            // call RTS routine to wait, passing address
+        call1   __static_init_wait      // of guard to monitor
+        testl   %eax,%eax       // 1 means exception occurred in init code,
+        popl    %ecx
+        jnz     .again                  // start the whole thing over
+.done                                   // 0 means wait finished
+</code></pre>
+
+<p>
+The above code will work for position-independent code as well.
+
+The complication due to exceptions is:
+what happens if the initialization code throws an exception?
+The [compiler] EH tables will have set up a special region and flag in
+their region table to detect this situation,
+along with a pointer to the guard variable.
+Because the initialization never completed,
+when the RTS sees that it is cleaning up from such a region,
+it will reset the guard variable back to both zeroes.
+This will free up a busy-waiting thread, if any,
+or will reset everything for the next thread that calls the function.
+
+<p>
+The idea of the __static_init_wait() RTS routine is to monitor the
+value of guard bits passed in, by looping on this decision table:
+<pre><code>
+    done    busy
+    0       0       return 1 in %eax        (EH wipe-out)
+    1       1       return 0 in %eax        (no longer busy)
+    0       1       continue to wait        (still busy)
+    1       0       internal error, shouldn't happen
+</code></pre>
+
+<p>
+As for how the wait is done [... not relevant for ABI,
+although currently we're using thr_yield(),
+which may or may not be right for this context].
+
+<p>
+<font color=blue>[990608 SGI -- Hans]</font>
+I'd like to make some claims about function scope static constructor
+calls in multithreaded environments.
+I personally can't recall ever having used such a construct,
+which somewhat substantiates my claims,
+but also implies some lack of certainty.
+I'd be interested in hearing any arguments to the contrary.
+
+<p>
+I believe that these arguments imply that this problem is not important
+enough to warrant added ABI complexity or overhead for sequential code.
+
+<p>
+Consider the following skeletal example:
+
+<p><code>
+f(int x) { static foo a(...); ... }
+</code>
+
+<ol>
+<p>
+<li>
+If the constructor argument doesn't depend on the function parameter,
+and the code behaves reasonably, it should be possible to rewrite this as
+
+<p><code>
+static foo a(...);
+<br>
+f(int x) { ... }
+</code>
+
+<p>
+<li>
+If I read the standard correctly (and that's a big disclaimer),
+the compiler is entitled to perform the above transformation under
+conditions that are usually true,
+but hard for the compiler to deduce.
+Thus code that relies on the initialization occurring during the
+execution of f is usually broken.
+
+<p>
+<li>
+Thus the foo constructor cannot rely on its caller holding any locks.
+It must explicitly acquire any locks it needs.
+
+<p>
+<li>
+It is far preferable to write the transformed form with a file scope
+static variable to start with.
+The initial form risks deadlock,
+since f may be called with locks held which the constructor
+can't assume are held.
+If it needs one of those locks it will need to reacquire it.
+With default mutex semantics that results in deadlock with itself.
+(If locks may be reentered,
+it may fail in a more subtle manner since the foo constructor may
+acquire a monitor lock whose monitor invariant doesn't hold.)
+
+<p>
+<li>
+File scope static constructor calls aren't a problem and require no locking,
+since they are executed in a single thread before main is called or
+before dlopen returns.
+(Forking a thread in a static constructor should probably be disallowed.
+Threads may not have been fully initialized, among other issues.)
+
+<p>
+<li>
+Static function scope constructor calls which depend on function
+arguments are likely to involve a race condition anyway,
+if multiple instances of the function can be invoked concurrently.
+Any of the calls might determine the constructor parameters.
+Thus these aren't very interesting either.
+And if they are really needed, they can be replaced with a file scope
+static constructor call plus an assignment.
+
+</ol>
+
+
 
 <p> <hr> <p>
 <h3> Library Interface Issues </h3>
