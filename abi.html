@@ -3863,10 +3863,12 @@ a single substitution.
 
     &lt;prefix> ::= &lt;prefix> &lt;unqualified-name>
 	     ::= &lt;template-prefix> &lt;template-args>
+             ::= &lt;template-param>
 	     ::= # empty
 	     ::= &lt;substitution>
 
     &lt;template-prefix> ::= &lt;prefix> &lt;<i>template</i> unqualified-name>
+                      ::= &lt;template-param>
                       ::= &lt;substitution>
     &lt;unqualified-name> ::= &lt;operator-name>
                        ::= &lt;ctor-dtor-name>  
@@ -4875,6 +4877,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[020916]</font>
+Define manglings for typename types.
 
 <p>
 <font color=blue>[020916]</font>
