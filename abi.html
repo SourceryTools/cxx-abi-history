@@ -12,7 +12,7 @@
 <BODY>
 
 <hr />
-<h1>Itanium C++ ABI ($Revision: 1.73 $)</h1>
+<h1>Itanium C++ ABI ($Revision: 1.74 $)</h1>
 <p> <hr> <p>
 
 <h2> Contents </h2>
@@ -3977,6 +3977,14 @@ the operand count as a single decimal digit, and
 the name in &lt;length,ID> form.
 </p>
 
+<p><img src=warning.gif alt="<b>NOTE</b>:" /><i> 
+For a user-defined conversion operator the result type (i.e., the type
+to which the operator converts) is part of the mangled name of the
+function.  If the conversion operator is a member template, the result
+type will appear before the template parameters.  There may be forward
+references in the result type to the template parameters.
+</i></p>
+
 <p>
 <a name=mangling-special>
 <h4> 5.1.4 Other Special Functions and Entities </h4>
@@ -4904,9 +4912,14 @@ unwind table location.
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
 
-<p>This version of this document is $Revision: 1.73 $.  No special
+<p>This version of this document is $Revision: 1.74 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[031123]</font>
+Add note about forward references to template parameters in member
+template conversion operators.
 
 <p>
 <font color=blue>[031102]</font>
