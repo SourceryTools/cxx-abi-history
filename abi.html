@@ -251,8 +251,8 @@ Y.
 <a name=q3></a>
 <dt> <i>nearly empty class</i> </dt>
 <dd>
-A class that contains no data except its virtual pointer (if any) or
-virtual bases.  In particular, it:
+A class that contains a virtual pointer, but no other data except
+(possibly) virtual bases.  In particular, it:
 <ul>
 <li> has no non-static data members other than zero-width bitfields,
 <li> has no direct base classes that are not either empty, nearly empty,
@@ -4907,6 +4907,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021110]</font>
+Clarify definition of nearly empty class.
 
 <p>
 <font color=blue>[021110]</font>
