@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 16 February 2000</i>
+<i>Revised 17 February 2000</i>
 
 </center>
 
@@ -44,6 +44,7 @@ which are defined in the <i><b>Definitions</b></i> section below.
 <ul>
 <li> <a href=#general> General </a>
 <li> <a href=#definitions> Definitions </a>
+<li> <a href=#namespace> Namespace and Header </a>
 <li> <a href=#pod> POD Data Types </a>
 <li> <a href=#member-pointers> Member Pointers </a>
 <li> <a href=#class-types> Non-POD Class Types </a>
@@ -51,10 +52,9 @@ which are defined in the <i><b>Definitions</b></i> section below.
 <li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
 <li> <a href=#array-new> Array Operator new Cookies </a>
 <li> <a href=#rtti> Run-Time Type Information (RTTI) </a>
-<li> <a href=#external-names> External Names </a>
+<li> <a href=#mangling> External Names (a.k.a. Mangling)</a>
 </ul>
 
-<!--
 <p> <hr> <p>
 <h3> Outstanding Questions </h3>
 <font color=red>
@@ -62,13 +62,24 @@ There are outstanding questions in the body of the document to be
 clarified:
 
 <ul>
+<a href=#vmi>
+<li> Is there any useful purpose for the has-public-base flag in
+    <code>vmi_flags</code> of <code>__vmi_class_type_info</code>?
+</a>
 
 </ul>
 </font>
--->
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000217]</font>
+Add excess-size bitfield specification.
+Add namespace/header section.
+Touch up array new cookies.
+Remove construction vtable example to new file.
+Add mangling proposal.
 
 <p>
 <font color=blue>[000214]</font>
@@ -238,6 +249,7 @@ e.g. virtual function pointers, virtual base class offsets, etc.
 <a name=general>
 <h3> General </h3>
 
+<p>
 In what follows, we define the memory layout for C++ data objects.
 Specifically, for each type, we specify the following information about
 an object O of that type:
@@ -270,15 +282,48 @@ It is always equal to <i>align</i>(O) for types without virtual bases.
 
 </ul>
 
+<font color=red>
+<p> <hr> <p>
+<a name=namespace>
+<h3> Namespace and Header </h3>
+
+<p>
+This ABI specifies a number of type and function APIs supplemental
+to those required by the ISO C++ Standard.
+They will be placed in namespace <code>__cxxabiv1</code>.
+A header file named <code>cxxabi.h</code> will be provided by
+implementations that declares these APIs.
+It will also declare a namespace alias <code>abi</code> for
+<code>__cxxabiv1</code>.
+It is expected that users will use the alias,
+and the remainder of the ABI specification will use it as well.
+
+
+</font>
+
+
 <p> <hr> <p>
 <a name=pod>
 <h3> POD Data Types </h3>
 
+<p>
 The size and alignment of C POD types is as specified by the base (C) ABI.
 Type bool has size and alignment 1.
 All of these types have data size and non-virtual size equal to their size.
 (We ignore tail padding for PODs because the Standard does not allow us
 to use it for anything else.)
+
+<font color=red>
+<p>
+When a bitfield member of a class is specified with a size greater than
+the field type declared, e.g. <code>char c: 32</code>,
+it is allocated as follows.
+The field alignment used is that of the largest integer type that will
+fit in the given size,
+and the first bits of the field (low-order for little-endian IA-64)
+are used to contain the actual data.
+
+</font>
 
 
 <p> <hr> <p>
@@ -552,7 +597,7 @@ A negative value indicates the vtable pointer is part of an embedded
 base class subobject; otherwise it is zero.
 The offset provides a way to find the top of the object from any base
 subobject with a vtable pointer.
-This is necessary for dynamic_cast<void*> in particular.
+This is necessary for dynamic_cast&lt;void*> in particular.
 
 <p>
 <li>
@@ -1179,110 +1224,8 @@ would look like the following:
 </pre></code>
 
 <p>
-<h4> Test Program</h4>
-Following is a test program for this, that breaks on many compilers.
-
-<code><pre>
-/* 
-This test program should output: 
-
-V1 called 
-V2 called 
-C called 
-C::foo called 7 
-PASSED this == cp 
-D called 
-~C called 
-C::foo called 7 
-PASSED this == cp 
-~V2 called 
-~V1 called 
-Int caught 
-*/ 
-
-extern "C" int printf(const char *,...); 
-struct V1 {
-        int v; 
-        virtual int foo(); 
-        V1(); 
-        ~V1(); 
-}; 
-struct V2 : virtual V1 {
-        int v2; 
-        virtual int foo(); 
-        V2(); 
-        ~V2(); 
-}; 
-struct C : virtual V1, virtual V2 {
-        int c; 
-        virtual int foo(); 
-        C(); 
-        ~C(); 
-}; 
-
-struct B {
-   int b; }; 
-struct D : B, C {
-        int d; 
-        virtual int bar(); 
-        D(); 
-        ~D(); 
-}; 
-extern "C" int printf(const char *,...); 
-main() 
-{
-  try {
-        D *d = new D; 
-        delete d; 
-  } catch (int) {
-        printf("Int caught\n"); 
-  } 
-} 
-
-int V1::foo() {
-   printf("V1::foo called\n"); return 1; } 
-V1::V1() : v(5) {
-   printf("V1 called\n"); } 
-V1::~V1() {
-   printf("~V1 called\n"); } 
-
-int V2::foo() {
-   printf("V2::foo called\n"); return 1; } 
-V2::V2() : v2(6) {
-   printf("V2 called\n"); } 
-V2::~V2() {
-   printf("~V2 called\n"); } 
-
-int C::foo() {
-   printf("C::foo called %d\n", c); return 1; } 
-C::C() : c(7) {
-        printf("C called\n"); 
-        V1 *vv = this; vv->foo(); 
-        C *cp = dynamic_cast<C *>(vv); 
-        if (this == cp) {
-            printf("PASSED this == cp\n"); 
-        } else {
-            printf("FAILED this != cp\n"); 
-        } 
-} 
-C::~C() {
-        printf("~C called\n"); 
-        V1 *vv = this; vv->foo(); 
-        C *cp = dynamic_cast<C *>(vv); 
-        if (this == cp) {
-            printf("PASSED this == cp\n"); 
-        } else {
-            printf("FAILED this != cp\n"); 
-        } 
-} 
-
-int D::bar() {
-   printf("D::bar called\n"); return 1; } 
-D::D() : d(8) {
-   printf("D called\n"); throw 5; } 
-D::~D() {
-   printf("~D called\n"); } 
-</pre></code>
+A test program for this can be found in the
+<a href=abi-examples.html#vtable-ctor>ABI Examples</a> document.
 
 </font>
 
@@ -1298,7 +1241,6 @@ a cookie is usually stored to remember the allocated length
 (number of array elements)
 so that it can be deallocated correctly.
 
-<font color=red>
 <p>
 Specifically:
 <ul>
@@ -1311,13 +1253,16 @@ Specifically:
 
 <p>
 <li> Otherwise, this ABI requires a cookie, setup as follows:
-</font>
   <ul>
   <li> The cookie will have size <code>sizeof(size_t)</code>.
   <li> Let <code>align</code> be the maximum alignment of
   <code>size_t</code> and an element of the array to be allocated.
+<font color=red>
+  <li> Let <code>padding</code> be the maximum of
+  <code>sizeof(size_t)</code> and <code>align</code> bytes.
   <li> The space allocated for the array will be the space required
-  by the array itself plus <code>align</code> bytes.
+  by the array itself plus <code>padding</code> bytes.
+</font>
   <li> The alignment of the space allocated for the array will be
   <code>align</code> bytes.
   <li> The array data will begin at an offset of <code>align</code> bytes
@@ -1340,7 +1285,6 @@ Specifically:
 </ul>
 
 <p>
-<font color=red>
 Given the above, the following is pseudocode for processing
 <code>new(ARGS) T[n]</code>:
 <code><pre>
@@ -1362,7 +1306,6 @@ Given the above, the following is pseudocode for processing
 
   return p1
 </pre></code>
-</font>
 
 
 
@@ -1523,7 +1466,7 @@ class layout rules for the host ABI.
 Every vtable shall contain one entry describing the offset from a
 vptr for that vtable to the origin of the object containing that vptr
 (or equivalently: to the vptr for the primary vtable).
-This entry is directly useful to implement dynamic_cast<void cv*>,
+This entry is directly useful to implement dynamic_cast&lt;void cv*>,
 but is also needed for the other truly dynamic casts.
 This entry is located two words ahead of the location
 pointed to by the vptr (i.e., entry "-2").
@@ -1610,6 +1553,7 @@ It adds to abi::__class_type_info
 a single member pointing to the type_info structure for the base type,
 declared "<code>__class_type_info const *type</code>".
 
+<a name=vmi>
 <p>
 <li>
 For classes with bases that do not satisfy the
@@ -1618,17 +1562,17 @@ abi::__vmi_class_type_info is used.
 It is derived from abi::__class_type_info, and adds fields:
   <ul>
   <p>
-<font color=red>
   <li> vmi_flags: a word with flags describing details
       about the class (most for use of the derived classes):
 	<ul>
 	<li> 0x01: class has non-diamond repeated inheritance
 	<li> 0x02: class is diamond shaped
-	<li> 0x04: class has publicly inherited base(s)
-	<li> 0x08: class has non-publicly inherited base(s)
+	<li> 0x04: class has non-publicly inherited base(s)
+<font color=red>
+	<li> 0x08: class has publicly inherited base(s)
+</font>
 	</ul>
       All of these flags refer to both direct and indirect bases.
-</font>
       The type of the _VMI_flags field is defined by each psABI,
       but must be at least 16 bits.
       For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
@@ -1695,14 +1639,16 @@ The abi::__pointer_to_member_type_info type adds two fields to std::type_info:
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-<font color=red>
 Note that this ABI requires elsewhere that a vtable be emitted for a
 dynamic type in the object where the first non-inline virtual function
 member is defined, if any, or everywhere referenced if none.
-Therefore, an implementation that has virtual function members in the
-classes defined above should include at least one non-inline virtual
-function member and define it in the library,
+Therefore, an implementation should include at least one
+non-inline virtual function member and define it in the library,
 to avoid having user code inadvertently preempt the vtable.
+<font color=red>
+Since the Standard requires a virtual destructor,
+and it will rarely be called,
+it is a good candidate for this role.
 </font>
 </i>
 
@@ -1723,7 +1669,7 @@ static.
 
 <p>
 This leaves the following test to be implemented in the run-time
-library for truly dynamic casts of the form "dynamic_cast<T>(v)":
+library for truly dynamic casts of the form "dynamic_cast&lt;T>(v)":
 (see [expr.dynamic_cast] 5.2.7/8)
 
 <ul>
@@ -1764,7 +1710,7 @@ These tests are implemented by abi::__dynamic_cast:
    /* sub: source address to be adjusted; nonnull, and since the
     *      source object is polymoprhic, *(void**)sub is a vptr.
     * src: static type of the source object.
-    * dst: destination type (the "T" in "dynamic_cast<T>(v)").
+    * dst: destination type (the "T" in "dynamic_cast&lt;T>(v)").
     * obj2sub_offset: a static hint about the location of the
     *    source subobject with respect to the complete object;
     *    special negative values are:
@@ -1818,12 +1764,445 @@ no interfaces need to be specified in this document
 
 
 <p> <hr> <p>
-<a name=external-names>
+<a name=mangling>
 <h3> External Names (a.k.a. Mangling) </h3>
 
-<i>
-&lt;To be specified.>
-</i>
+<font color=red>
+<p>
+<h4> Loose Ends </h4>
+
+<p>
+<ul>
+<li> Revise examples.
+<li> Mangling of special entities: VT, VTT, typeinfo, "TID", helper variables
+        to ensure one-time initialization and thread protection, ...
+<li> ILP-32 conventions?
+<li> Complete glossary of Sx abbreviations.
+<li> Escape mechanism for extended operator like __alignof?
+<li> Proof of nonambiguity
+<li> 80-bit vs. 128-bit long doubles?
+</ul>
+
+<p>
+<h4> General structure </h4>
+
+<p>
+Entities with C linkage and file scope variables are not mangled.
+Mangled names have the general structure:
+<center>
+    _Z&lt;name>&lt;type>opt
+</center>
+
+where
+<ul>
+<li>
+<code><pre>
+&lt;name> is one of:
+   &lt;unqualified-name>
+      &lt;length>&lt;function name>
+      &lt;length>&lt;function name>I&lt;template-args>E
+      &lt;operator-name>
+      &lt;operator-name>I&lt;template-args>E
+      &lt;special-name>
+         (see below: ctors, vtables, ...)   
+   &lt;qualified-name>
+      N&lt;qual-1>...&lt;qual-J>&lt;unqualified-name>E
+   &lt;local-name>
+      (see below: scope encoding)
+</pre></code>
+<p>
+<li>
+&lt;type> is used to disambiguate overloaded functions,
+but also to distinguish the various virtual tables associated
+with a given complete class type.
+For nontemplate functions, &lt;type> lists the parameter types only.
+For template functions,
+&lt;type> lists the return type followed by the parameter types.
+&lt;type> is omitted for variables and static data members.
+
+</ul>
+
+<p>
+<h4> Operator encodings </h4>
+
+<p>
+Operators appear as function names,
+but also in nontype template argument expressions.
+<code><pre>
+   new           nw
+   new[]         na
+   delete        dl
+   delete[]      da
+   - (unary)     ng
+   & (unary)     ad
+   * (unary)     de
+   ~             co
+   +             pl
+   -             mi
+   *             ml
+   /             dv
+   %             rm
+   &             an
+   |             or
+   ^             eo
+   =             aS
+   +=            pL
+   -=            mI
+   *=            mL
+   /=            dV
+   %=            rM
+   &=            aN
+   |=            oR
+   ^=            eO
+   <<            ls
+   >>            rs
+   <<=           lS
+   >>=           rS
+   ==            eq
+   !=            ne
+   <             lt
+   >             gt
+   <=            le
+   >=            ge
+   !             nt
+   &&            aa
+   ||            oo
+   ++            pp
+   --            mm
+   ,             cm
+   ->*           pm
+   ->            pt
+   ()            cl
+   []            ix
+   ?             qu
+   (cast)        cv
+   sizeof        sz
+</pre></code>
+
+<p>
+Unlike Cfront,
+unary and binary operators using the same symbol have different encodings.
+All operators are encoded using exactly two letters,
+the first of which is lowercase.
+
+
+<p>
+<h4> Other special functions and entities </h4>
+<code><pre>
+   TV            virtual table
+   TI            typeinfo structure
+   C1            complete object constructor
+   C2            base object constructor
+   D0            deleting destructor
+   D1            complete object destructor
+   D2            base object destructor
+</pre></code>
+
+
+<p>
+<h4> Type encodings </h4>
+
+<p>
+Types are encoded as follows:
+
+<ul>
+<li> builtin types: (one letter)
+<code><pre>
+   void                     v
+   wchar_t                  w
+   bool                     b
+   char                     c
+   signed char              a
+   unsigned char            h
+   short                    s
+   unsigned short           t
+   int                      i
+   unsigned int             j
+   long                     l
+   unsigned long            m
+   long long                x
+   unsigned long long       y
+   float                    f
+   double                   d
+   long double              e
+   ellipsis                 z
+</pre></code>
+
+<p>
+<li> classes & enums:
+<pre>
+   &lt;decimal length of unqualified name>&lt;unqualified-name>
+</pre>
+   Class names can optionally be followed by the encoding of a template
+   argument list (see below).
+
+<p>
+<li> template params (including nontype and template template parameters):
+<pre>
+   T&lt;param num>_
+</pre>
+
+<p>
+<li> other dependent names: (see below)
+<pre>
+   N&lt;qual 1>...&lt;qual N>&lt;unqual name>E
+</pre>
+
+<p>
+<li> template argument list: (see below)
+<pre>
+   I&lt;arg1>...&lt;argN>E
+</pre>
+
+<p>
+<li> function types:
+<pre>
+   F&lt;return type>&lt;param type 1>...&lt;param type N>E
+</pre>
+
+<p>
+<li> array types:
+<pre>
+   A&lt;dimension>_&lt;element type encoding>
+</pre>
+
+<p>
+<li> pointers, references:
+<pre>
+   P&lt;encoding pointed-to type>
+   R&lt;encoding pointed-to type>
+</pre>
+
+<p>
+<li> pointer-to-member:
+<pre>
+   M&lt;class type encoding>&lt;member type encoding>
+</pre>
+
+<p>
+<li> cv-qualifiers:
+<pre>
+   K const
+   V volatile
+   r restrict
+</pre>
+
+</ul>
+
+
+<p>
+<h4> Scope Encoding </h4>
+
+<p>
+A nonlocal scope is encoded as the qualifier of a qualified name:
+it can be the top-level name qualification or it can appear inside
+&lt;type> to denote dependent types or bind specific names as arguments.
+Qualified names are encoded as:
+<code><pre>
+   N&lt;qual 1>...&lt;qual N>&lt;unqual name>E
+</pre></code>
+where each &lt;qual K> is the encoding of a namespace name or a class name
+(with the latter possibly including a template argument list).
+
+Occasionally entities in local scopes must be mangled too
+(e..g., because inlining or separate template compilation causes
+multiple translation units to need access to that entity).
+Local entities that might be mangled are
+numbered in lexical order starting with "1".
+The numbered entities are:
+<ul>
+<li> local static variables
+<li> local classes
+<li> string literals
+</ul>
+
+<p>
+The local name encoding is then:
+<code><pre>
+   Z&lt;function-encoding-without-prefix>E&lt;num>_&lt;entity-name>
+</pre></code>
+where &lt;entity-name> is either the entity's unqualified name
+or "0" (zero) if it is a string literal.
+
+<p>
+Example:
+<code><pre>
+   namespace N {
+      inline char* f(int i) {
+         static char *p = "IA-64 C++ ABI";  // p = 1, "..." = 2
+         {  struct X {                      // X = 3
+               void g() {}
+            };   }
+         return p[i];
+      }
+   }
+</pre></code>
+
+<ul>
+<li> "<code>_ZZN1N1fEiE1_1p</code>":
+    encoding of N::f:p (first local mangled entity)
+<li> "<code>_ZZN1N1fEiE2_0</code>":
+    encoding of N::f:"IA-64 C++ ABI"
+<li> "<code>_ZNZN1N1fEiE3_1X1gE</code>":
+    encoding of N::f:X::g()
+    (third local mangled entity used as a class-qualifier)
+</ul>
+
+
+<p>
+<h4> Template argument encoding </h4>
+
+<p>
+Template-ids are encoded by following the unqualified name with
+<code><pre>
+	I&lt;arguments>E
+</pre></code>
+This is used for the &lt;specialization> segment in particular,
+but also in the &lt;type> and &lt;scope> segments.
+
+<p>
+Type arguments appear using their regular encoding.
+For example, the template class "A&lt;char, float>" is encoded as "1AIcfE".
+A slightly more involved example might be
+a dependent function parameter type "A&lt;T2>::X"
+(T2 is the second template parameter)
+which is encoded as "N1AIT2_E1XE",
+where the "N...E" construct is used to describe a qualified name.
+
+<p>
+Nontype arguments can be:
+
+<ol type=a>
+<p>
+<li> a literal, e.g. "A&lt;42L>": these are encoded as "L&lt;type>&lt;num>E";
+      negative integer &lt;num> are preceded with "n"; false is "Lb0E";
+      true is "Lb1E".  For example, "A&lt;-42L>" becomes "1AILln42EE".
+      If floating-point arguments are accepted as an extension, they
+      should be encoded using a fixed-length lowercase hexadecimal
+      string corresponding to the internal (IEEE) representation.
+      For example: "Lfbff000000" is -1.0f.
+<p>
+<li> a reference to an entity with external linkage: encoded with
+      "L&lt;mangled name>E".  For example:
+<code><pre>
+          void foo(char); // mangled as _Z3fooc
+          template&lt;void (&)(char)> struct CB;
+          // CB&lt;foo> is mangled as "2CBIL_Z3foocEE"
+</pre></code>
+<p>
+<li> an expression, e.g., "B&lt;(J+1)/2>" is encoded with a
+      prefix traversal of the operators involved, delimited by "X...E".
+      The operators are encoded using their two letter mangled names.
+      For example, "B&lt;(J+1)/2>"
+      becomes "1BI Xdv pl T1_ Li1E Li2E E E"
+      (the blanks are present only to visualize the decomposition).
+</ol>
+
+
+
+<p>
+<h4> Compression </h4>
+
+<p>
+The subsequence
+<code><pre>
+   S&lt;num>_
+</pre></code>
+is used to repeat the num-th most recently encoded type,
+namespace or template (in right-to-left order, starting at "1"),
+but only if "S&lt;num>_" is strictly shorter that the previous encoding.
+A qualifier is less recent than what it qualifies
+and a template name is is less recent than the template-id it might
+be a part of.
+For example:
+
+<code><pre>
+   "_ZN1N1TIiiE2mfES4_IddE": Ret? N::T&lt;int, int>::mf(N::T&lt;double, double>)
+</pre></code>
+
+since at the point where S4_ appears:
+<code><pre>
+   "S1_" == int
+   "S2_" == int
+   "S3_" == N::T&lt;int, int>
+   "S4_" == N::T (template is less recent than template-id)
+   "S5_" == N (qualifier is less recent than qualified entity)
+</pre></code>
+
+<p>
+In addition,
+the following catalog of abbreviations of the form "Sx" should be used:
+<code><pre>
+   St = ::std::
+   Sb = ::std::basic_string
+   Ss = ::std::basic_string&lt;char, ::std::char_traits&lt;char>,
+                            ::std::allocator&lt;char> >
+</pre></code>
+
+<p>
+The abbreviation St is always treated as a qualifier and therefore does not
+need a N...E construct.
+For example:
+<code><pre>
+   "_ZSt5state": ::std::state
+   "_ZStN3_In4wardE": ::std::_In::ward
+</pre></code>
+
+
+<p>
+<h4> Examples </h4>
+
+<ol type=1>
+
+<li> "f": The C function or variable "f" or a file scope variable "f".
+
+<li> "_Z1f": Ret? f();
+
+<li> "_Z1fi": Ret? f(int);
+
+<li> "_Z3foo3bar": Ret? foo(bar);
+
+<li> "_Zrm1X1X": Ret? operator%(X, X);
+
+<li> "_ZplR1XR1X": Ret? operator+(X&, X&);
+
+<li> "_ZlsRK1XS1_": Ret? operator(X const&, X const&);
+       <br>(Note: strlen("S1_")&lt;strlen("RK1X"))
+
+<li> "_Z1fIiE": void f&lt;int>();
+
+<li> "_Z1fIiEvi": void f&lt;int>(/*nondependent*/int);
+       <br>(Note: the return type is always explicitly encoded for template
+	    functions taking parameters.)
+
+<li> "_Z5firstI3DuoEvS2_": void first&lt;Duo>(/*nondependent*/Duo);
+       <br>(Note: "S1_" would refer to the "void" return type.)
+
+<li> "_Z5firstI3DuoEvT1_": void first&lt;Duo>(/*T1=*/Duo);
+
+<li> "_ZN1N1fE": Ret? N::f();
+
+<li> "_ZN6System5Sound4beepE: Ret? System::Sound::beep();
+
+<li> "_ZN5Arena5levelE": Type? Arena::level;
+
+<li> "_ZN5StackIiiE5levelE": Type? Stack&lt;int, int>::level
+
+<li> <code><pre>
+"_Z1fI1XEvPVN1AIT1_E1TE"</code>: void f&lt;X>(A&lt;/*T1=*/X>::T volatile*);<code>
+	    |         |
+	    `---------`------> </code>start/end dependent name encoding A&lt;T1>::T
+</pre>
+
+<li> "_ZngIL42iEEvN1AIXplT1_L2iEE1TE": void operator-&lt;/*int J=*/42>(A&lt;J+2>::T);
+
+<li> "_Z4makeI7FactoryiET1_IT2_E":
+		/*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
+		<br> // T1 == template template parameter
+
+</ul>
+
+</font>
 
 <p>
 <hr>
