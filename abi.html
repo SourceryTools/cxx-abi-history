@@ -734,8 +734,10 @@ follows:
 
   <p>
   <li> If D is a bitfield, i.e. declared as "<code>T [b]: n;"</code>,
-       for some integral POD type T and bit count n,
-       there are two cases depending on <code>sizeof(T)</code>
+       for some integral POD type T and bit count n:
+
+       <p>
+       There are two cases depending on <code>sizeof(T)</code>
        and <code>n</code>:
 
        <ol type=a>
@@ -779,9 +781,10 @@ follows:
        and update sizeof(C) to max(sizeof(C),dsize(C)).
 
   <p>
-  <li> Otherwise, if D is not an empty base class
-	(including all data members),
-	start at offset dsize(C),
+  <li> If D is not an empty base class or D is a data member:
+
+	<p>
+        Start at offset dsize(C),
 	incremented if necessary for alignment
 	to nvalign(D) for base classes or
 	to align(D) for data members.
@@ -815,8 +818,10 @@ follows:
         </p>
 
   <p>
-  <li> If D is an empty proper base class,
-	its allocation is similar to case (2) above,
+  <li> If D is an empty proper base class:
+
+        <p>
+	Its allocation is similar to case (2) above,
 	except that additional candidate offsets are considered before
 	starting at dsize(C).
 	First, attempt to place D at offset zero.
