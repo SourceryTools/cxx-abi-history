@@ -15,7 +15,7 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 11 September 2000.
+<i>Revised 27 September 2000.
 <a href=#revisions>Revision history</a> at end of document.
 </i>
 
@@ -58,6 +58,9 @@ C++ ABI for IA-64: Exception Handling
   <ul>
   <li> <a href=#imp-intro>	3.1 Introduction </a>
   <li> <a href=#imp-data>	3.2 Data Structures </a>
+  <li> <a href=#imp-init>	3.3 Runtime Initialization </a>
+  <li> <a href=#imp-throw>	2.4 Throwing an Exception</a>
+  <li> <a href=#imp-catch>	2.5 Catching an Exception</a>
   </ul>
 <li> <a href=#revisions> Appendix R: Revision History</a>
 </ul>
@@ -152,9 +155,12 @@ further references.
 The following open issues remain to be resolved in this document:
 
 <ol>
+
 <p>
 <li>
-Define <code> __cxa_throw_type_info</code> (Section 2.2.1).
+There was a discussion about the typeinfo argument to __cxa_throw.
+Should it actually be a function pointer that can be used to find the
+right __cxa_throw_type_info?  (2.4.3)
 
 <p>
 <li>
@@ -1253,10 +1259,13 @@ The fields in the exception object are as follows:
 <li>
 The <code>exceptionType</code> field encodes the type of
 the thrown exception.
-The <code>__cxa_throw_type_info</code> type is essentially a
+The <code>__cxa_throw_type_info</code> type is a
 <code>type_info</code> as defined by the common IA-64 runtime.
 This type must be stored in the exception object
 since non-polymorphic and built-in types can be thrown.
+<code><pre><font color=red>
+	typedef std::type_info __cxa_throw_type_info;
+</font></pre></code>
 
 <p>
 <li>
@@ -1394,34 +1403,6 @@ current thread, assuming that at least one prior call to
 <a name=cxx-init></a>
 <h4> 2.3  Standard Runtime Initialization </h4>
 
-<p>
-<a name=cxx-emergency></a>
-<h5> 2.3.1  Exception Storage </h5>
-
-<i>
-<p>
-<font color=red>
-It is suggested that
-</font>
-the C++ runtime library allocate a static emergency buffer of at
-least 4K bytes per potential task, up to 64KB.
-This buffer shall be used only in cases where dynamic allocation of
-exception objects fails.
-It shall be allocated in 1KB chunks.
-At most 16 tasks may use the emergency buffer at any time,
-for at most 4 nested exceptions,
-with each exception object (including header) of size at most 1KB.
-Additional threads are blocked until one of the 16 de-allocates its
-emergency buffer storage.
-
-<p>
-The interface to the emergency buffer is implementation-defined,
-and used only by the
-<font color=red>
-exception library.
-</font>
-</i>
-
 
 <p>
 <a name=cxx-throw></a>
@@ -1527,7 +1508,7 @@ Exception object storage will therefore normally be allocated in the heap,
 <font color=red>
 although implementations may provide an emergency buffer to support
 throwing <code>bad_alloc</code> exceptions under low memory conditions
-(see <a href=#cxx-emergency>Section 2.3.1</a>).
+(see <a href=#imp-emergency>Section 3.3.1</a>).
 </font>
 
 <p>
@@ -1538,15 +1519,11 @@ This routine is passed the size of the exception object to be thrown
 and returns a pointer to the temporary space for the exception object.
 It will allocate the exception memory on the heap if possible.
 If heap allocation fails,
-then it will attempt to allocate one of the emergency buffers,
-under the following constraints:
-<ul>
-<li> The exception object size, including headers, is under 1KB.
-<li> The current thread does not already hold four buffers.
-<li> There are fewer than 16 other threads holding buffers,
-     or this thread will wait until one of the others releases
-     its buffers before acquiring one.
-</ul>
+<font color=red>
+an implementation may use other backup mechanisms
+(see <a href=#imp-allocate>Section 3.4.1</a>).
+</font>
+
 If <code>__cxa_allocate_exception</code> cannot allocate an exception
 object under these constraints, it calls <code>terminate()</code>.
 <code><pre>
@@ -1582,9 +1559,9 @@ After constructing the exception object with the throw argument value,
 the generated code calls the <code>__cxa_throw</code> runtime library
 routine.
 This routine never returns.
-<code><pre>
-	void __cxa_throw (void *thrown_exception, std::type_info *typeinfo);
-</pre></code>
+<code><pre><font color=red>
+    void __cxa_throw (void *thrown_exception, __cxa_throw_type_info *typeinfo);
+</font></pre></code>
 The arguments are:
 <ul>
 <p>
@@ -1592,7 +1569,7 @@ The arguments are:
      (which points to the throw value, after the header,
      as specified above).
 <p>
-<li> A <code>std::type_info</code> pointer,
+<li> A <code>__cxa_throw_type_info</code> pointer,
      giving the static type of the throw argument,
      used for matching potential catch sites to the thrown exception.
      The dynamic type of <code>typeinfo</code> is derived from,
@@ -1661,193 +1638,12 @@ assuming that there was no handler for the exception.
 <h5> 2.5.1  Overview of Catch Processing </h5>
 
 <i>
-
-<p>
-<h6> 2.5.1.1  Unwinding the Stack </h6>
-<p>
-As specified by this ABI,
-stack unwinding itself is begun by calling
-<code>__Unwind_RaiseException()</code>,
-and performed by the unwind library
-(see <a href=#base-framework>Section 1.1</a>).
-We summarize it again here.
-
-<p>
-The stack unwind library runs two passes on the stack, as follows:
-
-<ul>
-<p>
-<li>
-Recover the program counter (PC) in the current stack frame.
-
-<p>
-<li>
-Using an unwind table,
-find information on how to handle exceptions that occur at that PC,
-and in particular,
-get the address of the personality routine for that address range.
-The unwind table is described in [SWCONV].
-
-<p>
-<li>
-Call the personality routine that will determine if an appropriate
-handler is found at that level of the stack (in pass 1),
-and that will determine which particular handler to invoke from
-the landing pad (in pass 2),
-as well as the arguments to pass to the landing pad
-(see <a href=#cxx-personality>Section 2.5.2</a>).
-The personality routine passes this information back to the unwind
-library.
-
-<p>
-<li>
-In the second phase,
-the unwind library jumps to the landing pad corresponding to the call
-(see <a href=#cxx-personality>Section 2.5.2</a>)
-for each level of the stack being unwound.
-Landing pad parameters are set as indicated by the personality routine.
-The landing pad executes compensation code
-(generated by the back end)
-to restore the appropriate register and stack state.
-
-<p>
-<li>
-Some cleanup code generated by the front-end may then execute,
-corresponding to the exit of the <b>try</b> block.
 <font color=red>
-For instance, an automatic variable local to the try block
-would be destroyed here.
+See <a href=#imp-catch>Section 3.5</a> below for an overview of a
+possible implementation of catch processing.
+This section specifies the interfaces which must be supported by
+ABI-compliant exception handling runtime libraries.
 </font>
-
-<p>
-<li>
-The exception handler may select and execute user-defined code
-corresponding to C++ catch clauses and other handlers.
-The generated code may be similar to a switch statement,
-where the switch value is determined by the runtime based on
-the exception type (see <a href=#cxx-handler>Section 2.5.3</a>),
-and passed in a landing pad argument.
-
-<p>
-<li>
-As soon as the runtime determines that the execution will go to a handler,
-the unwinding process is considered complete for the unwind library.
-A handler may still rethrow the current exception
-(see <a href=#cxx-rethrow>Section 2.5.4</a>)
-or a different exception,
-but a new unwind process will occur in both cases.
-Otherwise, after the code in a handler has executed,
-execution resumes at the end of the try block which defines this handler.
-
-<p>
-<li>
-If none of the possible handlers matches the exception being thrown,
-the runtime selects a switch value that does not match any switch statement.
-In that case, control passes through all switch statements,
-and goes to additional <a href=#cxx-cleanup>cleanup code</a>,
-which will call all destructors that need
-to be called for the current stack frame.
-For instance,
-<font color=red>
-an automatic variable local to the outer block of the function
-would be destroyed here.
-<i>
-This means that the handler must loop through any try blocks
-enclosing the original one in the process of cleaning up the frame,
-trying the switch value in each one.
-</i>
-</font>
-
-<p>
-<li>
-At the end of this current cleanup code,
-control is transferred back to the unwind library,
-to unwind one more stack frame
-(see <a href=#cxx-cleanup>Section 2.5.3</a>).
-
-</ul>
-
-<p>
-<h6> 2.5.1.2  Generated Catch Code </h6>
-
-<p>
-For purposes of illustration,
-suppose we have a call site in a try-catch block such as:
-</i>
-<code><pre>
-	try { foo(); }
-	catch (TYPE1) { ... }
-	catch (TYPE2) { buz(); }
-	bar();
-</pre></code>
-
-<p>
-<i>
-This might be translated as follows:
-</i>
-<code><pre>
-	// In "Normal" area:
-	foo(); // Call Attributes: Landing Pad L1, Action Record A1
-	goto E1;
-	...
-	E1: // End Label
-	bar();
-
-	// In "Exception" area;
-	L1: // Landing Pad label
-	[Back-end generated “compensation” code]
-	goto C1;
-
-	C1: // Cleanup label
-	[Front-end generated cleanup code, destructors, etc]
-	[corresponding to exit of try { } block]
-	goto S1;
-
-	S1: // Switch label
-	switch(SWITCH_VALUE_PAD_ARGUMENT)
-	{
-	    case 1: goto H1; // For TYPE1
-	    case 2: goto H2; // For TYPE2
-	    //...
-	    default: goto X1;
-	}
-
-	X1:
-	[Cleanup code corresponding to exit of scope]
-	[enclosing the try block]
-	_Unwind_Resume();
-
-	H1: // Handler label
-	[Initialize catch parameter]
-	__cxa_begin_catch(exception);
-	[User code]
-	goto R1;
-
-	H2:
-	[Initialize catch parameter]
-	__cxa_begin_catch(exception);
-	[User code]
-	buz(); // Call attributes: Landing pad L2, action record A2
-	goto R1;
-
-	R1: // Resume label:
-	__cxa_end_catch();
-	goto E1;
-
-	L2:
-	C2:
-	// Make sure we cleanup the current exception
-	__cxa_end_catch();
-
-	X2:
-	[Cleanup code corresponding to exit of scope]
-	[enclosing the try block]
-	_Unwind_Resume();
-</pre></code>
-
-<p>
-<i>
-The various components of this example segment will be discussed below.
 </i>
 
 <p>
@@ -2237,6 +2033,272 @@ a second-level specification must be part of the ABI.
 
 <p>
 
+<font color=red>
+
+<p>
+<a name=imp-init></a>
+<h4> 3.3  Standard Runtime Initialization </h4>
+
+<p>
+<a name=imp-emergency></a>
+<h5> 3.3.1  Exception Storage </h5>
+
+<i>
+<p>
+<font color=red>
+It is suggested that
+</font>
+the C++ runtime library allocate a static emergency buffer of at
+least 4K bytes per potential task, up to 64KB.
+This buffer shall be used only in cases where dynamic allocation of
+exception objects fails.
+It shall be allocated in 1KB chunks.
+At most 16 tasks may use the emergency buffer at any time,
+for at most 4 nested exceptions,
+with each exception object (including header) of size at most 1KB.
+Additional threads are blocked until one of the 16 de-allocates its
+emergency buffer storage.
+
+<p>
+The interface to the emergency buffer is implementation-defined,
+and used only by the
+<font color=red>
+exception library.
+</font>
+</i>
+
+
+<p>
+<a name=imp-throw></a>
+<h4> 3.4  Throwing an Exception </h4>
+
+<p>
+This section specifies further implementation details of the process
+by which the C++ generated code and runtime library throw an exception,
+transferring control to the unwind library for handling.
+
+<p>
+<a name=imp-allocate></a>
+<h5> 3.4.1  Allocating the Exception Object </h5>
+
+<p>
+Memory for an exception object will be allocated by the
+<code>__cxa_allocate_exception</code> runtime library routine,
+with general requirements as described in
+<a href=cxx-allocate>Section 2.4.2</a>.
+If normal allocation fails,
+then it will attempt to allocate one of the emergency buffers,
+described in <a href=imp-emergency>Section 3.3.1</a>,
+under the following constraints:
+<ul>
+<li> The exception object size, including headers, is under 1KB.
+<li> The current thread does not already hold four buffers.
+<li> There are fewer than 16 other threads holding buffers,
+     or this thread will wait until one of the others releases
+     its buffers before acquiring one.
+</ul>
+
+
+<p>
+<a name=imp-catch></a>
+<h4> 3.5  Catching an Exception </h4>
+
+<p>
+<h5> 3.5.1  Overview of Catch Processing </h5>
+
+<i>
+
+<p>
+<h6> 3.5.1.1  Unwinding the Stack </h6>
+<p>
+As specified by this ABI,
+stack unwinding itself is begun by calling
+<code>__Unwind_RaiseException()</code>,
+and performed by the unwind library
+(see <a href=#base-framework>Section 1.1</a>).
+We summarize it again here.
+
+<p>
+The stack unwind library runs two passes on the stack, as follows:
+
+<ul>
+<p>
+<li>
+Recover the program counter (PC) in the current stack frame.
+
+<p>
+<li>
+Using an unwind table,
+find information on how to handle exceptions that occur at that PC,
+and in particular,
+get the address of the personality routine for that address range.
+The unwind table is described in [SWCONV].
+
+<p>
+<li>
+Call the personality routine that will determine if an appropriate
+handler is found at that level of the stack (in pass 1),
+and that will determine which particular handler to invoke from
+the landing pad (in pass 2),
+as well as the arguments to pass to the landing pad
+(see <a href=#cxx-personality>Section 2.5.2</a>).
+The personality routine passes this information back to the unwind
+library.
+
+<p>
+<li>
+In the second phase,
+the unwind library jumps to the landing pad corresponding to the call
+(see <a href=#cxx-personality>Section 2.5.2</a>)
+for each level of the stack being unwound.
+Landing pad parameters are set as indicated by the personality routine.
+The landing pad executes compensation code
+(generated by the back end)
+to restore the appropriate register and stack state.
+
+<p>
+<li>
+Some cleanup code generated by the front-end may then execute,
+corresponding to the exit of the <b>try</b> block.
+<font color=red>
+For instance, an automatic variable local to the try block
+would be destroyed here.
+</font>
+
+<p>
+<li>
+The exception handler may select and execute user-defined code
+corresponding to C++ catch clauses and other handlers.
+The generated code may be similar to a switch statement,
+where the switch value is determined by the runtime based on
+the exception type (see <a href=#cxx-handler>Section 2.5.3</a>),
+and passed in a landing pad argument.
+
+<p>
+<li>
+As soon as the runtime determines that the execution will go to a handler,
+the unwinding process is considered complete for the unwind library.
+A handler may still rethrow the current exception
+(see <a href=#cxx-rethrow>Section 2.5.4</a>)
+or a different exception,
+but a new unwind process will occur in both cases.
+Otherwise, after the code in a handler has executed,
+execution resumes at the end of the try block which defines this handler.
+
+<p>
+<li>
+If none of the possible handlers matches the exception being thrown,
+the runtime selects a switch value that does not match any switch statement.
+In that case, control passes through all switch statements,
+and goes to additional <a href=#cxx-cleanup>cleanup code</a>,
+which will call all destructors that need
+to be called for the current stack frame.
+For instance,
+<font color=red>
+an automatic variable local to the outer block of the function
+would be destroyed here.
+<i>
+This means that the handler must loop through any try blocks
+enclosing the original one in the process of cleaning up the frame,
+trying the switch value in each one.
+</i>
+</font>
+
+<p>
+<li>
+At the end of this current cleanup code,
+control is transferred back to the unwind library,
+to unwind one more stack frame
+(see <a href=#cxx-cleanup>Section 2.5.3</a>).
+
+</ul>
+
+<p>
+<h6> 3.5.1.2  Generated Catch Code </h6>
+
+<p>
+For purposes of illustration,
+suppose we have a call site in a try-catch block such as:
+</i>
+<code><pre>
+	try { foo(); }
+	catch (TYPE1) { ... }
+	catch (TYPE2) { buz(); }
+	bar();
+</pre></code>
+
+<p>
+<i>
+This might be translated as follows:
+</i>
+<code><pre>
+	// In "Normal" area:
+	foo(); // Call Attributes: Landing Pad L1, Action Record A1
+	goto E1;
+	...
+	E1: // End Label
+	bar();
+
+	// In "Exception" area;
+	L1: // Landing Pad label
+	[Back-end generated “compensation” code]
+	goto C1;
+
+	C1: // Cleanup label
+	[Front-end generated cleanup code, destructors, etc]
+	[corresponding to exit of try { } block]
+	goto S1;
+
+	S1: // Switch label
+	switch(SWITCH_VALUE_PAD_ARGUMENT)
+	{
+	    case 1: goto H1; // For TYPE1
+	    case 2: goto H2; // For TYPE2
+	    //...
+	    default: goto X1;
+	}
+
+	X1:
+	[Cleanup code corresponding to exit of scope]
+	[enclosing the try block]
+	_Unwind_Resume();
+
+	H1: // Handler label
+	[Initialize catch parameter]
+	__cxa_begin_catch(exception);
+	[User code]
+	goto R1;
+
+	H2:
+	[Initialize catch parameter]
+	__cxa_begin_catch(exception);
+	[User code]
+	buz(); // Call attributes: Landing pad L2, action record A2
+	goto R1;
+
+	R1: // Resume label:
+	__cxa_end_catch();
+	goto E1;
+
+	L2:
+	C2:
+	// Make sure we cleanup the current exception
+	__cxa_end_catch();
+
+	X2:
+	[Cleanup code corresponding to exit of scope]
+	[enclosing the try block]
+	_Unwind_Resume();
+</pre></code>
+
+<p>
+<i>
+The various components of this example segment are discussed 
+in <a href=#cxx-catch>Section 2.5</a> above (ABI requirements),
+and below.
+</i>
+
+</font>
 
 
 <p><a name=revisions></a> <hr> <p>
