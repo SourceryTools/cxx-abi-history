@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 5 November 1999</i>
+<i>Revised 3 December 1999</i>
 
 </center>
 
@@ -649,6 +649,96 @@ encountered in a depth-first, left-to-right traversal of the
 inheritance graph formed by the class definitions.
 Note that this does not follow the
 order that virtual bases are placed in the object. 
+
+<p>
+<a name=vcall>
+<h4> Virtual Function Calling Convention </h4>
+</a>
+
+<p>
+This section sketches the calling convention for virtual functions,
+based on the above virtual table layout.
+
+<p>
+Note: for virtual functions not inherited from a virtual base, 
+regular thunks are a suitable implementation,
+since the implementation can emit them immediately before the
+function to avoid the indirect branch penalty.
+We use offsets in the vtable for functions that come from a virtual base,
+because it is impossible to predict what the offset between the
+current class and its virtual base will
+be in classes derived from the current class.
+
+<p>
+The calling convention is as follows:
+
+<ul>
+<li>vtable layout:
+<p>
+For each virtual function defined in a class,
+we add an entry to the primary vtable if one is not already there.
+In particular, a definition which overrides a function inherited from
+a secondary base gets a new slot in the primary vtable.
+We do this to avoid useless adjustments when calling a virtual
+function through a pointer to the most derived class.
+
+<p>
+When a class is used as a virtual base,
+we add a vcall offset slot to the beginning of its vtable for each of
+the virtual functions it provides,
+whether in its primary or secondary vtables.
+Derived classes which override these functions will use the slots to
+determine the adjustment necessary.
+
+<p>
+<li>Caller:
+<p>
+The caller adjusts the 'this' argument to 
+point to the class which last overrode the function being called.
+The result provides both the 'this' argument and the vtable pointer
+for finding the function we want.
+
+<p>
+<li>Callee:
+<p>
+Each virtual function 'f' defined in a class 'A'
+has one entry point which takes an A*,
+and performs no adjustment.
+The primary vtable for A points to this entry point.
+
+<p>
+For each secondary vtable
+from a non-virtual base class 'B' which defines f,
+an additional entry point is generated
+which performs the constant adjustment from B* to A*.
+
+<p>
+For each secondary vtable from a virtual base class 'C' which defines f,
+an additional entry point is generated which performs the adjustment
+from C* to A* using the vcall offset for f stored in the secondary
+vtable for C.
+
+<p>
+For each secondary vtable from a base 'D' which is a non-virtual base
+of a virtual base 'E',
+an additional entry point is generated which
+first performs the constant adjustment from D* to E*,
+then the adjustment from E* to A* using the vcall offset for f stored
+in the secondary vtable for E.
+
+<p>
+<li>Implementation
+<p>
+Note that the ABI only specifies the multiple entry points;
+how those entry points are provided is unspecified.
+An existing compiler which uses thunks could be converted to use this
+ABI by only adding support for the vcall offsets.
+A more efficient implementation would be to emit all of the thunks
+immediately before the non-adjusting entry point to the function.
+Another might use predication rather than branches to reach the main function.
+Another might emit a new copy of the function for each entry point;
+this is a quality of implementation issue.
+</ul>
 
 
 
