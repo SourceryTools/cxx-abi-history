@@ -27,7 +27,14 @@ C++ ABI Open Issues
 <h3> Revisions </h3>
 
 <p>
-[990616]  Added HP summaries.
+<font color=blue>[990625]</font>
+Closed A-1, A-2, A-4, A-8, A-9.
+Additions to A-3, A-5, A-7, B-4.
+New issues B-6, B-7, C-7, C-8.
+
+<p>
+<font color=blue>[990616]</font>
+Added HP summaries.
 Added sketchy notes from 990610 discussions (A and B issues).
 A-10 was intended by HP as something different than I described,
 so it was renamed, and a new issue A-13 opened as an SGI issue.
@@ -89,38 +96,19 @@ The identifiers used are:
 </tr>
 
 <tr> <td> A-1 </td>
-<td> Virtual function table </td>
+<td> Vptr location </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 990624 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Where is the Vptr stored in an object (first or last are the usual answers).
-What is the layout of the Vtable?
 </td> </tr>
 
 </table>
-
-<p>
-[990610 All]
-Given the absence of addressing modes with displacements on IA-64,
-the consensus is to answer the first part of this question with "first."
-
-<p>
-[990617 All]
-Given a Vptr and only non-polymorphic bases,
-which (Vptr or base) goes at offset 0?
-<ul>
-<li> HP: Vptr at end, but IA-64 is different because no load displacement
-<li> Sun: Vptr at 0 probably preferred
-<li> g++: Vptr at end today
-</ul>
-<p>
-Tentative decision:  Vptr always goes at beginning.
-This issue is reduced to the question of Vtable layout.
 
 <p>
 <table border=on cellpadding=3>
@@ -134,10 +122,10 @@ This issue is reduced to the question of Vtable layout.
 <tr> <td> A-2 </td>
 <td> Virtual base classes </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 990624 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -148,23 +136,6 @@ How are data member accesses to them handled?
 </table>
 
 <p>
-[990610 Matt]
-With regard to how data member accesses are handled,
-the choices are to store either a pointer or an offset in the Vtable.
-The concensus seems to be to prefer an offset.
-
-<p>
-[990617 All]
-Any number of empty virtual base subobjects (rare) will be placed at
-offset zero.
-If there are no non-virtual polymorphic bases,
-the first virtual base subobject with a Vpointer will be placed at
-offset zero.
-Finally, all other virtual base subobjects will be allocated at the
-end of the class, left-to-right, depth-first.
-
-<p>
-Therefore,
 
 <p>
 <table border=on cellpadding=3>
@@ -191,11 +162,9 @@ Define the class layout in the presence of multiple base classes.
 </table>
 
 <p>
-[990617 All]
+<font color=blue>[990617 All]</font>
 At offset zero is the Vptr whenever there is one,
-as well as the first non-virtual base class with a Vptr
-(or if there is no no-virtual base class with a Vptr,
-but there is a virtual base class with a Vptr, it goes at offset zero).
+as well as the primary base class if any (see A-7).
 Also at offset zero is any number of empty base classes,
 as long as that does not place multiple subobjects of the same type at
 the same offset.
@@ -215,6 +184,12 @@ and possible reordering of class members to fit in padding areas.
 See issue A-9.
 
 <p>
+<font color=blue>[990624 All]</font>
+There remains an issue concerning the selection of the primary base
+class (see A-7), but we are otherwise in agreement.
+We will attempt to close this on 1 July, modulo A-7.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -226,24 +201,17 @@ See issue A-9.
 <tr> <td> A-4 </td>
 <td> Empty base classes </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 990624 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Where are empty base classes allocated?
-(An empty base class is one with no non-static data members,
-no virtual functions, no virtual base classes,
-and no non-empty non-virtual base classes.)
 </td> </tr>
 
 </table>
-
-<p>
-[990622]
-See A-3 above.
 
 <p>
 <table border=on cellpadding=3>
@@ -264,19 +232,43 @@ See A-3 above.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-When passing a parameter whose type is an empty class (see A-4 for
-definition), what is the convention?
+When passing a parameter by value,
+whose type is an empty class (see A-2 for definition),
+what is the convention?
 </td> </tr>
 
 </table>
 
 <p>
-[990623 SGI]
+<font color=blue>[990623 SGI]</font>
 We propose that no parameter slot be allocated to such parameters,
 i.e. that no register be used,
 and that no space in the parameter memory sequence be used.
 This implies that the callee must allocate storage at a unique address
 if the address is taken (which we expect to be rare).
+
+<p>
+<font color=blue>[990624 All]</font>
+In addition to the address-taken case,
+care is required if the object has a non-trivial copy constructor.
+HP observes that in (some?) such cases,
+they perform the construction at the call site and pass the object by
+reference.
+
+<p>
+<font color=blue>[990625 SGI]</font>
+I (Jim) understand that the Standard explicitly allows elimination of
+even non-trivial copy construction in some cases.
+Is this one of them?  Where should I look?
+Also, of course, varargs processing for elided empty parameters would
+need to be careful.
+
+<p>
+I have opened a new issue (C-7) for passing copy-constructed
+parameters by reference.
+Since doing so would turn an empty value parameter
+into a non-empty reference parameter,
+this issue can ignore such cases.
 
 <p>
 <table border=on cellpadding=3>
@@ -321,18 +313,28 @@ if the address is taken (which we expect to be rare).
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-It is in general possible to share the virtual pointer with a base
-class (the "primary" base class).
+It is in general possible to share the virtual pointer with a
+polymorphic base class (the <i>primary</i> base class).
 Which base class do we use for this?
 </td> </tr>
 
 </table>
 
 <p>
-[990617 All]
+<font color=blue>[990617 All]</font>
 It will be shared with the first polymorphic non-virtual base class,
-or if none, with the first polymorphic virtual base class.
-See A-2.
+or if none, with the first nearly empty polymorphic virtual base class.
+(See A-2 for the definition of <i>nearly empty</i>.)
+
+<p>
+<font color=blue>[990624 All]</font>
+HP noted that Taligent chooses a base class with virtual bases before
+one without as the primary base class),
+probably to avoid additional "this" pointer adjustments.
+SGI observed that such a rule would prevent users from controlling the
+choice by their ordering of the base classes in the declaration.
+The bias of the group remains the above resolution,
+but HP will attempt to find the Taligent rationale before this is decided.
 
 <p>
 <table border=on cellpadding=3>
@@ -346,27 +348,19 @@ See A-2.
 <tr> <td> A-8 </td>
 <td> (Virtual) base class alignment </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990624 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 A (virtual) base class may have a larger alignment constraint than a
 derived class.
 Do we agree to extend the alignment constraint to the derived class?
-(An alternative for virtual bases:
-allow the virtual base to move in the complete object.)
 </td> </tr>
 
 </table>
-
-<p>
-[990623 SGI]
-We propose that the alignment of a class be the maximum alignment of
-its virtual and non-virtual base classes,
-non-static data members, and Vptr if any.
 
 <p>
 <table border=on cellpadding=3>
@@ -380,10 +374,10 @@ non-static data members, and Vptr if any.
 <tr> <td> A-9 </td>
 <td> Sorting fields as allowed by [class.mem]/12 </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990624 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -393,42 +387,6 @@ Do we use an access clause as an opportunity to fill the gaps left by padding?
 </td> </tr>
 
 </table>
-
-<p>
-[990610 all]
-Some participants want to avoid attempts to reorder members differently
-than the underlying C struct ABI rules.
-Others think there may be benefit in reordering later access sections
-to fill holes in earlier ones, or even in base classes.
-
-<p>
-[990617 all]
-There are several potential reordering questions, more or less independent:
-<ol>
-<li> Do we reorder whole access regions relative to one another?
-<li> Do we attempt to fill padding in earlier access regions with
-	initial members from later regions?
-<li> Do we fill the tail padding of non-POD base classes with members from
-	the current class?
-<li> Do we attempt to fill interior padding of non-POD base classes with later
-	members?
-</ol>
-
-<p>
-There is no apparent support for (1),
-since no simple heuristic has been identified with obvious benefits.
-There is interest in (2), based on a simple heuristic which might
-sometimes help and will never hurt.
-However, it is not clear that it will help much,
-and Sun objects on grounds that they prefer to match C struct layout.
-Unless someone is interested enough to implement and run experiments,
-this will be hard to agree upon.
-G++ has implemented (3) as an option,
-based on specific user complaints.
-It clearly helps HP's example of a base class containing a word and flag,
-with a derived class adding more flags.
-Idea (4) has more problems, including some non-intuitive (to users) layouts,
-and possibly complicating the selection of bitwise copy in the compiler.
 
 <p>
 <table border=on cellpadding=3>
@@ -595,7 +553,7 @@ so a solution based on returning multiple pointers may prove more interesting.
 </table>
 
 <p>
-[990610 Matt]
+<font color=blue>[990610 Matt]</font>
 One possibility is to have two Vtable entries,
 which might point to different functions, different entrypoints,
 or a real entrypoint and a thunk.
@@ -633,7 +591,7 @@ Can we all agree when caching is allowed?
 </table>
 
 <p>
-[990604 HP Christophe]
+<font color=blue>[990604 HP Christophe]</font>
 Mike (Ball) gave me what I believe is an excellent definition of  
 when caching is allowed.  I'd like him to present it.
 
@@ -668,6 +626,12 @@ before doing the actual call.
 </table>
 
 <p>
+<font color=blue>[990624 All]</font>
+Note that putting GP in the Vtable prevents putting it in shared memory.
+See B-7.
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -690,6 +654,45 @@ before doing the actual call.
 </td> </tr>
 
 </table>
+
+<tr> <td> B-6 </td>
+<td> Virtual function table layout </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What is the layout of the Vtable?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990624]</font>
+Issue split from A-1.
+
+<tr> <td> B-7 </td>
+<td> Vtables in shared memory </td>
+<td> data </td>
+<td> open </td>
+<td> HP </td>
+<td> 990624 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Is it possible to put the Vtable in shared memory?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990624 All]</font>
+Note that putting GP in the Vtable prevents putting it in shared memory.
+This interacts with B-4.
 
 <p> <hr> <p>
 <h3> Object Construction/Destruction Issues </h3>
@@ -762,7 +765,7 @@ as its opposite.)
 </table>
 
 <p>
-[990610 All]
+<font color=blue>[990610 All]</font>
 Meeting concensus is that the desirable order is right to left on the
 link command line, i.e. last listed relocatable object is initialized
 first.
@@ -872,6 +875,56 @@ requires a mechanism for early destruction of a subset.
 <tr> <td colspan=7>
 <b>Summary</b>:
 [Michael Lam]
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-7 </td>
+<td> Passing value parameters by reference </td>
+<td> call </td>
+<td> open </td>
+<td> All </td>
+<td> 990624 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+It may be desirable in some cases where a type has a non-trivial
+copy constructor to pass value parameters of that type by performing
+the copy at the call site and passing a reference.
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-8 </td>
+<td> Returning classes with non-trival copy constructors </td>
+<td> call </td>
+<td> open </td>
+<td> All </td>
+<td> 990625 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How do we return classes with non-trivial copy constructors?
 </td> </tr>
 
 </table>
