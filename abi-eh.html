@@ -15,7 +15,7 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 9 September 1999</i>
+<i>Revised 3 January 2000</i>
 
 </center>
 
@@ -27,22 +27,75 @@ C++ ABI for IA-64: Exception Handling
 <h3> Revisions </h3>
 
 <p>
+<font color=blue>[991230]</font>
+Integrate HP specification, Chapter 8.
+
+<p>
 <font color=blue>[990909]</font>
 Original version.
 
 
 <p> <hr> <p>
+<h3> Outstanding Questions </h3>
+
+<ul>
+<p>
+<li> Specify <a href=#forced><code>_Unwind_ForcedUnwind</code></a>.
+
+<p>
+<li> W.r.t. <a href=#lsda><code>_Unwind_GetLanguageSpecificData</code></a>,
+I thought we agreed that
+we should have a query for the beginning of the unwind info block
+(from which the LSDA is easily obtained) instead.
+
+<p>
+<li> W.r.t. <a href=#landing>transferring control to the landing pad</a>,
+specify which registers are restored?
+</ul>
+
+
+<p> <hr> <p>
 <h3> General </h3>
 
-In what follows, we define the C++ exception handling ABI,
+In this document, we define the C++ exception handling ABI,
 at three levels:
-<ul>
-<li> the base ABI,
+<ol type=I>
+<li> the <a href=#base-abi>base ABI</a>,
     interfaces common to all languages and implementations;
-<li> the C++ ABI,
+<li> the <a href=#cxx-abi>C++ ABI</a>,
     interfaces necessary for interoperability of C++ implementations; and
 <li> the specification of a particular runtime implementation.
-</ul>
+</ol>
+
+<p>
+This specification is based on the general model described roughly in the
+<a href=http://developer.intel.com/design/ia64/devinfo.htm>
+64 Bit Runtime Architecture and Software Conventions for IA-64</a>,
+Intel document SC - 2791, Rev. No. 2.4E.
+However, the Level I (base ABI) specification here contradicts that
+document in some particulars,
+and is being proposed as a modification.
+That document describes a framework which can be used by an arbitrary
+implementation, with a complete definition of the stack unwind mechanism,
+but no significant constraints on the language-specific processing.
+In particular, it is not sufficient to guarantee that two object files
+compiled by different C++ compilers could interoperate,
+e.g. throwing an exception in one of them and catching it in the other.
+
+<p>
+In Section I below, we will elaborate missing details from this base
+document, largely in the form of specifying the APIs to be used in
+accessing the language-independent stack unwind facilities,
+namely the unwind descriptor tables and the personality routines.
+This specification should be implemented by any IA-64 psABI-compliant
+system.
+
+<p>
+In Section II below, we will specify the API of the C++ exception
+handling facilities, specifically for raising and catching exceptions.
+These APIs should be implemented by any C++ system compliant with the
+IA-64 C++ ABI.
+
 
 <p> <hr> <p>
 <h3> Definitions </h3>
@@ -53,67 +106,126 @@ The descriptions below make use of the following definitions:
 
 <p> <hr> <p>
 <a name=base-abi></a>
-<h3> Base ABI </h3>
+<h3> I. Base ABI </h3>
 
 <p>
-The minimal level of specification is effectively that of the definition
-in the IA-64 Software Conventions document.
-It describes a framework which can be used by an arbitrary implementation,
-with a complete definition of the stack unwind mechanism,
-but no significant constraints on the language-specific processing.
-In particular, it is not sufficient to guarantee that two object files
-compiled by different C++ compilers could interoperate,
-e.g. throwing an exception in one of them and catching it in the other.
+This section defines the Unwind Library interface,
+expected to be provided by any IA-64 psABI-compliant system.
+This is the interface on which the C++ ABI exception-handling
+facilities are built.
+We assume as a basis the unwind descriptor tables described in the base
+<a href=http://developer.intel.com/design/ia64/devinfo.htm>
+Software Conventions</a> document.
+Our focus here will on the APIs for accessing those structures.
 
 <p>
 It is intended that nothing in this section be specific to C++,
 though some parts are clearly intended to support C++ features.
 
 <p>
-<h4> Data Structures </h4>
-
-<p>
-<b> Exception Handle </b>
-<p>
-An exception handle is an address pointing to an exception object
-consisting of an exception control header followed by user exception
-information.
-The handle points to the user information,
-so the control information is accessed at a negative offset from it.
-The control information consists of:
+The unwinding library interface consists of at least the following
+routines:
 <code><pre>
-	<i>language-specific information</i>
-	Unexpected_Handler	unexpectedHandler;
-	Terminate_Handler	terminateHandler;
-	Exception_Destructor	destructor;
+  _Unwind_RaiseException,
+  _Unwind_Resume,
+  _Unwind_DeleteException,
+  _Unwind_GetGR,
+  _Unwind_SetGR,
+  _Unwind_GetIP,
+  _Unwind_SetIP,
+  _Unwind_GetRegionStart,
+  _Unwind_GetLanguageSpecificData,
+  _Unwind_ForcedUnwind
 </pre></code>
 
-<p>
-The runtime may at any time call unexpectedHandler
-to report an unexpected exception;
-if NULL, it should call terminateHandler.
-The runtime may at any time call terminateHandler
-to terminate execution;
-if NULL, it should call exit.
-The runtime or the eventual user code handler may call destructor to
-destroy and if necessary deallocate the exception object;
-it may be NULL if no destruction is necessary.
+In addition, two datatypes are defined
+(<code>_Unwind_Context</code> and <code>_Unwind_Exception</code>)
+to interface a calling runtime (such as the C++ runtime)
+and the above routines.
+All routines and interfaces behave as if defined
+<code>extern "C"</code>.
+In particular, the names are not mangled.
+All names defined as part of this interface have a
+"<code>_Unwind_</code>" prefix.
 
 <p>
-<b> Unwind State Handle </b>
-<p>
-The stack unwind process maintains its current state via an opaque
-structure containing unwound machine state,
-accessible only via a procedural API, TBD.
+Lastly, a language and vendor specific personality routine will be stored
+by the compiler in the unwind descriptor for the stack frames requiring
+exception processing.
+The personality routine is called by the unwinder to handle
+language-specific tasks such as identifying the frame handling a
+particular exception.
 
 <p>
 <h4> Exception Handler Framework </h4>
 
 <p>
+<h5> Reasons for Unwinding </h5>
+
+<p>
+There are two major reasons for unwinding the stack:
+<ul>
+<li> exceptions, as defined by languages that support them (such as C++)
+<li> "forced" unwinding (such as caused by <code>longjmp</code>
+or thread termination).
+</ul>
+The interface described here tries to keep both similar.
+There is a major difference, however.
+
+<ul>
+<p>
+<li>
+In the case an exception is thrown,
+the stack is unwound while the exception propagates,
+but it is expected that the personality routine for each stack frame
+knows whether it wants to catch the exception or pass it through.
+This choice is thus delegated to the personality routine,
+which is expected to act properly for any type of exception,
+whether "native" or "foreign".
+Some guidelines for "acting properly" are given below.
+
+<p>
+<li>
+During "forced unwinding", on the other hand,
+an external agent is driving the unwinding.
+For instance, this can be the <code>longjmp</code> routine.
+This external agent, not each personality routine,
+knows when to stop unwinding.
+The fact that a personality routine is not given a choice about
+whether unwinding will proceed is indicated by the EH_FORCE_UNWIND flag.
+
+</ul>
+
+<p>
+To accomodate these differences, two different routines are proposed.
+<code>_Unwind_RaiseException</code> performs exception-style unwinding,
+under control of the personality routines.
+<code>_Unwind_ForcedUnwind</code>, on the other hand,
+performs unwinding,
+but gives an external agent the opportunity to intercept
+calls to the personality routine.
+This is done using a proxy personality routine,
+that intercepts calls to the personality routine,
+letting the external agent override
+the defaults of the stack frame's personality routine.
+
+<p>
+As a consequence, it is not necessary for each personality routine
+to know about any of the possible external agents that may cause an unwind.
+For instance,
+the C++ personality routine need deal only with C++ exceptions
+(and possibly disguising foreign exceptions),
+but it does not need to know anything specific about unwinding done
+on behalf of <code>longjmp</code> or pthreads cancellation.
+
+<p>
+<h5> The Unwind Process </h5>
+
+<p>
 The standard ABI exception handling / unwind process begins with
-a call to __eh_throw, described below.
-This call specifies an exception object,
-and an exception class (a __uint_64).
+the raising of an exception,
+in one of the forms mentioned above.
+This call specifies an exception object and an exception class.
 
 <p>
 The runtime framework then starts a two-phase process:
@@ -121,196 +233,677 @@ The runtime framework then starts a two-phase process:
 <ul>
 <p>
 <li>
-In the search phase,
+In the <i>search</i> phase,
 the framework repeatedly calls the personality routine,
-with the EH_SEARCH_PHASE API described below,
+with the <code>EH_SEARCH_PHASE</code> flag as described below,
 first for the current PC and register state,
 and then unwinding a frame to a new PC at each step,
-until the personality routine reports either success (a handler found)
-or failure (no handler).
+until the personality routine reports either success
+(a handler found in the queried frame)
+or failure (no handler) in all frames.
 It does not actually restore the unwound state,
 and the personality routine must access the state through the API.
-If failure is reported, it ... (calls terminateHandler?).
 <p>
 <li>
 If the search phase reports success,
-the framework restarts in the cleanup phase.
+the framework restarts in the <i>cleanup</i> phase.
 Again, it repeatedly calls the personality routine,
-with the EH_CLEANUP_PHASE API described below,
+with the <code>EH_CLEANUP_PHASE</code> flag as described below,
 first for the current PC and register state,
 and then unwinding a frame to a new PC at each step,
-until the personality routine reports success.
+until it gets to the frame with an identified handler.
 At that point, it restores the register state,
-and branches to the PC,
-which has been set by the personality routine to the landing pad address.
+and control is transferred to the user landing pad code.
 
 </ul>
+
+<p>
+Each of these two phases uses both the unwind library and the
+personality routines,
+since the validity of a given handler and the mechanism for
+transferring control to it are language-dependent,
+but the method of locating and restoring previous stack frames
+is language independent.
+
+<p>
+A two-pass exception-handling model is not strictly necessary to
+implement C++ language semantics,
+but it does provide some benefits.
+For example, the first pass allows an exception-handling mechanism
+to <i>dismiss</i> an exception before stack unwinding begins,
+which allows <i>resumptive</i> exception handling
+(correcting the exceptional condition and resuming execution at
+the point where it was raised).
+While C++ does not support resumptive exception handling,
+other languages do, and the two-pass model allows C++ to coexist with
+those languages on the stack.
+
+<p>
+Note that even with a two pass model,
+we may execute each of the two passes more than once for a single exception,
+as if the exception was being thrown more than once.
+For instance, since it is not possible to determine if
+a given catch clause will rethrow or not without executing it,
+the exception propagation effectively stops at each catch clause,
+and if it needs to restart, restarts at phase 1.
+This process is not needed for destructors (cleanup code),
+so the phase 1 can safely process all destructor-only frames at once
+and stop at the next enclosing catch clause.
+
+<p>
+For example, if the first two frames unwound contain only cleanup code,
+and the third frame contains a C++ catch clause,
+the personality routine in phase 1 does not indicate that it found a
+handler for the first two frames.
+It must do so for the third frame,
+because it is unknown how the exception will propagate out of
+this third frame,
+e.g. by rethrowing the exception or throwing a new one in C++.
+
+<p>
+The API specified by the IA-64 psABI for implementing this framework is
+described in the following sections.
+
+
+<p>
+<h4> Data Structures </h4>
+
+<p>
+<b> Exception Header </b>
+<p>
+The unwind interface uses a pointer to an exception header object
+as its representation of an exception being thrown.
+In general, the full representation of an exception object is
+language- and implementation-specific,
+but it will be prefixed by a header understood by the unwind interface,
+defined as follows:
+<code><pre>
+    typedef void (*<font color=red>_Unwind_Exception_Cleanup_Fn</font>)
+		(int reason, struct _Unwind_Exception *exc);
+
+    struct _Unwind_Exception {
+	    UInt64			 exception_class;
+	    _Unwind_Exception_Cleanup_Fn exception_cleanup;
+	    UInt64			 private_1;
+	    UInt64			 private_2;
+    };
+</pre></code>
+
+<p>
+An <code>_Unwind_Exception</code> object must be double-word aligned.
+
+<p>
+The <code>exception_class</code> field is a language- and
+implementation-specific identifier of the kind of exception.
+It allows a personality routine to distinguish between native and
+foreign exceptions, for example.
+
+<p>
+The <code>exception_cleanup</code> routine is called whenever an
+exception object needs to be destroyed by a different runtime than
+the runtime which created the exception object,
+for instance if a Java exception is caught by a C++ <i>catch</i>
+handler.
+In such a case, a reason code indicates why the
+exception object needs to be deleted:
+<ul>
+<p>
+<li> <code>EH_FOREIGN_EXCEPTION_CAUGHT</code> = 1:
+    This indicates that a different runtime caught this exception.
+    Nested foreign exceptions,
+    or rethrowing a foreign exception,
+    result in undefined behaviour.
+<p>
+<li> <code>EH_FATAL_PASS2_ERROR</code> = 2:
+    The personality routine encountered an error during pass 2,
+    for instance a stack corruption.
+    (Normally, all errors should be reported during pass 1 by returning
+    from <code>_Unwind_RaiseException</code>.
+    However, landing pad code could cause stack corruption
+    between pass 1 and pass 2.
+    For a C++ exception, the runtime should call <code>terminate()</code>
+    in that case.)
+</ul>
+
+<p>
+The private unwinder state
+(<code>private_1</code> and <code>private_2</code>)
+in an exception object should be neither read by nor written to
+by personality routines or other parts of the language-specific runtime.
+It is used by the specific implementation of the unwinder on the host
+to store internal information,
+for instance to remember the final handler frame between unwinding
+phases.
+
+<p>
+In addition to the above information,
+a typical runtime such as the C++ runtime will add language-specific
+information used to process the exception.
+This is expected to be a contiguous area of memory after the
+<code>_Unwind_Exception</code> object,
+but this is not required as long as the matching personality routines
+know how to deal with it,
+and the <code>exception_cleanup</code> routine de-allocates it properly.
+
+<p>
+<b> Unwind Context </b>
+<p>
+The <code>_Unwind_Context</code> type is an opaque type
+used to refer to a system-specific data structure
+used by the system unwinder.
+This context is created and destroyed by the system,
+and passed to the personality routine during unwinding.
+<p>
+<code><pre>
+    struct _Unwind_Context
+</pre></code>
+
 
 <p>
 <h4> Throwing an Exception </h4>
 
 <p>
-Exceptions are initially thrown, after creating an exception object,
-by calling:
+<h5> _Unwind_RaiseException </h5>
 
 <code><pre>
-	typedef enum {
-	    EH_THROW_INITIAL,
-	    EH_THROW_RETHROW,
-	    EH_THROW_RESUME
-	} EH_THROW_KIND;
-
-	void __eh_throw (
-	    EH_THROW_KIND kind,
-	    __uint_64	exception_class,
-	    void *	exception_object,
-	    ...
-	);
+    uint64 _Unwind_RaiseException
+	      (uint64 exception_class,
+	       struct _Unwind_Exception *exception_object);
 </pre></code>
 
+<p>
+Raise an exception,
+passing along the given exception class and exception object.
+The exception object has been allocated by the language-specific runtime,
+and has a language-specific format,
+except that it must contain an <code>_Unwind_Exception</code> struct
+(see <i>Exception Header</i> above).
+<code>_Unwind_RaiseException</code> does not return,
+unless an error condition is found
+(such as no handler accepting to handle the exception,
+bad stack format, etc.).
+In the case of C++,
+if <code>_Unwind_RaiseException</code> returns,
+<code>terminate()</code> should be called.
+
+<p>
+<a name=forced></a>
+<h5> _Unwind_ForcedUnwind </h5>
+
+<p>
 <i>&lt;To Be Specified></i>
 
 <p>
-<h4> Personality Routine </h4>
+<h5> _Unwind_Resume </h5>
 
-<p>
-The personality routine has the following prototype:
 <code><pre>
-
-	typedef enum {
-	    EH_SEARCH_PHASE,	// Search phase call
-	    EH_CLEANUP_PHASE	// Cleanup phase call
-	} EH_PHASE;
-	typedef enum {
-	    EH_HANDLER,		// Handler landing pad found
-	    EH_PROCEED,		// Proceed to next frame
-	    EH_UNEXPECTED,	// Unexpected exception
-	    EH_TERMINATE,	// Terminate thread/program
-	    ...
-	} EH_RESULT;
-
-	EH_RESULT personality (
-	    int		version,
-	    EH_PHASE	phase,
-	    __uint_64	exception_class,
-	    void *	exception_object,
-	    void *	language_specific_data_area,
-	    Unwind_State *unwind_state
-	);
+    void _Unwind_Resume (struct _Unwind_Exception *exception_object);
 </pre></code>
 
 <p>
-If called with phase==EH_SEARCH_PHASE,
-the personality routine may:
+Resume propagation of an existing exception
+e.g. after executing cleanup code in a partially unwound stack.
+A call to this routine is inserted at the end of a landing pad that
+performed cleanup, but did not resume normal execution.
+It causes unwinding to proceed further.
+
+<p>
+<img src=warning.gif alt="<b>NOTE 1</b>:">
+<code>_Unwind_Resume</code> should not be used to implement rethrowing.
+To the unwinding runtime,
+the catch code that rethrows was a handler,
+and the previous unwinding session was terminated before entering it.
+Rethrowing is implemented by calling <code>_Unwind_RaiseException</code>
+again with the same exception object.
+
+<p>
+<img src=warning.gif alt="<b>NOTE 2</b>:">
+This is the only routine in the unwind library which is expected
+to be called directly by generated code:
+it will be called at the end of a landing pad in a "landing-pad" model.
+
+
+<p>
+<h4> Exception Object Management </h4>
+
+<p>
+<h5> _Unwind_DeleteException </h5>
+
+<code><pre>
+    void _Unwind_DeleteException
+	      (struct _Unwind_Exception *exception_object);
+</pre></code>
+
+<p>
+Deletes the given exception object.
+If a given runtime resumes normal execution
+after catching a foreign exception,
+it will not know how to delete that exception.
+Such an exception will be deleted by calling
+<code>_Unwind_DeleteException</code>.
+This is a convenience function that calls the function pointed
+to by the <code>exception_cleanup</code> field of the exception header.
+
+
+<p>
+<h4> Context Management </h4>
+
+These functions are used for communicating information about the unwind
+context (i.e. the unwind descriptors and the user register state)
+between the unwind library and the personality routine and landing pad.
+They include routines to read or set the
+registers in the stack frame corresponding to a given unwind context,
+and to identify the location of the current unwind descriptors
+and unwind frame.
+
+<p>
+<h5> _Unwind_GetGR </h5>
+
+<code><pre>
+    uint64 _Unwind_GetGR
+	    (struct _Unwind_Context *context, int index);
+</pre></code>
+
+<p>
+This function returns the 64-bit value of the given general register.
+The register is identified by its index:
+0 to 31 are for the fixed registers, and
+32 to 127 are for the stacked registers.
+
+<p>
+During the two phases of unwinding,
+only GR1 has a guaranteed value,
+which is the Global Pointer (GP)
+of the frame referenced by the unwind context.
+If the register has its NAT bit set,
+the behaviour is unspecified.
+
+<p>
+<h5> _Unwind_SetGR </h5>
+
+<code><pre>
+    void _Unwind_SetGR
+	  (struct _Unwind_Context *context,
+	   int index,
+	   uint64 new_value);
+</pre></code>
+
+<p>
+This function sets the 64-bit value of the given register,
+identified by its index as for <code>_Unwind_GetGR</code>.
+The NAT bit of the given register is reset.
+
+<p>
+The behaviour is guaranteed only if the function is called
+during phase 2 of unwinding,
+and applied to an unwind context representing a handler frame,
+for which the personality routine will return <code>EH_INSTALL_CONTEXT</code>.
+In that case, only registers GR15, GR16, GR17, GR18 should be used.
+These scratch registers are reserved for passing arguments between
+the personality routine and the landing pads.
+
+<p>
+<h5> _Unwind_GetIP </h5>
+
+<code><pre>
+    uint64 _Unwind_GetIP
+	    (struct _Unwind_Context *context);
+</pre></code>
+
+<p>
+This function returns the 64-bit value of the instruction pointer (IP).
+
+<p>
+During unwinding, the value is guaranteed to be the address of the
+bundle immediately following the call site
+in the function identified by the unwind context.
+This value may be outside of the procedure fragment for a
+function call that is known to not return
+(such as <code>_Unwind_Resume</code>).
+
+<p>
+<h5> _Unwind_SetIP </h5>
+
+<code><pre>
+    void _Unwind_SetIP
+	    (struct _Unwind_Context *context,
+	     uint64 new_value);
+</pre></code>
+
+<p>
+This function sets the value of the instruction pointer (IP)
+for the routine identified by the unwind context.
+
+<p>
+The behaviour is guaranteed only when this function is called for an
+unwind context representing a handler frame,
+for which the personality routine will return <code>EH_INSTALL_CONTEXT</code>.
+In this case, control will be transferred to the given address,
+which should be the address of a landing pad.
+
+<p>
+<a name=lsda></a>
+<h5> _Unwind_GetLanguageSpecificData </h5>
+
+<code><pre>
+    uint64 _Unwind_GetLanguageSpecificData
+	    (struct _Unwind_Context *context);
+</pre></code>
+
+<p>
+This routine returns the address of the language-specific data area for
+the current stack frame.
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+This routine is not stricly required:
+it could be accessed through <code>_Unwind_GetIP</code> using
+the documented format of the <code>UnwindInfoBlock</code>,
+but since this work has been done for finding
+the personality routine in the first place,
+it makes sense to cache the result in the context.
+We could also pass it as an argument to the personality routine.
+
+<p>
+<h5> _Unwind_GetRegionStart </h5>
+
+<code><pre>
+    uint64 _Unwind_GetRegionStart
+	    (struct _Unwind_Context *context);
+</pre></code>
+
+<p>
+This routine returns the address of the beginning of the procedure or
+code fragment described by the current unwind descriptor block.
+
+<p>
+This information is required to access any data stored relative to the
+beginning of the procedure fragment.
+For instance, a call site table might be stored relative to the
+beginning of the procedure fragment that contains the calls.
+During unwinding, the function returns the start of the procedure
+fragment containing the call site in the current stack frame.
+
+
+<h4> Personality Routine </h4>
+
+<p>
+<code><pre>
+    int (*<font color=red>__personality_routine</font>)
+	    (int version,
+	     int <font color=red>actions</font>,
+	     UInt64 exceptionClass,
+	     struct _Unwind_Exception *exceptionObject,
+	     struct _Unwind_Context *context);
+</pre></code>
+
+<p>
+The personality routine is the function in the C++ (or other language)
+runtime library which serves as an interface between the system unwind
+library and language-specific exception handling semantics.
+It is specific to the code fragment described by an unwind info block,
+and it is always referenced via the pointer in the unwind info block,
+and hence it has no psABI-specified name.
+
+<p>
+<h5> Parameters </h5>
+
+<p>
+The personality routine parameters are as follows:
+<dl>
+
+<p>
+<dt><code>version</code>
+<dd>Version number of the unwinding runtime,
+used to detect a mis-match between the unwinder conventions and the
+personality routine, or to provide backward compatibility.
+For the conventions described in this document,
+<code>version</code> will be 1.
+
+<p>
+<dt><code>actions</code>
+<dd>Indicates what processing the personality routine is expected to perform,
+as a bit mask.
+The possible actions are described below.
+
+<p>
+<dt><code>exceptionClass</code>
+<dd>An 8-byte identifier specifying the type of the thrown exception.
+By convention, the high 4 bytes indicate the vendor
+(for instance HP\0\0),
+and the low 4 bytes indicate the language.
+For the C++ ABI described in this document,
+the low four bytes are C++\0.
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+This is not a null-terminated string.
+Some implementations may use no null bytes.
+
+<p>
+<dt><code>exceptionObject</code>
+<dd>The pointer to a memory location recording the necessary information
+for processing the exception according to the semantics of a given language
+(see the <i>Exception Header</i> section above).
+
+<p>
+<dt><code>context</code>
+<dd>Unwinder state information for use by the personality routine.
+This is an opaque handle used by the personality routine in particular
+to access the frame's registers
+(see the <i>Unwind Context</i> section above).
+
+<p>
+<dt>return value
+<dd>The return value from the personality routine indicates
+how further unwind should happen,
+as well as possible error conditions.
+See the following section.
+
+</dl>
+
+<p>
+<h5> Personality Routine Actions </h5>
+
+<p>
+The <code>actions</code> argument to the personality routine is
+a bitwise <code>OR</code> of one or more of the following constants:
+
+<dl>
+
+<p>
+<dt><code> EH_SEARCH_PHASE </code> = 1
+<dd> Indicates that the personality routine should
+check if the current frame contains a handler,
+and if so return <code>EH_HANDLER_FOUND</code>,
+or otherwise return <code>EH_CONTINUE_UNWIND</code>.
+<code>EH_SEARCH_PHASE</code> cannot be set
+at the same time as <code>EH_CLEANUP_PHASE</code>.
+
+<p>
+<dt><code> EH_CLEANUP_PHASE </code> = 2
+<dd> Indicates that the personality routine should
+perform cleanup for the current frame.
+The personality routine can perform this cleanup itself,
+by calling nested procedures,
+and return <code>EH_CONTINUE_UNWIND</code>.
+Alternatively, it can setup the registers (including the IP)
+for transferring control to a "landing pad",
+and return <code>EH_INSTALL_HANDLER</code>.
+
+<p>
+<dt><code> EH_HANDLER_FRAME </code> = 4
+<dd> During phase 2,
+indicates to the personality routine that the current frame is
+the one which was flagged as the handler frame during phase 1.
+The personality routine is not allowed to change its mind
+between phase 1 and phase 2,É
+i.e. it must handle the exception in this frame in phase 2.
+
+<p>
+<dt><code> EH_FORCE_UNWIND </code> = 8
+<dd> During phase 2,
+indicates that no language is allowed to "catch" the exception.
+This flag is set while unwinding the stack
+for <code>longjmp</code> or during thread cancellation.
+User-defined code in a catch clause may still be executed,
+but the catch clause must resume unwinding with a call to
+<code>_Unwind_Resume</code> when finished.
+
+</dl>
+
+<p>
+<a name=landing></a>
+<h5> Transferring Control to a Landing Pad </h5>
+
+<p>
+If the personality routine determines that it should
+transfer control to a landing pad,
+it may set up registers (including IP) with suitable values
+for entering the landing pad
+(e.g. with landing pad parameters),
+by calling the context management routines above.
+Prior to executing code in the landing pad,
+registers not altered by the personality routine will be restored
+to their exact state in that frame
+before the call that threw the exception.
+
+<p>
+The landing pad can either resume normal execution
+(as, for instance, at the end of a C++ catch),
+or resume unwinding by calling <code>_Unwind_Resume</code
+and passing it the <code>exceptionObject</code' argument
+received by the personality routine.
+<code>_Unwind_Resume</code> will never return.
+
+<p>
+<code>_Unwind_Resume</code> should be called if and only if
+the personality routine did not return <code>EH_HANDLER_FOUND</code>
+during phase 1.
+As a result, the unwinder can allocate resources (for instance memory)
+and keep track of them in the exception object reserved words.
+It should then free these resources
+before transferring control to the last (handler) landing pad.
+It does not need to free the resources before entering non-handler
+landing-pads, since <code>_Unwind_Resume</code> will ultimately be called.
+
+<p>
+The landing pad may receive arguments from the runtime,
+typically passed in registers set using <code>_Unwind_SetGR</code>
+by the personality routine.
+For a landing pad that can call to <code>_Unwind_Resume</code>,
+one argument must be the <code>exceptionObject</code> pointer,
+which must be preserved to be passed to <code>_Unwind_Resume</code>.
+
+<p>
+The landing pad may receive other arguments,
+for instance a <i>switch value</i>
+indicating the type of the exception.
+Four scratch registers are reserved for that use
+(GR15, GR16, GR17 and GR18.)
+
+<p>
+<h5> Rules for Correct Inter-Language Operation </h5>
+
+<p>
+The following rules must be observed for correct operation
+between languages and/or runtimes from different vendors:
+
+<p>
+An exception which has an unknown class must not be altered by the
+personality routine.
+The semantics of foreign exception processing depend on the
+language of the stack frame being unwound.
+This covers in particular how exceptions from a foreign language are
+mapped to the native language in that frame.
+
+<p>
+If a runtime resumes normal execution,
+and the caught exception was created by another runtime,
+it should call <code>_Unwind_DeleteException</code>.
+This is true even if it understands the exception object format
+(such as would be the case between different C++ runtimes).
+
+<p>
+A runtime is not allowed to catch an
+exception if the <code>EH_FORCE_UNWIND</code> flag was passed to 
+he personality routine.
+
+<p>
+<img src=warning.gif>
+Example: Foreign Exceptions in C++.
+In C++, foreign exceptions can be caught by a catch(...) statement.
+They can also be caught as if they were of a
+<code>__foreign_exception</code> class, defined in &lt;exception>.
+The <code>__foreign_exception</code> may have subclasses,
+such as <code>__java_exception</code> and <code>__ada_exception</code>,
+if the runtime is capable of identifying some of the foreign languages.
+
+<p>
+The behavior is undefined in the following cases:
 
 <ul>
 <p>
 <li>
-Determine that control should be passed to user code,
-for any purpose including a real catch or cleanup and resume,
-in which case it returns EH_HANDLER.
-In this case, the framework starts over with the unwind process,
-now passing EH_CLEANUP_PHASE.
+A <code>__foreign_exception</code> catch argument is accessed in any way
+(including taking its address).
 
 <p>
 <li>
-Determine that the current exception is unexpected and processing
-cannot proceed, in which case it returns EH_UNEXPECTED.
-In this case, the framework ...
+A <code>__foreign_exception</code> is active at the same time as
+another exception
+(either there is a nested exception while catching the foreign exception,
+or the foreign exception was itself nested).
 
 <p>
 <li>
-Determine that the program must be terminated,
-in which case it returns EH_TERMINATED.
-In this case, the framework calls terminateHandler if non-NULL,
-or exit() otherwise, neither of which will return.
-
-<p>
-<li>
-Determine that nothing interesting happens in this frame,
-in which case it returns EH_PROCEED.
-In this case, the framework unwinds a frame and calls it again.
-
+<code>uncaught_exception</code>(), <code>set_terminate</code>(),
+<code>set_unexpected</code>(), <code>terminate</code>(), or
+<code>unexpected</code>() is called at a time a foreign exception exists
+(for example, calling <code>set_terminate</code>()
+during unwinding of a foreign exception).
 </ul>
 
 <p>
-If called with phase==EH_CLEANUP_PHASE,
-the personality routine may:
+All these cases might involve accessing C++ specific content of the
+thrown exception,
+for instance to chain active exceptions.
+
+<p>
+Otherwise, a catch block catching a foreign exception is allowed:
 
 <ul>
-<p>
-<li>
-Determine that control should be passed to user code,
-for any purpose including a real catch or cleanup and resume,
-in which case it uses the API to set the PC and any registers
-which need to contain data, and returns EH_HANDLER.
-In this case, the framework restores the register state
-and transfers control to the PC in Unwind_State.
-This user code may either simply proceed with program execution,
-or may perform cleanup actions and rethrow/resume.
 
 <p>
 <li>
-Determine that the current exception is unexpected and processing
-cannot proceed, in which case it returns EH_UNEXPECTED.
-In this case, the framework ...
+to resume normal execution,
+thereby stopping propagation of the foreign
+exception and deleting it, or
 
 <p>
 <li>
-Determine that the program must be terminated,
-in which case it returns EH_TERMINATED.
-In this case, the framework calls terminateHandler if non-NULL,
-or exit() otherwise, neither of which will return.
-
-<p>
-<li>
-Determine that nothing interesting happens in this frame,
-in which case it returns EH_PROCEED.
-In this case, the framework unwinds a frame and calls it again.
-
+to rethrow the foreign exception.
+In that case,
+the original exception object must be unaltered by the C++ runtime.
 </ul>
 
 <p>
-<h4> Unexpected Exception Handler </h4>
+A catch-all block may be executed during forced unwinding.
+For instance, a <code>longjmp</code> may execute code in a
+<code>catch(...)</code> during stack unwinding.
+However, if this happens,
+unwinding will proceed at the end of the catch-all block,
+whether or not there is an explicit rethrow.
 
 <p>
-<i>
-Define the prototype and behavior of the Unexpected_Handler.
-Delete the exception object?  Rethrow?
-</i>
+Setting the low 4 bytes of exception class to C++\0 is reserved for use
+by C++ runtimes compatible with the common C++ ABI.
 
-<p>
-<h4> Terminate Handler </h4>
 
-<p>
-<i>
-Define the prototype and behavior of the Terminate_Handler.
-Delete the exception object or pass it to the handler?
-Perhaps pass all of the personality parameters to the handler so debug
-traceback is easy?
-</i>
-
-<p>
-<h4> Unexpected Exception Handler </h4>
-
-<p>
-<i>
-Define the prototype and behavior of the Destructor.
-Do we need a size in the standard exception object header?
-</i>
-
-<p>
-<h4> Debugging </h4>
-
-An idea:
-If we were to define a special value of exception_class to identify a
-debugging unwind, and put a debug entry in the exception object,
-the personality routines could support language-specific debug traceback.
 
 
 <p> <hr> <p>
 <a name=cxx-abi></a>
-<h3> C++ ABI </h3>
+<h3> II. C++ ABI </h3>
 
 <p>
 The second level of specification is the minimum required to allow
@@ -364,7 +957,7 @@ Multithreading behavior.
 
 <p> <hr> <p>
 <a name=cxx-rt></a>
-<h3> Common C++ Runtime Implementation </h3>
+<h3> III. Common C++ Runtime Implementation </h3>
 
 <p>
 The third level is a specification sufficient to allow all compliant
