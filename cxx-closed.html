@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 31 January 2000</i>
+<i>Revised 4 February 2000</i>
 
 </center>
 
@@ -1376,6 +1376,66 @@ and if present will precede the cookie.
 <p>
 <font color=blue>[000120 All]</font>
 Accept the above.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A22></a> <td> A-22 </td>
+<td> RTTI for reference types </td>
+<td> data </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 000119 </td>
+<td> 000203 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+__reference_type_info does not appear to be necessary.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A22> Resolution</a></b>:
+Remove it.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000119 CodeSourcery -- Nathan]</font>
+When would a type_info of a reference ever be generated?
+(So why __ref_type_info?)
+
+<ul>
+<li> typeid(T) will strip the reference [expr.typeid]/4
+<li> a thrown type will never be a reference, [except.throw]/3
+<li> a catch type ignores a reference [expr.handle]/3
+<li> an exception specification can contain a reference, but behaves the
+     same as a catch would. [except.spec]
+</ul>
+
+<p>
+<font color=blue>[000126 CodeSourcery -- Nathan]</font>
+
+<dl>
+<dt>[dcl.mptr] (8.3.3)/3
+<dd>
+A pointer to member shall not point to ... a member with reference type
+</dd>
+</dl>
+
+<p>
+<font color=blue>[000128 Cygnus -- Jason]</font>
+Based on that, I definitely think reference type_info can go away.
+
+<p>
+<font color=blue>[000203 All]</font>
+Remove __ref_type_info.
 
 
 <p> <hr> <p>
@@ -5529,6 +5589,193 @@ specification.
 <p>
 <font color=blue>[000120 All]</font>
 Close with minor modifications.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D11></a> <td> D-11 </td>
+<td> pthreads interface </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> all </td>
+<td> 991216 </td>
+<td> 000203 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Certain pthreads functionality is a prerequisite,
+e.g. to acquire thread-local storage.
+The ABI should specify the requirements,
+along with the expected stub behavior when
+the pthreads library is not present.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D11> Resolution</a></b>:
+No specification necessary.
+This is Level 3 material.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000106 All]</font>
+Christophe will extract a list of what the HP library expects and send
+it.
+
+<p>
+<font color=blue>[000120 HP -- Christophe]</font>
+<p>
+Data types:
+<ul>
+<li> pthread_key_t
+<li> pthread_once_t
+</ul>
+
+<p>
+Functions:
+<ul>
+<li> pthread_key_create
+<li> pthread_once
+<li> pthread_getspecific
+<li> pthread_setspecific
+</ul>
+
+<p>
+Extra expected functionality:
+<ul>
+<li> A way to identify if the pthread library is linked in,
+    or, alternatively, stubs in libc.
+</ul>
+
+<p>
+<font color=blue><hr><p>[000201 SGI -- Jim]</font>
+We propose that the following functionality be required of the base ABI.
+The definitions are based on the <code>pthreads</code> package,
+with multi-threading semantics.
+However, it is expected that an implementation will provide default
+versions in the C++ (or C) library for single-threading programs,
+and override them in the thread library for multi-threading cases.
+
+<p>
+Two sets of functionality are provided:
+once-only initialization,
+and thread-private data key management.
+<font color=red>
+The group also wants a means of identifying whether the real pthreads
+implementation is present -- I have not yet proposed such a feature.
+</font>
+
+<p>
+<h5> Once-only Initialization </h5>
+
+<code> <pre>
+    typedef ... pthread_once_t;
+
+    pthread_once_t once_control = PTHREAD_ONCE_INIT;
+    int pthread_once ( pthread_once_t *once_control,
+		       void (*init_routine) (void) );
+</pre> </code>
+
+<p>
+The purpose of the <code>pthread_once</code> routine is to execute
+a particular initialization routine exactly once in a thread-safe manner.
+The user declares a control variable of type
+<code>pthread_once_t</code>
+statically initialized to <code>PTHREAD_ONCE_INIT</code>,
+and passes it to the <code>pthread_once</code> routine.
+
+<p>
+The first time <code>pthread_once</code> is called with a given
+<code>once_control</code> argument,
+it calls <code>init_routine</code> with no argument
+and changes the value of the <code>once_control</code>
+variable to record that initialization has been performed.
+Subsequent calls to <code>pthread_once</code> with the
+same <code>once_control</code> argument do nothing.
+<code>pthread_once</code> always returns 0.
+
+<p>
+The default single-threaded implementation need not lock
+accesses to <code>once_control</code>,
+whereas overriding versions in multi-threading libraries
+presumably will.
+
+<p>
+<h5> Thread-Private Data Key Management </h5>
+
+<code> <pre>
+    typedef ... pthread_key_t;
+
+    int pthread_key_create ( pthread_key_t *key,
+			     void (*destr_function) (void *) );
+    int pthread_setspecific ( pthread_key_t key,
+			      const void *pointer );
+    void * pthread_getspecific ( pthread_key_t key );
+</pre> </code>
+
+<p>
+The purpose of this functionality is to allow a program to manage
+data segments which are specific to a particular thread,
+but are identified by a key common to all threads.
+It is required in the C++ exception handling library, for example,
+to maintain thread-specific active exception lists.
+
+<p>
+The user program must first create a key variable of type
+<code>pthread_key_t</code>.
+It then obtains an identifying key value from the implementation
+by calling <code>pthread_key_create</code>,
+also specifying at that time a destructor routine that will be called
+if a thread terminates,
+with a single argument that is the value associated with the key
+for the terminating thread.
+This destructor call is only made if the associated value is not NULL,
+and it is set to NULL before making the call.
+
+<p>
+If successful, <code>pthread_key_create</code> returns zero,
+places the value of the key identifier in <code>*key</code>, and
+initializes the value associated with the key to NULL for all threads.
+If unsuccessful, e.g. exceeding the number of allocated keys,
+it returns an error code.
+
+<p>
+A user thread may then associate a value with the key,
+typically the address of a thread-specific data area,
+by calling <code>pthread_setspecific</code>.
+If successful, <code>pthread_setspecific</code> returns zero.
+If unsuccessful, e.g. because of an invalid key identifier,
+it returns an error code.
+
+<p>
+Later, a thread can obtain the value it has associated with the key
+by calling <code>pthread_getspecific</code>,
+which returns the value associated with <code>key</code> on success,
+and NULL on error.
+
+<p>
+<font color=blue><hr><p>[000203 All]</font>
+It turns out that some (but not all) Unix implementations provide stubs
+for some of the pthreads routines in libc or equivalent that,
+rather than implementing a simplified form of the functionality,
+return an error code indicating that pthreads is not loaded.
+A specification such as the above would therefore cause compatibility
+problems.
+
+<p>
+These functions are only used in the exception handling library at Level 3,
+i.e. they are part of the interface between the system-specific
+implementation and other system-provided libraries,
+and do not involve interfaces to either compiled code or other
+components not under control of the system vendor.
+Therefore, no specification is needed.
 
 
 
