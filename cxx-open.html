@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 1 February 2000</i>
+<i>Revised 4 February 2000</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000204]</font>
+Closed <a href=#A22>A-22</a>, <a href=#D11>D-11</a>.
+Additions to <a href=#A23>A-23</a>, <a href=#A24>A-24</a>,
+<a href=#D12>D-12</a>.
+New issue <a href=#A25>A-25</a>.
 
 <p>
 <font color=blue>[000131]</font>
@@ -984,44 +991,21 @@ closely to user expectations.
 <tr class=small> <a name=A22></a> <td> A-22 </td>
 <td> RTTI for reference types </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 000119 </td>
-<td>  </td>
+<td> 000203 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 __reference_type_info does not appear to be necessary.
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A22> Resolution</a></b>:
+Remove it.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000119 CodeSourcery -- Nathan]</font>
-When would a type_info of a reference ever be generated?
-(So why __ref_type_info?)
-
-<ul>
-<li> typeid(T) will strip the reference [expr.typeid]/4
-<li> a thrown type will never be a reference, [except.throw]/3
-<li> a catch type ignores a reference [expr.handle]/3
-<li> an exception specification can contain a reference, but behaves the
-     same as a catch would. [except.spec]
-</ul>
-
-<p>
-<font color=blue>[000126 CodeSourcery -- Nathan]</font>
-
-<dl>
-<dt>[dcl.mptr] (8.3.3)/3
-<dd>
-A pointer to member shall not point to ... a member with reference type
-</dd>
-</dl>
-
-<p>
-<font color=blue>[000128 Cygnus -- Jason]</font>
-Based on that, I definitely think reference type_info can go away.
 
 
 <p>
@@ -1268,6 +1252,36 @@ A proposed precise definition of a diamond-shaped object is one that
 has two different direct bases with the same virtual base,
 directly, indirectly, or vacuously (the direct base is the virtual base).
 
+<p>
+<font color=blue><hr><p>[000203 All]</font>
+Move the flags from __class_type_info to __vmi_class_type_info.
+Share them with one byte from the __base_class_info offset field.
+Replace Daveed's set with Nathan's, but the first one isn't needed.
+
+<p>
+<font color=blue><hr><p>[000203 SGI -- Jim]</font>
+The class type restructuring is a bit different than
+what I expected going in (could just be my confusion).
+
+<p>
+I moved the flags from __class_type_info to __vmi_class_type_info,
+discovering that they don't need to share space with the offset field
+in the __base_class_info records, but rather with the base class count.
+
+But, the __base_class_info has its own flags (virtual and public)
+which can reasonably share a doubleword, as we were discussing for the
+other flags this morning.  So I specified that.
+Note that I put the flags in the low byte rather than the high byte.
+That is because the offset is signed, and it is likely that
+implementations will sign-extend (signed doubleword>>8), but not
+(doubleword & 0x00ffffffffffffffll).
+
+<p>
+After an exchange with Nathan,
+I reinstated his first flag
+(contains non-diamond multiple inheritance).
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -1458,6 +1472,93 @@ If we don't do that, throwing `struct A *' in the DSO
 (which is valid, `cos the DSO source had complete information),
 will throw the __tiP1A in the executable which points to incomplete.
 Hence we wont find any base conversions if we're trying to catch a base of A.
+
+<p>
+<font color=blue><hr><p>[000203 All]</font>
+We can't seem to get around the need for an EDG-style implementation,
+i.e. a proxy for the type RTTI which is resolved by name,
+e.g. a one-byte common block referenced from the RTTI.
+We need a specific proposal for putting the reference in the RTTI,
+and a mangling for the name.
+
+<p>
+Since all we need from the common block is a distinct address,
+we may want to float a base ABI proposal for a new symbol type which is
+resolved by the linkers to a unique address without allocating storage.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A25></a> <td> A-25 </td>
+<td> Excess-width bitfields </td>
+<td> data </td>
+<td> open </td>
+<td> IBM </td>
+<td> 000204 </td>
+<td>  </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+C++ allows bitfields with a larger size specified than that required by
+the declared type, e.g. <code>int f: 64</code>.
+How should they be allocated?
+</td> </tr>
+
+</table>
+
+<p>
+When the specified width of a bitfield exceeds the size of the declared type,
+the standard specifies that the accessible field is
+to be padded to the specified width,
+with the location of the padding implementation-defined.
+That is, the accessible field could be placed at the beginning,
+at the end, or in the middle of the specified bits.
+(Note that such declarations are explicitly disallowed by the C 2000
+draft, so this is not a C ABI issue.)
+
+<p>
+<font color=blue>[000204 SGI -- Jim]</font>
+It seems to me that the situation that makes it interesting is the
+following:
+<code><pre>
+        struct s {
+          short s1;
+          int i: 64;
+          short s2;
+        }
+</pre></code>
+In this case, I don't want the accessible part of i at the beginning or
+the end -- I want it in the middle.  Doing otherwise yields either a
+badly aligned i, or wasted space.
+
+<p>
+One could express this by the following rule:
+<dl><dd>
+        Place the accessible part of the bitfield object as if
+        it were a non-bitfield member of the declared type, i.e.
+        at the next available offset of the appropriate alignment.
+        Allocate the full bitfield at the earliest available
+        offset where it will include the accessible part.
+</dd></dl>
+
+<font color=blue>[000204 IBM -- Mark]</font>
+I disagree.
+If the user wants the bitfield to be aligned in a certain place,
+he has the tools to do so.
+He can certainly pick a different size bitfield.
+I think that this should be aligned as if it is the same size as the type,
+and then the extra bits put somewhere.
+Putting them afterwards is probably simpler than before,
+or splitting it in the middle.
+
 
 
 
@@ -3633,7 +3734,7 @@ Solidify the Level I (psABI) specification and submit it to the base
 ABI group.
 </td> </tr>
 <tr> <td colspan=7>
-<b><a href=cxx-closed.html#D13> Resolution</a></b>:
+<b><a href=cxx-closed.html#D10> Resolution</a></b>:
 See the <a href=abi-eh.html#forced>exception handling specification</a>.
 </td> </tr>
 
@@ -3652,10 +3753,10 @@ See the <a href=abi-eh.html#forced>exception handling specification</a>.
 <tr> <a name=D11></a> <td> D-11 </td>
 <td> pthreads interface </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> all </td>
 <td> 991216 </td>
-<td> </td>
+<td> 000203 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -3665,145 +3766,13 @@ The ABI should specify the requirements,
 along with the expected stub behavior when
 the pthreads library is not present.
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D11> Resolution</a></b>:
+No specification necessary.
+This is Level 3 material.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000106 All]</font>
-Christophe will extract a list of what the HP library expects and send
-it.
-
-<p>
-<font color=blue>[000120 HP -- Christophe]</font>
-<p>
-Data types:
-<ul>
-<li> pthread_key_t
-<li> pthread_once_t
-</ul>
-
-<p>
-Functions:
-<ul>
-<li> pthread_key_create
-<li> pthread_once
-<li> pthread_getspecific
-<li> pthread_setspecific
-</ul>
-
-<p>
-Extra expected functionality:
-<ul>
-<li> A way to identify if the pthread library is linked in,
-    or, alternatively, stubs in libc.
-</ul>
-
-<p>
-<font color=blue><hr><p>[000201 SGI -- Jim]</font>
-We propose that the following functionality be required of the base ABI.
-The definitions are based on the <code>pthreads</code> package,
-with multi-threading semantics.
-However, it is expected that an implementation will provide default
-versions in the C++ (or C) library for single-threading programs,
-and override them in the thread library for multi-threading cases.
-
-<p>
-Two sets of functionality are provided:
-once-only initialization,
-and thread-private data key management.
-<font color=red>
-The group also wants a means of identifying whether the real pthreads
-implementation is present -- I have not yet proposed such a feature.
-</font>
-
-<p>
-<h5> Once-only Initialization </h5>
-
-<code> <pre>
-    typedef ... pthread_once_t;
-
-    pthread_once_t once_control = PTHREAD_ONCE_INIT;
-    int pthread_once ( pthread_once_t *once_control,
-		       void (*init_routine) (void) );
-</pre> </code>
-
-<p>
-The purpose of the <code>pthread_once</code> routine is to execute
-a particular initialization routine exactly once in a thread-safe manner.
-The user declares a control variable of type
-<code>pthread_once_t</code>
-statically initialized to <code>PTHREAD_ONCE_INIT</code>,
-and passes it to the <code>pthread_once</code> routine.
-
-<p>
-The first time <code>pthread_once</code> is called with a given
-<code>once_control</code> argument,
-it calls <code>init_routine</code> with no argument
-and changes the value of the <code>once_control</code>
-variable to record that initialization has been performed.
-Subsequent calls to <code>pthread_once</code> with the
-same <code>once_control</code> argument do nothing.
-<code>pthread_once</code> always returns 0.
-
-<p>
-The default single-threaded implementation need not lock
-accesses to <code>once_control</code>,
-whereas overriding versions in multi-threading libraries
-presumably will.
-
-<p>
-<h5> Thread-Private Data Key Management </h5>
-
-<code> <pre>
-    typedef ... pthread_key_t;
-
-    int pthread_key_create ( pthread_key_t *key,
-			     void (*destr_function) (void *) );
-    int pthread_setspecific ( pthread_key_t key,
-			      const void *pointer );
-    void * pthread_getspecific ( pthread_key_t key );
-</pre> </code>
-
-<p>
-The purpose of this functionality is to allow a program to manage
-data segments which are specific to a particular thread,
-but are identified by a key common to all threads.
-It is required in the C++ exception handling library, for example,
-to maintain thread-specific active exception lists.
-
-<p>
-The user program must first create a key variable of type
-<code>pthread_key_t</code>.
-It then obtains an identifying key value from the implementation
-by calling <code>pthread_key_create</code>,
-also specifying at that time a destructor routine that will be called
-if a thread terminates,
-with a single argument that is the value associated with the key
-for the terminating thread.
-This destructor call is only made if the associated value is not NULL,
-and it is set to NULL before making the call.
-
-<p>
-If successful, <code>pthread_key_create</code> returns zero,
-places the value of the key identifier in <code>*key</code>, and
-initializes the value associated with the key to NULL for all threads.
-If unsuccessful, e.g. exceeding the number of allocated keys,
-it returns an error code.
-
-<p>
-A user thread may then associate a value with the key,
-typically the address of a thread-specific data area,
-by calling <code>pthread_setspecific</code>.
-If successful, <code>pthread_setspecific</code> returns zero.
-If unsuccessful, e.g. because of an invalid key identifier,
-it returns an error code.
-
-<p>
-Later, a thread can obtain the value it has associated with the key
-by calling <code>pthread_getspecific</code>,
-which returns the value associated with <code>key</code> on success,
-and NULL on error.
-
 
 
 <p>
@@ -4014,6 +3983,70 @@ in order to make this work,
 we should specify how to obtain this information in the psABI,
 unless <code>dlmodinfo()</code> is already standard.
 
+<p>
+<font color=blue><hr><p>[000203 All]</font>
+To understand this issue better,
+we worked through the EH structures looking at references:
+
+<ol kind=A>
+<p>
+<li> The unwind table is in its own segment,
+    assumed by the HP implementation to be an overlay of .text.
+    They find it, and the associated .text segment by a query to
+    the dynamic linker based on the IP address to be located.
+    They also use linker-defined symbols for the base addresses of text
+    and the unwind table,
+    which of course depend on only having one of each.
+    <p>
+    It contains references:
+    <ul>
+    <li> Start and end addresses of the text fragment which the
+	entry describes,
+	as an offset from the text base address.
+    <li> Address of the unwind information entry for the fragment,
+	as an offset from a segment assumed to be .text.
+    </ul>
+
+<p>
+<li> The unwind info table is
+    assumed by the HP implementation to be contained in .text,
+    and is referenced from the unwind table via .text-segment-relative
+    offsets.
+    <p>
+    It contains references:
+    <ul>
+    <li> Unwind descriptor references are relative to the text fragment.
+    <li> A landing pad start pointer (LPStart),
+	at the beginning of the language-specific data area (LSDA),
+	represented as an offset relative to its own location,
+	and therefore assuming that the LSDA is in the same segment as
+	the landing pad if runtime relocation is to be avoided.
+    <li> A type table base pointer,
+	represented as an offset relative to its own location, 
+	and therefore assuming that the LSDA is in the same segment as
+	the type table if runtime relocation is to be avoided.
+    <li> Other references, to call sites and landing pads,
+	are represented as offsets relative to the address contained in
+	LPStart.
+    </ul>
+
+<p>
+<li> The type table is
+    assumed by the HP implementation to be contained in .text,
+    and is referenced from the unwind info table via self-relative
+    offsets.
+    <p>
+    It contains references:
+    <ul>
+    <li> To RTTI records,
+	relative to the GP for the current text fragment.
+	Note that this does not allow for address-only RTTI comparisons,
+	since it does not support preemption.
+	HP uses the RTTI pointer along with another identifier for
+	comparisons.
+    </ul>
+
+</ol>
 
 
 
