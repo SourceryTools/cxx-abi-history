@@ -4491,6 +4491,10 @@ the numbering order is strictly lexical order based on the original
 token sequence.
 All objects occurring in that sequence are to be numbered,
 even if subsequent optimization makes some of them unnecessary.
+The ordering of literals appearing in a mem-initializer-list shall be
+the order that the literals appear in the source, which may be
+different from the order in which the initializers will be executed
+when the program runs. 
 It is expected that this will be the 'natural' order in most compilers.
 In any case, conflicts would arise only if different compilation units
 including the same code were compiled by different compilers,
@@ -4903,6 +4907,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021110]</font>
+Clarify ordering of string literals in mem-initializer-list.
 
 <p>
 <font color=blue>[021110]</font>
