@@ -13,7 +13,7 @@ C++ ABI Summary
 </b></i></font>
 
 <p>
-<i>Revised 25 October 1999</i>
+<i>Revised 28 October 1999</i>
 
 </center>
 
@@ -463,6 +463,14 @@ the same support runtimes.
 <td> </td>
 </tr>
 
+<tr class=small> <td> 25 </td>
+<td> dynamic_cast pseudocode </td>
+<td> Jason Merrill </td>
+<td> open </td>
+<td> 991028 </td>
+<td> </td>
+</tr>
+
 
 </table>
 
@@ -580,10 +588,10 @@ The identifiers used are:
 <tr class=small> <td> A-6 </td>
 <td> RTTI (<code>type_info</code>) .o representation </td>
 <td> data call ps </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 991028 </td>
 </tr>
 
 <tr class=small> <td> A-7 </td>
@@ -712,10 +720,10 @@ Virtual Function Handling </a> </th>
 <tr class=small> <td> B-6 </td>
 <td> Virtual function table layout </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 991028 </td>
 </tr>
 
 <tr class=small> <td> B-7 </td>
@@ -812,6 +820,24 @@ Virtual Function Handling </a> </th>
 <td> All </td>
 <td> 990625 </td>
 <td> 990722 </td>
+</tr>
+
+<tr> <a href=cxx-open#C9> <td> C-9 </td></a>
+<td> Passing parameters with ctors/dtors </td>
+<td> call </td>
+<td> open </td>
+<td> All </td>
+<td> 991028 </td>
+<td> </td>
+</tr>
+
+<tr> <a href=cxx-closed#C10> <td> C-10 </td></a>
+<td> Synthesized copy assignments </td>
+<td> call </td>
+<td> closed </td>
+<td> All </td>
+<td> 991028 </td>
+<td> 991028 </td>
 </tr>
 
 
@@ -959,7 +985,7 @@ Virtual Function Handling </a> </th>
 </tr>
 
 <tr class=small> <td> F-3 </td>
-<td> Distinguish template instantiation and specialization
+<td> Consistency checks
 </td>
 <td> call g </td>
 <td> open </td>
