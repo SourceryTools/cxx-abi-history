@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 17 August 2000</i>
+<i>Revised 6 September 2000</i>
 
 </center>
 
@@ -130,6 +130,16 @@ document to be clarified.
 <h4> Recent Revisions </h4>
 
 <p>
+<font color=blue>[000905]</font>
+Updates from 31 August meeting, email.
+Null parameters to construction/destruction runtimes (3.3.3).
+Mangling of numbers cleans up positive/non-negative confusion (5.1.x).
+Mangling of names encodes byte count instead of character count (5.1.2).
+Mangling of vendor extended operator names encodes operand count (5.1.3).
+Remove redundant template-template-arg productions (5.1.5).
+Move mangling examples table to examples document (was 5.1.8).
+
+<p>
 <font color=blue>[000817]</font>
 Updates from 17 August meeting, email.
 
@@ -147,28 +157,6 @@ COMDAT for local static guard variables (5.2.2).
 <font color=blue>[000727]</font>
 Updates from 20 July meeting.
 Added section on controlling object construction order (3.3.4).
-
-<p>
-<font color=blue>[000707]</font>
-Introduce consistent type_info field names (2.9.5).
-Removed vmi flags for publicly/non-publicly inherited bases (2.9.5).
-Collect all construction/destruction APIs in one section (3.3).
-Added one-time initialization API (3.3.2).
-Vector construction/destruction routines are extern "C" (3.3.3).
-Added routines for vector construction/destruction (3.3.3).
-Added copy construction runtime API (3.3.3).
-Make Alex's changes in mangling grammar (5.1).
-Add &lt;special-name> cases for covariant override thunks (5.1.4).
-Allow expressions as array type dimensions (5.1.5).
-Discuss vague linkage for virtual function override thunks (5.2.6).
-
-<p>
-<font color=blue>[000621]</font>
-Add scope section 1.4.
-Specify guard variables and vague linkage of static data (5.2.2)
-and instantiated templates (5.2.4).
-Clarify vcall offsets (2.5.3), VTT (2.6.2),
-mangling compression rules (5.1.7), and mangling examples.
 
 <p>
 <a href=#revisions>Revision History</a>
@@ -450,19 +438,30 @@ Even these cases can fail if the compiler makes use of
 implementation-defined library interfaces to implement runtime
 functionality without explicit user reference,
 e.g. a software divide function.
-Therefore, we require that a compliant implementation place such
-runtime support (whether for support of standard features or extensions)
-in a library separate from the Standard Library implementation,
+<font color=red>
+We can distinguish between:
+<ul>
+<li> the standard support library,
+    which provides interfaces required by the C++ Standard Library
+    specification and the vendor header files required for it,
+    as well as interfaces required by this ABI; and
+<li> the implicit compiler support library,
+    which provides other interfaces implicitly assumed by the compiler
+    and used to implement either standard features or extensions.
+</ul>
+
+<p>
+An implementation shall place its standard support library in a DSO
+named <code>libcxa.so</code> on IA-64 systems,
+or in auxiliary DSOs automatically loaded by it.
+It shall place implicit compiler support
+in a library separate from the standard support library,
 with any external names chosen to avoid conflicts between vendors
 (e.g. by including a vendor identifier as part of the names).
 This allows a program to function properly if linked with the
-target's Standard Library implementation and the runtime support
+target's standard support library and the implicit compiler support
 libraries from any implementations used to build components.
 
-<font color=red>
-<p>
-The Standard Library implementation shall be in a DSO named
-<code>libcxa.so</code> on IA-64 systems.
 </font>
 
 
@@ -480,7 +479,7 @@ experience is available.
 
 
 <p> <hr> <p>
-<a name=scope>
+<a name=docs>
 <h3> 1.5 Base Documents </h3>
 
 <p>
@@ -2091,17 +2090,17 @@ the entry is zero.
 
 <p>
 <code>std::type_info</code> contains just two pointers:
+<font color=red>
 <pre><code>
       class type_info {
 	private:
-         void *__virtual_table;
-	public:
-	 char *__type_name;
+	 const char *__type_name;
       };
 
 </pre></code>
+</font>
 <ul>
-<li> <code>__virtual_table</code> is the class type_info virtual pointer
+<li> The class will contain a virtual pointer before the explicit members.
 <li> <code>__type_name</code> is a pointer to a NTBS
     representing the name of the type
 </ul>
@@ -2227,7 +2226,7 @@ It is derived from <code>abi::__class_type_info</code>:
        one for every direct proper base.
        Each description is of the type:
 <pre><code>
-      struct abi::<font color=red>__base_class_type_info</font> {
+      struct abi::__base_class_type_info {
 	public:
          const __class_type_info *__base_type;
 	 long __offset_flags;
@@ -2622,11 +2621,9 @@ In general, C++ return values are handled just like C return values.
 This includes class type results returned in registers.
 However, if the return value type has a non-trivial copy constructor,
 the caller allocates space for a temporary,
-<font color=red>
 and passes a pointer to the temporary as an implicit parameter.
 On IA-64, the pointer is passed in <code>r8</code>,
 like large class result buffer pointers.
-</font>
 The callee constructs the return value into this temporary.
 
 
@@ -3069,7 +3066,7 @@ If not, return <code>true</code> (1) without releasing the lock.
 
 
 <dt><code><pre>
-extern "C" <font color=red>void</font> __cxa_guard_release ( long long *guard_object );
+extern "C" void __cxa_guard_release ( long long *guard_object );
 </pre></code></dt>
 <dd>
 The <code>guard_object</code> argument is the guard variable
@@ -3148,7 +3145,12 @@ call the given destructor for any already-constructed elements,
 delete the space,
 and rethrow the exception.
 If the destructor throws an exception,
-the result is undefined.
+<font color=red>
+call <code>terminate()</code>.
+The constructor may be NULL.
+The destructor may be NULL only if the padding size is zero.
+If either is NULL, no action is taken when it would have been called.
+</font>
 </dd>
 
 <dt><code><pre>
@@ -3165,6 +3167,12 @@ extern "C" void * __cxa_vec_new2 (
 Same as <code>__cxa_vec_new</code>,
 except that the given functions are used for allocation/deallocation
 instead of the default new/delete functions.
+<font color=red>
+If <code>dealloc</code> throws an exception,
+the result is undefined.
+The <code>alloc</code> and <code>dealloc</code> pointers may not be
+NULL.
+</font>
 </dd>
 
 <dt><code><pre>
@@ -3182,6 +3190,12 @@ Same as <code>__cxa_vec_new</code>,
 except that the given functions are used for allocation/deallocation
 instead of the default new/delete functions.
 The deallocation function takes both the object address and its size.
+<font color=red>
+If <code>dealloc</code> throws an exception,
+the result is undefined.
+The <code>alloc</code> and <code>dealloc</code> pointers may not be
+NULL.
+</font>
 </dd>
 
 <dt><code><pre>
@@ -3201,10 +3215,11 @@ If the constructor throws an exception,
 call the given destructor for any already-constructed elements,
 and rethrow the exception.
 If the destructor throws an exception,
-the result is undefined.
-The constructor pointer may not be NULL.
-If the destructor pointer is NULL,
-no destructor call is to be made if the constructor throws.
+<font color=red>
+call <code>terminate()</code>.
+The constructor and/or destructor pointers may be NULL.
+If either is NULL, no action is taken when it would have been called.
+</font>
 </dd>
 
 <dt><code><pre>
@@ -3222,7 +3237,10 @@ call the given destructor on each element.
 If the destructor throws an exception,
 rethrow after destroying the remaining elements if possible.
 If the destructor throws a second exception, call terminate.
-The destructor pointer may not be NULL.
+<font color=red>
+The destructor pointer may be NULL,
+in which case this routine does nothing.
+</font>
 </dd>
 
 <dt><code><pre>
@@ -3259,6 +3277,11 @@ extern "C" void __cxa_vec_delete2 (
 Same as <code>__cxa_vec_delete</code>,
 except that the given function is used for deallocation
 instead of the default delete function.
+<font color=red>
+If <code>dealloc</code> throws an exception,
+the result is undefined.
+The <code>dealloc</code> pointer may not be NULL.
+</font>
 </dd>
 
 <dt><code><pre>
@@ -3274,6 +3297,11 @@ Same as <code>__cxa_vec_delete</code>,
 except that the given function is used for deallocation
 instead of the default delete function.
 The deallocation function takes both the object address and its size.
+<font color=red>
+If <code>dealloc</code> throws an exception,
+the result is undefined.
+The <code>dealloc</code> pointer may not be NULL.
+</font>
 </dd>
 
 <a name=array-copy-ctor></a>
@@ -3291,11 +3319,12 @@ Given the (data) addresses of a destination and a source array,
 an element count and an element size,
 call the given copy constructor to copy each element from the
 source array to the destination array.
-The constructor pointer may not be NULL.
 If an exception occurs,
 call the given destructor on each (if non-NULL) and rethrow.
-<font color=red>
 If the destructor throws an exception, call <code>terminate()</code>.
+<font color=red>
+The constructor and or destructor pointers may be NULL.
+If either is NULL, no action is taken when it would have been called.
 </font>
 </dd>
 
@@ -3334,7 +3363,7 @@ initialization ordering specified in the base ABI.
 <p>
 A user may specify the construction priority with the pragma:
 <code><pre>
-    #pragma <font color=red>priority</font> ( &lt;priority> )
+    #pragma priority ( &lt;priority> )
 </pre></code>
 
 The &lt;priority> parameter specifies a 32-bit signed initialization
@@ -3607,6 +3636,10 @@ namespace abi {
 <li>
 <code>mangled-name</code>
 is a pointer to a null-terminated array of characters.
+<font color=red>
+It may be either an external name, i.e. with a "_Z" prefix,
+or an internal NTBS mangling, e.g. of a type for type_info.
+</font>
 
 <p>
 <li>
@@ -3626,8 +3659,16 @@ in which case the user just doesn't get any detailed error information.
 <b>Behavior</b>:
 The return value is a pointer to a null-terminated array 
 of characters, the demangled name.
+<font color=red>
+Ambiguities are possible between extern "C" object names and internal
+built-in type names,
+e.g. "i" may be either an object named "i" or the built-in "int" type.
+Such ambiguities should be resolved to user names over built-in names.
+</font>
+
+<p>
 If there is an error in demangling, the return value is a null pointer.
-The user can examine *status to find out what kind of error it is.
+The user can examine *status to find out what kind of error occurred.
 Meaning of error indications:
 <ul>
 <li> 0:  success
@@ -3698,21 +3739,16 @@ in a modified BNF with the following conventions:
 <p>
 See the separate <a href=abi-mangling.html>table</a>
 summarizing the encoding characters used as terminals.
+<font color=red>
+Also see additional <a href=abi-examples.html#mangling>mangling examples</a>
+in the separate ABI examples document.
+</font>
 
 <p>
 In the various explanatory examples,
 we use <code>Ret?</code> for an unknown function return type
 (i.e. that is not given by the mangling),
 or <code>Type?</code> for an unknown data type.
-
-<p>
-<h5> Loose Ends </h5>
-
-<p>
-<ul>
-<li> Proof of nonambiguity
-<li> ILP-32 conventions?
-</ul>
 
 <p>
 <h4> 5.1.2 General Structure </h4>
@@ -3739,7 +3775,6 @@ The type is omitted for variables and static data members.
 	   ::= &lt;unscoped-name>
 	   ::= &lt;unscoped-template-name> &lt;template-args>
 	   ::= &lt;local-name>	# See <a href=#mangling-scope>Scope Encoding</a> below
-</font><font color=blue>
 
     &lt;unscoped-name> ::= &lt;unqualified-name>
 		    ::= St &lt;unqualified-name>   # ::std::
@@ -3757,37 +3792,41 @@ Note that if member function CV-qualifiers are required,
 the delimited form must be used even if the remainder of the name is
 a single substitution.
 
-<pre><font color=blue><code>
-    &lt;nested-name> ::= N [&lt;CV-qualifiers>] &lt;prefix> &lt;component> E
+<pre><code><font color=blue>
+    &lt;nested-name> ::= N [&lt;CV-qualifiers>] &lt;prefix> &lt;unqualified-name> E
 		  ::= N [&lt;CV-qualifiers>] &lt;template-prefix> &lt;template-args> E
 
-    &lt;prefix> ::= &lt;prefix> &lt;component>
+    &lt;prefix> ::= &lt;prefix> &lt;unqualified-name>
 	     ::= &lt;template-prefix> &lt;template-args>
 	     ::= # empty
 	     ::= &lt;substitution>
 
-    &lt;template-prefix> ::= &lt;prefix> &lt;<i>template</i> component>
+    &lt;template-prefix> ::= &lt;prefix> &lt;<i>template</i> unqualified-name>
                       ::= &lt;substitution>
-
+</font><font color=red><strike>
     &lt;component> ::= &lt;unqualified-name>
 		::= &lt;local-name>
-
+</strike></font><font color=blue>
     &lt;unqualified-name> ::= &lt;operator-name>
                        ::= &lt;ctor-dtor-name>  
                        ::= &lt;source-name>   
 
-    &lt;source-name> ::= &lt;<i>length</i> positive-number> &lt;identifier>
-    &lt;number> ::= [n] &lt;positive-number>
-    &lt;positive-number> ::= &lt;<i>decimal integer</i>>
+    &lt;source-name> ::= &lt;<i>positive length</i> number> &lt;identifier>
+</font><font color=red>
+    &lt;number> ::= [n] &lt;<i>non-negative decimal integer</i>>
+</font><font color=blue>
     &lt;identifier> ::= &lt;<i>unqualified source code identifier</i>>
 
-</pre></font></code>
+</pre></code></font>
 
 <p>
 &lt;number> is a pseudo-terminal representing a decimal integer,
 with a leading 'n' for negative integers.
 It is used in &lt;source-name> to provide the
-character length of the following identifier.
+<font color=red>
+byte
+</font>
+length of the following identifier.
 &lt;number>s appearing in mangled names never have leading zeroes,
 except for the value zero, represented as '0'.
 &lt;identifier> is a pseudo-terminal representing the unqualified
@@ -3860,14 +3899,19 @@ the first of which is lowercase.
 		  ::= sz	# sizeof        
 		  ::= sr	# scope resolution (::), see below        
 		  ::= cv &lt;type>	# (cast)        
-		  ::= vx &lt;source-name>	# vendor extended operator
+</font><font color=red>
+		  ::= v &lt;digit> &lt;source-name>	# vendor extended operator
 
 </pre></font></code>
 
 <p>
 The scope resolution operator is discussed with expressions below.
 Vendors who define builtin extended operators (e.g. __alignof)
-shall encode them as a 'vx' prefix followed by the name in &lt;length,ID> form.
+shall encode them as a 'v' prefix followed by
+<font color=red>
+the operand count as a single decimal digit, and
+</font>
+the name in &lt;length,ID> form.
 
 
 <p>
@@ -4100,20 +4144,28 @@ delimited and undelimited function types are considered the same.
 
 <p>
 The type of nontemplate function objects
+<font color=red>
+and all constructors
+</font>
 (e.g. the &lt;type> in function name manglings,
 or the target function type in thunk manglings)
 includes only the parameter types.
-For template functions
-and operators,
-except for template conversion operators,
-or for function type specifications such as function parameters,
-&lt;type> includes the return type followed by the parameter types.
+Template functions and operators,
+except template conversion operators,
+or function type specifications such as function parameters,
+<font color=red>
+but not constructors in any case,
+</font>
+&lt;type> include the return type followed by the parameter types.
 Thus:
 <ul>
 <li> Template functions (names or types) have return types encoded.
 <li> Non-template function names do not have return types encoded.
 <li> Function types not appearing as part of a function name mangling,
 e.g. parameters, pointer types, etc., have return type encoded.
+<font color=red>
+<li> Constructors in any context do not have return types encoded.
+</font>
 </ul>
 
 <p>
@@ -4149,9 +4201,10 @@ or a more complex &lt;nested-name>.
 Thus, it is encoded like a function name,
 except that no CV-qualifiers are present in a nested name specification.
 
-<pre><font color=blue><code>
+<pre><code><font color=blue>
   &lt;class-enum-type> ::= &lt;name>
-		    ::= &lt;local-name>
+</font><font color=red><strike>
+		    ::= &lt;local-name>	</strike>
 </pre></font></code>
 
 <p>
@@ -4160,8 +4213,8 @@ Note that "array" parameters to functions are encoded as pointer types.
 For variable length arrays (C99 VLAs),
 the dimension (but not the '_' separator) is omitted.
 
-<pre><font color=blue><code>
-  &lt;array-type> ::= A &lt;<i>dimension</i> positive-number> _ &lt;<i>element</i> type>
+<pre><font color=red><code>
+  &lt;array-type> ::= A &lt;<i>positive dimension</i> number> _ &lt;<i>element</i> type>
 	       ::= A [&lt;<i>dimension</i> expression>] _ &lt;<i>element</i> type>
 
 </pre></font></code>
@@ -4195,10 +4248,10 @@ Note that a template parameter reference is a substitution candidate,
 distinct from the type (or other substitutible entity)
 that is the actual parameter.
 
-<pre><code><font color=blue>
+<pre><code><font color=red>
   &lt;template-param> ::= T_	# first template parameter
-		   ::= T &lt;<i>parameter-2</i> positive-number> _
-
+		   ::= T &lt;<i>parameter-2 non-negative</i> number> _
+</font> <font color=blue>
   &lt;template-template-param> ::= &lt;template-param>
 			    ::= &lt;substitution>
 
@@ -4212,14 +4265,17 @@ but also in types and scope identification.
 
 <pre><font color=blue><code>
   &lt;template-args> ::= I &lt;template-arg>+ E
-  &lt;template-arg> ::= &lt;type>			# type
+  &lt;template-arg> ::= &lt;type>			# type or template
 		 ::= L &lt;type> &lt;<i>value</i> number> E	# literal
-		 ::= LZ &lt;encoding> E		# external name
+</font><font color=red>
+		 ::= L_Z &lt;encoding> E		# external name
+</font><font color=blue>
 		 ::= X &lt;expression> E		# expression
-		 ::= &lt;template-template-arg>
+</font><font color=red><strike>
+		 ::= &lt;template-template-arg> # redundant -- use &lt;type>
 
   &lt;template-template-arg> ::= &lt;name>
-			  ::= &lt;substitution>
+			  ::= &lt;substitution> </strike>
 </pre></font></code>
 
 <p>
@@ -4241,7 +4297,9 @@ If floating-point arguments are accepted as an extension,
 their values should be encoded using a fixed-length lowercase hexadecimal
 string corresponding to the internal representation (IEEE on IA-64),
 high-order bytes first, without leading zeroes.
-For example: "Lfbff000000E" is -1.0f.
+<font color=red>
+For example: "Lf bf800000 E" is -1.0f on IA-64.
+</font>
 
 <p>
 A reference to an entity with external linkage is encoded with
@@ -4276,7 +4334,7 @@ becomes "1BI Xdv pl T1_ Li1E Li2E E E"
 (the blanks are present only to visualize the decomposition).
 Note that the expression is mangled without constant folding or other
 simplification,
-and without parentheses, which are implicit in the postfix representation.
+and without parentheses, which are implicit in the prefix representation.
 Except for the parentheses, therefore,
 it represents the source token stream.
 (C++ Standard reference 14.5.5.1 p. 5.)
@@ -4331,22 +4389,32 @@ The encoding for such entities is as follows:
 <code><pre><font color=blue>
   &lt;local-name> := Z &lt;<i>function</i> encoding> E &lt;<i>entity</i> name> [&lt;discriminator>]
                := Z &lt;<i>function</i> encoding> E s [&lt;discriminator>]
-  &lt;discriminator> := _ &lt;positive-number> 
+</font> <font color=red>
+  &lt;discriminator> := _ &lt;<i>non-negative</i> number> 
 </font></pre></code>
 
 <p>
 The first production is used for named local static objects and classes,
 which are identified by their declared names.
+<font color=red>
+The &lt;<i>entity</i> name> may itself be a compound name,
+but it is relative to the closest enclosing function,
+i.e. none of the components of the function encoding appear in the entity name.
+It is possible to have nested function scopes,
+e.g. when dealing with a member function in a local class.
+In such cases, the function encoding will itself have &lt;local-name>
+structure.
+</font>
 The discriminator is used only for the
 second and later occurrences of the same name within a single function.
-In this case &lt;positive-number> is n - 2,
+In this case &lt;number> is n - 2,
 if this is the nth occurrence, in lexical order, of the given name.
 
 <p>
 The second production is used for string literals.
 The discriminator is used only if there is more than one,
 for the second and subsequent ones.
-In this case &lt;positive-number> is n - 2,
+In this case &lt;number> is n - 2,
 if this is the nth distinct string literal, in lexical order,
 appearing in the function.
 Multiple references to the same string literal produce one string
@@ -4386,13 +4454,19 @@ Example:
 
 <ul>
 <li> "<code>_ZZN1N1fEiE1p</code>":
-    encoding of N::f:p (first local mangled entity)
-<li> "<code>_ZZN1N1fEiEs&lt;hashed-literal></code>":
-    encoding of N::f:"IA-64 C++ ABI"
+    encoding of N::f::p (first local mangled entity)
+<font color=red>
+<li> "<code>_ZZN1N1fEiEs</code>":
+    encoding of N::f::"IA-64 C++ ABI" (no discriminator)
+</font>
 <li> "<code>_ZNZN1N1fEiE1X1gE</code>":
-    encoding of N::f:X::g()
+    encoding of N::f::X::g()
     (third local mangled entity used as a class-qualifier)
 </ul>
+<font color=red>
+See additional examples in the
+<a href=abi-examples.html#mangling-ex>ABI examples</a> document.
+</font>
 
 
 
@@ -4537,110 +4611,6 @@ For example:
 </pre></code>
 
 
-<p>
-<a name=mangling-examples>
-<h4> 5.1.8 Examples </h4>
-
-<p>
-In the table below,
-<code>Ret?</code> in the source name indicates a function for which
-the return type is not part of the mangling.
-<code>Type?</code> indicates a data object
-(for which the type is never part of the mangling).
-Spaces appear in some of the mangled names to assist a human parser --
-they are not part of the actual mangled name, and should be ignored.
-
-<p>
-<table border=1 cellpadding=4>
-<tr><th> Mangled name <br><i>(ignore spaces)</i> </th>
-<th> Source name </th> </tr>
-
-<tr class=small><td> f </td>
-<td> C function or variable "f" or a global namespace variable "f"</td></tr>
-
-<tr class=small><td> _Z1fv </td>
-<td> Ret? f(); <i>or</i> Ret? f(void); </td></tr>
-
-<tr class=small><td> _Z1fi </td>
-<td> Ret? f(int); </td></tr>
-
-<tr class=small><td> _Z3foo3bar </td>
-<td> Ret? foo(bar); </td></tr>
-
-<tr class=small><td> _Zrm1XS_ </td>
-<td> Ret? operator%(X, X); </td></tr>
-
-<tr class=small><td> _ZplR1XS0_ </td>
-<td> Ret? operator+(X&, X&); </td></tr>
-
-<tr class=small><td> _ZlsRK1XS1_ </td>
-<td> Ret? operator&lt;&lt; (X const&, X const&);
-<br> (Note: X is S_, X const is S0_)
-</td></tr>
-
-<tr class=small><td> _ZN3FooIA4_iE3barE </td>
-<td> Type? Foo&lt;int[4]>::bar; </td></tr>
-
-<tr class=small><td> _Z1fIiEvi </td>
-<td> void f&lt;int>(/*nondependent*/int);
-<br> (Note: the return type is always explicitly encoded for template
-functions taking parameters.)</td></tr>
-
-<tr class=small><td> _Z5firstI3DuoEvS0_ </td>
-<td> void first&lt;Duo>(/*nondependent*/Duo);
-<br>
-(Note: first template is S_, Duo is S0_, first<Duo>(Duo) is S1_.
-<br>Since the function parameter is not dependent, don't use T_.)
-</td></tr>
-
-<tr class=small><td> _Z5firstI3DuoEvT_ </td>
-<td> void first&lt;Duo>(/*T1=*/Duo); </td></tr>
-
-<tr class=small><td> _Z3fooIiPFidEiEvv </td>
-<td> void foo&lt;int,int(*)(double),int>();
-<br>(Note: return type encoded for template function.)</td></tr>
-
-<tr class=small><td> _ZN1N1fE </td>
-<td> Type? N::f </td></tr>
-
-<tr class=small><td> _ZN6System5Sound4beepEv </td>
-<td> Ret? System::Sound::beep(); </td></tr>
-
-<tr class=small><td> _ZN5Arena5levelE </td>
-<td> Type? Arena::level; </td></tr>
-
-<tr class=small><td> _ZN5StackIiiE5levelE </td>
-<td> Type? Stack&lt;int, int>::level; </td></tr>
-
-<tr class=small><td> _Z1fI1XE vPV N1AIT_E1TE </td>
-<td> void f&lt;X>(A&lt;/*T1=*/X>::T volatile*); </td></tr>
-
-<tr class=small><td>
-_ZngILi42EE v N1A I XplT_Li2EE E 1TE </td>
-<td> void operator-&lt;/*int J=*/42>(A&lt;J+2>::T); </td></tr>
-
-<tr class=small><td> _Z4makeI7FactoryiE T_IT0_E v </td>
-<td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
-<br> (Note: T_ = factory (a template), T0_ = int) </td></tr>
-
-<tr class=small><td> _Z3foo 5Hello5WorldS0_S_ </td>
-<td> void foo(Hello,World,World,Hello)
-<br> (Note: Hello is S_, World is S0_, foo(...) is S1_)
-</td></tr>
-
-<tr class=small><td> _Z3fooPM2ABi </td>
-<td> foo(int AB::**)
-<br> // M is a pointer, P adds another level </td></tr>
-
-<tr class=small><td> _ZlsRSoRKSs </td>
-<td> operator&lt;&lt; (std::ostream&,std::string const&) </td></tr>
-
-<tr class=small><td> _ZTI7a_class </td>
-<td>  typeid(class a_class)  </td></tr>
-
-</table>
-
-
 <p> <hr> <p>
 <a name=vague>
 <h3> 5.2 Vague Linkage </h3>
@@ -4661,6 +4631,14 @@ gABI to remove duplicates.
 We will refer to this simply as using a COMDAT group,
 and specify the symbol to be used to identify duplicates in the
 <code>SHT_GROUP</code> section.
+<font color=red>
+<i>
+COMDAT groups are a new gABI feature specified during the IA-64 ABI
+definition, and may not be implemented everywhere immediately.
+See the separate <a href=abi-examples.html#vague>ABI examples</a>
+document for a discussion of alternatives pending COMDAT implementation.
+</i>
+</font>
 
 <p>
 Note that nothing in this section should be construed to require COMDAT
@@ -4709,13 +4687,11 @@ used to ensure that they are initialized only once
 (see <a href=once-ctor>3.3.2</a>).
 If the object is emitted using a COMDAT group,
 the guard variable must be too.
-<font color=red>
 It is suggested that it be emitted in the same COMDAT group as the
 associated data object,
 but it may be emitted in its own COMDAT group,
 identified by its name.
 In either case, it must be weak.
-</font>
 
 
 <p>
@@ -4725,8 +4701,8 @@ In either case, it must be weak.
 <p>
 The virtual table for a class is emitted in the same object containing
 the definition of its <i>key function</i>,
-i.e. the first virtual function that is not inline at the point of
-class definition.
+i.e. the first <font color=red>non-pure</font> virtual function
+that is not inline at the point of class definition.
 If there is no key function, it is emitted everywhere used.
 The emitted virtual table includes the full virtual table group for the class,
 any new construction virtual tables required for subobjects,
@@ -4763,7 +4739,10 @@ are emitted with other than the ABI-defined complete type mangled names;
 an implementation may choose to emit them as local static objects,
 or in COMDAT groups with implementation-defined names and COMDAT identifiers.
 The RTTI name NTBS objects are emitted in separate COMDAT groups
-identified by the NTBS mangled names.
+identified by the NTBS mangled names
+<font color=red>
+as weak symbols.
+</font>
 
 <p>
 <a name=vague-ctor></a>
@@ -4897,6 +4876,28 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[000707]</font>
+Introduce consistent type_info field names (2.9.5).
+Removed vmi flags for publicly/non-publicly inherited bases (2.9.5).
+Collect all construction/destruction APIs in one section (3.3).
+Added one-time initialization API (3.3.2).
+Vector construction/destruction routines are extern "C" (3.3.3).
+Added routines for vector construction/destruction (3.3.3).
+Added copy construction runtime API (3.3.3).
+Make Alex's changes in mangling grammar (5.1).
+Add &lt;special-name> cases for covariant override thunks (5.1.4).
+Allow expressions as array type dimensions (5.1.5).
+Discuss vague linkage for virtual function override thunks (5.2.6).
+
+<p>
+<font color=blue>[000621]</font>
+Add scope section 1.4.
+Specify guard variables and vague linkage of static data (5.2.2)
+and instantiated templates (5.2.4).
+Clarify vcall offsets (2.5.3), VTT (2.6.2),
+mangling compression rules (5.1.7), and mangling examples.
 
 <p>
 <font color=blue>[000511]</font>
