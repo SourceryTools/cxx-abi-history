@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 30 December 1999</i>
+<i>Revised 3 January 2000</i>
 
 </center>
 
@@ -315,7 +315,7 @@ allocate as follows:
 
 	<p>
 	If D is a base class, this step allocates only its non-virtual
-	part, i.e. excluding any direct or indirect bases.
+	part, i.e. excluding any direct or indirect virtual bases.
 
 	<p>
 	Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
