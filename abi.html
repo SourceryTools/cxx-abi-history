@@ -153,6 +153,11 @@ which are defined in the <i><b>Definitions</b></i> section below.
 <h4> Recent Revisions </h4>
 
 <p>
+<font color=blue>[020326]</font>
+Clarify wording in <code>__cxa_demangle</code> memory management
+specification.
+
+<p>
 <font color=blue>[001110]</font>
 
 <p>
@@ -3858,14 +3863,19 @@ Meaning of error indications:
 <p>
 <b>Memory management</b>: 
 <ul>
-<li> If buf is a null pointer,
-    <code>__cxa_demangle</code> allocates a new buffer with malloc.
-    It stores the size of the buffer in *n, if n is nonnull.
-<li> If buf is not a null pointer,
-    it must have been allocated with malloc.
-    If the array turns out to be too small,
-    <code>__cxa_demangle</code> may use realloc to increase its size.
-    The new size will be stored in *n.
+<li> If <code>buf</code> is a null pointer,
+    <code>__cxa_demangle</code> allocates a new buffer with
+    <code>malloc</code>.  It stores the size of the buffer in
+    <code>*n</code>, if <code>n</code> is not <code>NULL</code>.
+
+ <li>If <code>buf</code> is not a null pointer, it must have been
+    allocated with <code>malloc</code>.  If <code>buf</code> is not
+    big enough to store the resulting demangled name,
+    <code>__cxa_demangle</code> must either a) call <code>free</code>
+    to deallocate <code>buff</code> and then allocate a new buffer
+    with <code>malloc</code>, or b) call <code>realloc</code> to
+    increase the size of the buffer.  In either case, the new buffer
+    size will be stored in <code>*n</code>.
 </ul>
 
 
@@ -5035,6 +5045,11 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[020326]</font>
+Clarify wording in <code>__cxa_demangle</code> memory management
+specification.
 
 <p>
 <font color=blue>[020220]</font>
