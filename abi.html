@@ -3413,16 +3413,17 @@ extern "C" void __cxa_vec_cctor (
 	    void *src_array,
 	    size_t element_count,
 	    size_t element_size,
-	    void (*constructor) (void *, void *),
+	    void (*constructor) (void *destination, void *source),
 	    void (*destructor) (void *));
 </pre></code></dt>
 <dd>
 Given the (data) addresses of a destination and a source array,
 an element count and an element size,
 call the given copy constructor to copy each element from the
-source array to the destination array.
+source array to the destination array.  The copy constructor's
+arguments are the destination address and source address, respectively.
 If an exception occurs,
-call the given destructor on each (if non-NULL) and rethrow.
+call the given destructor (if non-NULL) on each copied element and rethrow.
 If the destructor throws an exception, call <code>terminate()</code>.
 The constructor and or destructor pointers may be NULL.
 If either is NULL, no action is taken when it would have been called.
