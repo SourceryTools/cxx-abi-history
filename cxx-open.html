@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 30 August 2000</i>
+<i>Revised 1 September 2000</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000901]</font>
+Closed <a href=cxx-closed.html#C19>C-19</a>.
 
 <p>
 <font color=blue>[000830]</font>
@@ -2113,96 +2117,22 @@ the buffer address will be passed in r8,
 <tr> <a name=C19></a> <td> C-19 </td>
 <td> NULL ctor/dtor API parameters </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 000806 </td>
-<td> </td>
+<td> 000831 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Allow NULL constructor/destructor parameters whereever it makes sense
 in the Section 3.3 APIs.
 </td> </tr>
-<!--
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#C19> Resolution</a></b>:
+Accepted as proposed.
 </td> </tr>
--->
 
 </table>
-
-<p>
-<font color=blue>[000806 CodeSourcery -- Mark]</font>
-The ABI doesn't say whether or not the constructor and destructor
-parameters may be NULL for many of the functions.  In some cases, it
-does say that the pointers may not be NULL.
-
-<p>
-I believe that a) the spec should explicitly specify this everywhere,
-and b) we should allow NULL pointers whenever it makes sense.  These
-are convenience routines; why not make them convenient?
-
-<p>
-For example, why not allow __cxa_vec_new2 to be used with both NULL
-constructors and destructors?  The caller should then pass in zero for
-the padding size, of course.  There's no reason to try to make these
-routines go fast -- they're just their for convenience, and the memory
-allocation/function call indirection overhead will swamp a few
-conditionals on NULL parameters.
-
-<p>
-<font color=blue><hr><p>[000824 CodeSourcery -- Mark]</font>
-Overall motiviation: there is every reason to make these functions
-convenient for use by compilers and for manual use in various kinds of
-specialized reflection-like situations, including use in debuggers.
-There is virtually no speed penalty for allowing NULL pointers in
-these functions since the tests for NULL can be performed outside of
-the loop, and the loop itself will normally function calls.
-
-<ul>
-<li>__cxa_vec_new:
-<p>
-  `constructor' and/or `destructor' may be NULL.
-<p>
-  The destructor may be NULL if and only if the padding_size is zero.
-
-<p>
-<li>__cxa_vec_new2:
-<p>
-<li>__cxa_vec_new3:
-<p>
-  `constructor' and/or `destructor' may be NULL.
-<p>
-  The destructor may be NULL if and only if the padding_size is zero.
-<p>
-  `alloc' and `dealloc' may not be NULL.
-  
-<p>
-<li>__cxa_vec_ctor:
-<p>
-  `constructor' and/or `destructor' may be NULL.
-
-<p>
-<li>__cxa_vec_dtor:
-<li>__cxa_vec_delete:
-<p>
-  `destructor' may be NULL.
-  
-<p>
-<li>__cxa_vec_delete2:
-<li>__cxa_vec_delete3:
-<p> 
-  `destructor' may be NULL.
-<p>
-  `dealloc' may not be NULL.
-
-<p>
-<li>__cxa_vec_cctor:
-<p>
-  `constructor' and/or `destructor' may be NULL.
-
-</ul>
-
 
 
 
