@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 17 August 1999</i>
+<i>Revised 25 August 1999</i>
 
 </center>
 
@@ -25,6 +25,11 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990825]</font>
+Additions to <a href=#A6>A-6</a>, <a href=#B6>B-6</a>,
+<a href=#C5>C-5</a>, <a href=#D0>D-*</a>.
 
 <p>
 <font color=blue>[990813]</font>
@@ -364,6 +369,350 @@ Sun has provided a description,
 <a href=Sun-RTTI-990812.html>in a separate page</a>,
 describing their implementation.
 They are filing for a patent on the algorithms described.
+
+<p>
+<font color=blue>[990819 EDG -- Daveed]</font>
+
+<p>
+<h5>Run-time type information</h5>
+
+<p>
+The C++ programming language definition implies that information about
+types be available at run time for three distinct purposes:
+<ol type=a>
+<li> to support the typeid operator,
+<li> to match an exception handler with a thrown object, and
+<li> to implement the dynamic_cast operator.
+</ol>
+(c) only requires type information about polymorphic class types,
+but (a) and (b) may apply to other types as well;
+for example, when a pointer to an int is thrown,
+it can be caught by a handler that catches "int const*".
+
+
+<p>
+<h5>Open questions</h5>
+<ul>
+<li> What is the type of base class offsets?
+<li> What is the limit on the number of classes?
+<li> Should the common dynamic_cast case be optimized by adding an entry
+	to the vtable
+	(to indicate a polymorphic base subobject appears on more than
+	one derivation path to the complete object type)?
+</ul>
+
+<p>
+<h5>Place of emission</h5>
+
+<p>
+It is probably desirable to minimize the number of places where a
+particular bit of RTTI is emitted.
+For polymorphic types, a similar problem occurs for virtual function tables,
+and hence the information can be appended at the end
+of the primary vtable for that type.
+For other types, they must presumably be emitted at the location
+where their use is implied:
+the object file containing the typeid, throw or catch.
+Basic type information (such as for "int", "bool", etc.)
+could be kept in the run-time support library but the benefits
+of that may be limited.
+
+
+<p>
+<h5>The typeid operator</h5>
+
+<p>
+The typeid operator produces a reference to a std::type_info structure
+with the following public interface:
+
+<pre><code>
+  struct std::type_info {
+     virtual ~type_info();
+     bool operator==(type_info const&) const;
+     bool operator!=(type_info const&) const;
+     bool before(type_info const&) const;
+     char const* name() const;
+  };
+</pre></code>
+
+<p>
+Assuming that after linking and loading only one type_info structure is
+active for any particular type symbol,
+the equality and inequality operators can be
+written as address comparisons:
+to type_info structures describe the same type
+if and only if they are the same structure (at the same address).
+In a flat address space
+(such as that of the IA-64 architecture),
+the before() member is also easily written in terms of an address comparison.
+The only additional piece of information that is required is the
+NTBS that encodes the name.
+The type_info structure itself can hold a pointer into a read-only segment
+that contains the text bytes.
+
+
+<p>
+<h5>Matching throw expressions with handlers</h5>
+
+<p>
+When an object is thrown a copy is made of it and the type of that copy
+is TT.
+A handler that catches type HT will match that throw if:
+<ul>
+  <li> HT is equal to TT except that HT may be a reference and that HT
+	may have top-level cv qualifiers
+	(i.e., HT can be "TT cv", "TT&" or "TT cv&"); or
+  <li> HT is a reference to a public and unambiguous base type of TT; or
+  <li> HT has a pointer type to which TT can be converted by a standard
+	pointer conversion (though only public,
+	unambiguous derived-to-base conversions are permitted)
+	and/or a qualification conversion.
+</ul>
+
+<p>
+This implies that the type information must keep a description of the public,
+unambiguous inheritance relationship of a type, as well as the const
+and volatile qualifications applied to types.
+
+
+<p>
+<h5>The dynamic_cast operator</h5>
+
+<p>
+Although dynamic_cast can work on pointers and references,
+from the point of view of representation we need only to worry
+about polymorphic class types.
+Also, some kinds of dynamic_cast operations are handled at compile time
+and do not need any RTTI.
+There are then three kinds of truly dynamic cast operations:
+<ul>
+<li> dynamic_cast<void cv*>, which returns a pointer to the complete lvalue,
+<li> dynamic_cast operation from a base class to a derived class, and
+<li> dynamic_cast across the hierarchy which can be seen as a cast to
+	the complete lvalue and back to a sibling base.
+</ul>
+
+<p>
+
+<h5>RTTI layout</h5>
+
+<ol type=1>
+
+<p>
+<li>
+The RTTI layout for a given type depends on whether a 32-bit or
+64-bit mode is in effect.
+
+<p>
+<li>
+Every vtable shall contain one entry describing the offset from a
+vptr for that vtable to the origin of the object containing that vptr
+(or equivalently: to the vptr for the primary vtable).
+This entry is directly useful to implement dynamic_cast<void cv*>,
+but is also needed for the other truly dynamic casts.
+
+<p>
+<li>
+Every vtable shall contain one entry pointing to an object derived
+from std::extended_type_info; the possible types are:
+<ul>
+  <li> std::__fundamental_type_info
+  <li> std::__pointer_type_info
+  <li> std::__reference_type_info
+  <li> std::__array_type_info
+  <li> std::__function_type_info
+  <li> std::__enum_type_info
+  <li> std::__class_type_info
+  <li> std::__qualifier_type_info
+</ul>
+std::extended_type_info derives from std::type_info but adds no fields
+to the latter;
+it is introduced solely to follow the suggestion of the C++ standard.
+
+<p>
+<li>
+std::type_info contains just two pointers:
+<ul>
+  <li> its vptr
+  <li> a pointer to a NTBS representing the name of the type
+</ul>
+
+<p>
+<li>
+std::__pointer_type_info adds two fields:
+<ul>
+  <p>
+  <li> a word describing the cv-qualification of what is pointed to
+    (e.g., "int volatile*" should have the "volatile" bit set in that word)
+  <p>
+  <li> a pointer to the std::type_info derivation for the unqualified type
+    being pointed to
+</ul>
+
+<p>
+Note that the first bits should not be folded into the pointer because
+we may eventually need more qualifier bits (e.g. for "restrict").
+
+<p>
+<li>
+std::__reference_type_info is similar to std::__pointer_type_info
+but describes references.
+
+<p>
+<li>
+std::__qualifier_type_info is similar to std::__pointer_type_info
+but describes top level qualifiers as in "int const" and "char *const".
+
+<p>
+<li>
+std::__class_type_info introduces a variable length structure.
+The variable part that follows consists of a sequence of base class
+descriptions having the following structure:
+
+<pre><code>
+    struct std::__base_class_info {
+  
+       std::type_info *type; /* Null if unused. */
+       std::ptrdiff_t offset;
+       std::__base_class_index next; /* Hash table link. */
+       int is_direct: 1;
+       int is_floating: 1; /* I.e., virtual or base of virtual
+subobject. */
+       int is_virtual: 1; /* Implies is_floating. */
+       int is_shared: 1; /* Implies is_floating and the virtual
+subobject
+                            appears on multiple derivation paths. */
+       int is_accessible: 1;
+       int is_ambiguous: 1;
+
+    };
+</pre></code>
+
+<p>
+The fixed length introduction adds the following fields to
+std::type_info:
+<ul>
+  <li> a word with flags describing details about the class such as whether
+    it is a class/struct/union and whether it is polymorphic.
+  <li> a hashvalue that can be used for quick lookups in a variable length
+    structure describing base classes.
+  <li> the number of base class descriptions that follow it (a power of two).
+</ul>
+
+</ol>
+
+
+<h5>std::type_info::name()</h5>
+<p>
+The NTBS returned by this routine is the mangled name of the type.
+
+
+<p>
+<h5>The dynamic_cast algorithm</h5>
+
+<p>
+Dynamic casts to "void cv*" are inserted inline at compile time.
+So are dynamic casts of null pointers and dynamic casts that are really
+static.
+
+<p>
+This leaves the following test to be implemented in the run-time
+library for truly dynamic casts of the form "dynamic_cast<T>(v)":
+(see [expr.dynamic_cast] 5.2.7/8)
+
+<ul>
+<p>
+<li>
+If, in the most derived object pointed (referred) to by v, v points
+(refers) to a public base class sub-object of a T object [note:
+this can be checked at compile time],
+and if only one object of type T is derived
+from the sub-object pointed (referred) to by v,
+the result is a pointer (an lvalue referring) to that T object.
+
+<p>
+<li>
+Otherwise, if v points (refers) to a public base class sub-object
+of the most derived object,
+and the type of the most derived object has an
+unambiguous public base class of type T,
+the result is a pointer
+(an lvalue referring) to the T sub-object of the most derived object. 
+
+<p>
+<li>
+Otherwise, the run-time check fails.
+</ul>
+
+The first check corresponds to a "base-to-derived cast" and the second
+to a "cross cast".
+These tests are implemented by std::__dynamic_cast.
+
+<pre><code>
+   void* std::__dynamic_cast(void *sub, std::__class_type_info *src,
+                                        std::__class_type_info *dst,
+                                        std::ptrdiff_t src2dst_offset)
+   {
+  
+     // Pick up vtable pointer from given object:
+     void *vptr = *(void**)sub;
+     if (src2dst_offset>=0 && NO_VBASE(sub, vptr)) {
+       // If the type of "v" was not an accessible nonvirtual base type of
+       // "T", src2dst_offset should have been set to -1 if it was an
+       // accessible but floating base of "T" and to -2 if it was not at all
+       // an accessible base of "T".
+       // In addition, the vtable should contain an entry to indicate that
+       // the complete object has no virtual bases (e.g., a count of the
+       // vbase locator entries).
+       return (char*)sub+src2dst_offset;
+     } else {
+       // Slower case
+       void *result = 0;
+       if (src2dst_offset==-1) {
+         // Possibly a "floating" base-to-derived cast:
+         result = floating_base2derived(sub, src, dst);
+       }
+       if (result==0) {
+         // The base-to-derived case did not succeed, so we should attempt
+         // the cross-cast (which is really a derived-to-base cast from the
+         // complete object):
+         result = derived2base(complete, dst);
+       }
+     }
+     return result;
+   }
+</pre></code>
+
+<p>
+<h5>The exception handler matching algorithm</h5>
+
+<pre><code>
+   bool __eh_match(std::type_info *thrown_type,
+                   std::type_info *handled_type) {
+     if (thrown_type == handled_type) {
+       return true;
+     } else if (IS_REFTYPE(handled_type)) {
+       std::type_info *caught_type = REMOVE_REFTYPE(handled_type);
+       if (IS_CVQUAL(caught_type)) {
+         caught_type = REMOVE_CVQUAL(caught_type);
+       }
+       return thrown_type==caught_type;
+     } else if (IS_PTRTYPE(handled_type)) {
+       cvqual_match(&thrown_type, &handled_type);
+       if (thrown_type==handled_type) {
+         return true;
+       } else if (IS_CLASSTYPE(thrown_type) &&
+		  IS_CLASSTYPE(handled_type)) {
+         return derived2base_check(thrown_type, handled_type);
+       } else {
+         return false;
+       }
+     } else {
+       return false;
+     }
+   }
+</pre></code>
+
 
 <p>
 <table border=on cellpadding=3>
@@ -1704,6 +2053,118 @@ Extensive discussion of this issue produced the observations that
 Christophe will look at the implications of these observations.
 Others should too.
 
+<p>
+<font color=blue>[990820 IBM -- Brian]</font>
+
+<p>
+<h5> Re: vtable layout, sharing vtable offsets </h5>
+<p>
+I'm going to write the exam on this to see how well I
+am understanding the issue.
+
+<p>
+If I understand it correctly,
+the proposal under consideration is tied to the decision to replicate
+virtual function entries in vtables.
+It requires replicating in the vtable for base class B all virtual functions
+that are overridden in B; more replication that this implies will
+be wasted since a function is always called through a vtable
+of an introducing or overriding class.
+
+<p>
+When a non-pure virtual function X::f() is compiled it is possible to
+determine whether it requires a secondary entry point.
+It will require one if that function may be virtually called
+(i.e., is the final overrider)
+in any class in which f() appears in more than one vtable;
+this needs to be decidable knowing only X.
+A rule that works is: X::f() overrides one or more f()'s
+from base classes of X,
+and either one or more of those base classes are
+virtual or X fails to share its vptr with all instances of them.
+
+<p>
+[Though a virtual base may happen to share its vptr with X
+in an object of complete type X,
+that relationship may fail to hold in further derived classes,
+so we need to generate the secondary entry point just in case.]
+["Sharing a vptr" is the condition under which no adjustment is necessary;
+if the bases involved are all nonvirtual then
+subsequent class derivation won't change this.]
+
+<p>
+Each vtable that requires a nonzero adjustment will have a
+"convert to X" offset mixed in with its virtual base offsets.
+ It is necessary that a "convert to X" appears in the same position in
+each vtable that references X::f()'s secondary entry;
+it is desirable that the "convert to X" also be unique in each vtable.
+
+<p>
+Assume that X has nonvirtual nonprimary bases Nx (x=1,2,...),
+and virtual bases Vx, all of which have a virtual f().
+Then vtables for Nx in X,
+or in anyclass derived from X that does not further override f(),
+will reference X::f()'s secondary entry.
+Vtables for Vx in X or any derived class where Vx
+does not share a vptr with X,
+will also reference X::f()'s secondary entry;
+note this will occur in a construction vtable even if the
+derived class does further override f().
+
+<p>
+The question, then,
+is whether a position for the "convert to X" offset can be chosen,
+knowing only X and its parentage,
+that can be used consistently in all those vtables and that won't
+collide with a "convert to Y" position chosen on account of some other
+hierarchy where Y::g() overrides an Nx::g() or Vx::g().
+
+<p>
+If Y derives from X,
+we will be able to select a "convert to Y" position that doesn't conflict,
+so we can restrict our attention to cases where X and Y are unrelated.
+Also, if the base involved is nonvirtual (Nx) then we are safe,
+because no instance of Nx will be a subobject of both X and Y,
+so no Nx vtable will require both "convert to X" and "convert to Y" offsets.
+
+<p>
+The remaining case is where X and Y are unrelated but both have
+a virtual base Vx:
+
+<code><pre>
+struct V1 { virtual void f();  virtual void g(); };
+struct Other1 { virtual void ignore1(); }
+struct X : Other1, virtual V1 { virtual void f(); }
+
+struct Y : Other1, virtual V1 { virtual void g(); }
+
+struct ZZ: X, Y { }
+</pre></code>
+
+<p>
+The vtable for N1 in ZZ does require both offsets.
+The only way I see to accomplish this is to preallocate
+an adjustment slot for each virtual function in V1.
+ That is, X::f() uses the first slot position, and Y::g() the second,
+based on the order that f() and g() are declared in V1.
+This only needs to be done in hierarchies where V1 is virtual,
+but the same offset has to be used for any Nx tables in X too.
+
+<p>
+Is this close?
+
+<p>
+<h5>Re: Concatenating vtables</h5>
+<p>
+I don't understand the comment that varying numbers of virtual
+base offsets make it impossible to concatenate vtables and refer
+to them via a single symbol.
+The only code that refers by name to X's vtable and the vtables
+of N1 in X etc. is X's constructor and destructor,
+and maybe some derived classes that find they are able to reuse some pieces.
+All that code is aware of X's declaration and can map out its tables.
+What am I missing?
+
 
 <p>
 <table border=on cellpadding=3>
@@ -2362,6 +2823,24 @@ deletion, e.g. base and member objects, automatic objects.
 There is some concern that a runtime test is sometimes required,
 but noone has yet identified why.
 
+<p>
+<font color=blue>[990819 Cygnus -- Jason]</font>
+The [above] questions the usefulness of calling op delete from the destructor.
+But it's required by the language,
+in case the derived class defines its own op delete.
+This only applies to virtual dtors, of course.
+
+<p>
+One option would be to have two dtor slots, one which performs deletion
+and one which doesn't.
+The advantage of this sort of approach would be avoiding pulling in all
+the memory management code if you never actually touch the heap.
+
+<p>
+Microsoft has a patent on this device,
+but the old Sun ABI also talks about it,
+which seems to qualify as prior art.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -2452,8 +2931,25 @@ and passes a pointer as an implicit first parameter
 
 </table>
 
-<p> <hr> <p>
+<p> <hr> <p> <a name=D0></a>
 <h3> Exception Handling Issues </h3>
+
+<p>
+For reference, we have design information as follows:
+
+<ul>
+<p>
+<li>
+<font color=blue>[990818 Intel -- Priti]</font>
+<a href=Intel-exception-990818.ppt> (PowerPoint document) </a>
+
+<p>
+<li>
+<font color=blue>[990818 HP -- Christophe]</font>
+<a href=HP-exception-990818.pdf> (PDF document) </a>
+
+</ul>
+
 
 <p>
 <table border=on cellpadding=3>
