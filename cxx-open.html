@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 30 December 1999</i>
+<i>Revised 3 January 2000</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000103]</font>
+Additions to <a href=#A17>A-17</a>.
 
 <p>
 <font color=blue>[991230]</font>
@@ -694,7 +698,6 @@ if its only non-vptr data is in its virtual base classes?
 </tr>
 
 <tr class=small> <a name=A17></a> <td> A-17 </td>
-<tr> <td colspan=7>
 <td> Primary indirect virtual base allocation </td>
 <td> data </td>
 <td> open </td>
@@ -702,6 +705,7 @@ if its only non-vptr data is in its virtual base classes?
 <td> 991228 </td>
 <td>  </td>
 </tr>
+<tr> <td colspan=7>
 <b>Summary</b>:
 When a nearly empty virtual base class A is allocated as the primary
 base class of class B, and then B is allocated as a base class of C,
@@ -711,6 +715,52 @@ as its allocation in C?
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[991228 SGI -- Jim]</font>
+Specific wording for a proposed change is in the
+<a href=abi-layout.html#q4>data layout draft</a>.
+
+<p>
+<font color=blue>[000103 CodeSourcery -- Mark]</font>
+I think the current proposal for allocating virtual bases is still a
+little suboptimal.  In particular, given:
+<code><pre>
+  struct A { void f(); };
+  struct B : virtual public A { };
+  struct C : virtual public A, virtual public B { };
+</code></pre>
+
+we'll give `C' a larger size than for:
+
+<code><pre>
+  struct C : virtual public B, virtual public A { };
+</code></pre>
+
+where we'll reuse the `A' part of `B' rather than reallocating it.
+  
+<p>
+I know that ordering can already affect size (principally because of
+alignment issues) but I think that in this case we might as well not
+punish programmers for choosing the "wrong" ordering.
+
+<p>
+I think we should change the green A-17 proposed resolution to
+indicate that if one of the virtual bases is a (direct or indirect)
+primary base of one of the other virtual bases then we need not
+allocate a fresh copy.
+
+<p>
+FWIW, it turns out to actually be easier in GCC to code the more
+generous version.
+
+<p>
+The algorithm to do this is linear in the size of the hierarchy: just
+iterate through the inheritance DAG marking all primary bases.  Any
+virtual base classes that remain unmarked need to be allocated in step
+III.  A slight formalization of this sentence might be a good way to
+express which bases to choose for III.
+
 
 
 <p>
@@ -723,7 +773,6 @@ as its allocation in C?
 </tr>
 
 <tr class=small> <a name=A18></a> <td> A-18 </td>
-<tr> <td colspan=7>
 <td> Virtual base alignment </td>
 <td> data </td>
 <td> open </td>
@@ -731,6 +780,7 @@ as its allocation in C?
 <td> 991228 </td>
 <td>  </td>
 </tr>
+<tr> <td colspan=7>
 <b>Summary</b>:
 Should virtual bases have a different effect on class alignment than
 other components?
