@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 3 December 1999</i>
+<i>Revised 29 December 1999</i>
 
 </center>
 
@@ -40,6 +40,10 @@ C++ ABI for IA-64: Data Layout
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[991229]</font>
+Clarify definition of nearly empty class, layout of virtual bases.
 
 <p>
 <font color=blue>[991203]</font>
@@ -85,8 +89,19 @@ an object O of that type:
 </ul>
 
 <p> For purposes internal to the specification,
-we also specify the <i>data size</i> of an object, <i>dsize</i>(O),
+we also specify:
+
+<ul>
+<li> <i>dsize</i>(O):
+the <i>data size</i> of an object,
 which intuitively is sizeof(O) minus the size of tail padding.
+
+<p>
+<li> <i>nvsize</i>(O):
+the <i>non-virtual size</i> of an object,
+which intuitively is dsize(O) minus the size of virtual bases.
+
+</ul>
 
 <p> <hr> <p>
 <a name=definitions>
@@ -106,14 +121,22 @@ the constraint that &X modulo A == 0.
 <p>
 <dt> <i>empty class</i> </dt>
 <dd>
-A class with no non-static data members,
+A class with no non-static data members other than zero-width bitfields,
 no virtual functions, no virtual base classes,
 and no non-empty non-virtual base classes.
 
 <p>
 <dt> <i>nearly empty class</i> </dt>
 <dd>
-A class, the objects of which contain only a Vptr.
+A class that:
+<ul>
+<li> has no non-static data members other than zero-width bitfields,
+<li> has no base classes that are not either empty or nearly empty,
+<li> has at most one nearly empty base class, and
+<li> has at least one virtual function, possibly inherited from a base class.
+</ul>
+
+Such a class contains only a Vptr.
 
 <p>
 <dt> <i>polymorphic class</i> </dt>
@@ -136,7 +159,7 @@ the unique base class (if any) with which it shares the Vptr at offset 0.
 
 The size and alignment of C POD types is as specified by the base (C) ABI.
 Type bool has size and alignment 1.
-All of these types have data size equal to their size.
+All of these types have data size and non-virtual size equal to their size.
 (We ignore tail padding for PODs because the Standard does not allow us
 to use it for anything else.)
 
@@ -149,7 +172,8 @@ to use it for anything else.)
 A pointer to data member is an offset from the base
 address of the class object containing it,
 represented as a <code>ptrdiff_t</code>.
-It has the size, data size, and alignment of a <code>ptrdiff_t</code>.
+It has the size, data size, non-virtual size, and alignment
+of a <code>ptrdiff_t</code>.
 
 <p>
 A pointer to member function is a pair <ptr, adj> as follows:
@@ -171,9 +195,9 @@ A pointer to member function is a pair <ptr, adj> as follows:
 </dl>
 
 <p>
-It has the size, data size, and alignment
+It has the size, data size, non-virtual size, and alignment
 of a class containing those two members, in that order.
-(For 64-bit IA-64, that will be 16, 16, and 8 bytes respectively.)
+(For 64-bit IA-64, that will be 16, 16, 16, and 8 bytes respectively.)
 
 
 
@@ -201,7 +225,12 @@ Layout (of type C) is done using the following procedure.
 	   It is the first non-virtual polymorphic base class, if any,
 	   or else the first nearly empty virtual base class.
 	   Allocate it at offset zero, and set
-	   sizeof(C) to sizeof(B), align(C) to align(B), dsize(C) to dsize(B).
+	   sizeof(C) to sizeof(B), align(C) to align(B), dsize(C) to nvsize(B).
+
+	   <p>
+	   This step allocates only B's non-virtual part,
+	   i.e. excluding any direct or indirect bases.
+
       <p>
       <li> Otherwise, allocate the vtable pointer for C at offset zero,
 	   and set sizeof(C), align(C), and dsize(C) to the appropriate
@@ -235,10 +264,14 @@ allocate as follows:
 	required alignment).
 
 	<p>
-	Update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
+	If D is a base class, this step allocates only its non-virtual
+	part, i.e. excluding any direct or indirect bases.
+
+	<p>
+	Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
 	Update align(C) to max (align(C), align(D)).
 	If D is a base class (not empty in this case),
-	update dsize(C) to offset(D)+dsize(D).
+	update dsize(C) to offset(D)+nvsize(D).
 	If D is a data member,
 	update dsize(C) to max (offset(D)+dsize(D), offset(D)+1).
 
@@ -265,14 +298,18 @@ allocate as follows:
 
   </ol>
 
+  <p>
+  After all such components have been allocated,
+  set nvsize(C) = dsize(C).
+
 <p>
 <li> <h5> Virtual Base Allocation </h5>
 <p>
-Finally allocate any virtual base classes
+Finally allocate any direct or indirect virtual base classes
 (except one selected as the primary base class in I-2a, if any)
 as we did non-virtual base classes in step II-1,
-in declaration order.
-Update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
+in depth-first (in the inheritance graph) declaration order.
+Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
 If non-empty, also update align(C) and dsize(C) as in II-1.
 
 <p>
