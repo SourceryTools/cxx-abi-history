@@ -12,7 +12,7 @@
 <BODY>
 
 <hr />
-<h1>Itanium C++ ABI ($Revision: 1.80 $)</h1>
+<h1>Itanium C++ ABI ($Revision: 1.81 $)</h1>
 <p> <hr> <p>
 
 <h2> Contents </h2>
@@ -3740,10 +3740,13 @@ in which case the user just doesn't get any detailed error information.
 <b>Behavior</b>:
 The return value is a pointer to a null-terminated array 
 of characters, the demangled name.
-Ambiguities are possible between extern "C" object names and internal
-built-in type names,
+Ambiguities are possible between extern "C" object names and type 
+manglings,
 e.g. "i" may be either an object named "i" or the built-in "int" type.
-Such ambiguities should be resolved to user names over built-in names.
+Such ambiguous arguments are assumed to be type manglings.  If the user has 
+a set of external names to demangle, they should check that the names are
+in fact mangled (that is, begin with "_Z") before passing them to 
+<code>__cxa_demangle</code>.
 
 <p>
 If there is an error in demangling, the return value is a null pointer.
@@ -4953,9 +4956,13 @@ unwind table location.
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
 
-<p>This version of this document is $Revision: 1.80 $.  No special
+<p>This version of this document is $Revision: 1.81 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[050211]</font>
+Reverse treatment of ambiguous arguments to __cxa_demangle (3.4).
 
 <p>
 <font color=blue>[041118]</font>
