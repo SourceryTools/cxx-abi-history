@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 1 July 1999</i>
+<i>Revised 27 July 1999</i>
 
 </center>
 
@@ -401,6 +401,9 @@ The standard constrains ordering of class members in memory only if
 they are not separated by an access clause.
 Do we use an access clause as an opportunity to fill the gaps left by padding?
 </td> </tr>
+<b>Resolution</b>:
+See separate writeup of <a href=abi-layout.html>Data Layout</a>.
+</td> </tr>
 
 </table>
 
@@ -467,6 +470,13 @@ This is interpreted with the following special cases:
 </ol>
 After allocation is complete,
 the size is rounded up to a multiple of alignment (with tail padding).
+
+<p>
+<font color=blue>[990722 all]</font>
+The precise placement of empty bases when they don't fit at offset zero
+remains imprecise in the above.
+Accordingly, a precise layout algorithm is described in
+a separate writeup of <a href=abi-layout.html>Data Layout</a>.
 
 <p>
 <table border=on cellpadding=3>
@@ -551,8 +561,201 @@ A translator with control over both caller and callee may choose to optimize.
 <p> <hr> <p>
 <h3> B.  Virtual Function Handling Issues </h3>
 
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> B-2 </td>
+<td> Covariant return types </td>
+<td> call </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 990722 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+There are several methods for adjusting the 'this' pointer of the
+returned value for member functions with covariant return types.
+We need to decide how this is done.
+Return thunks might be especially costly on IA64,
+so a solution based on returning multiple pointers may prove more interesting.
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Provide a separate Vtable entry for each return type.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990610 Matt]</font>
+One possibility is to have two Vtable entries,
+which might point to different functions, different entrypoints,
+or a real entrypoint and a thunk.
+Another is to return two result pointers (base/derived),
+and have the caller select the right one.
+
+<p>
+<font color=blue>[990715 All]</font>
+Daveed presented his multiple-return-value scheme,
+including an example that involved virtual base classes,
+return values that are pointers to nonpolymorphic classes,
+and other equally horrible things.
+
+<p>
+Consensus: we need to get the horrible cases correct,
+but speed only matters in the simple case.
+The simple case: class B has a virtual function f returning a B1*
+and class D has a virtual function f returning a D1*,
+where all four classes are polymorphic,
+B is a primary base of D, and B1 is a primary base of D1.
+(The really important case is where B1 is B and D1 is D,
+but that simplification doesn't make any difference.)
+
+<p>
+Jason: Would the usual multiple-entry-point scheme work just as well?
+That is, would it be just as fast as Daveed's scheme in the simple case,
+and still preserve enough information for the more complicated cases?
+It appears so, but we don't have a proof.
+Jason will try to provide one.
+
+
+<p>
+<font color=blue>[990716 Cygnus -- Jason]</font>
+Proof?
+You always know what types a given override must be able to return,
+and you know how to convert from the return type to those base types.
+You know from the entry point which type is desired.
+Seems pretty straightforward to me.
+
+
+
+<p>
+<font color=blue>[990716 Cygnus -- Jason]</font>
+The alternative I was talking about yesterday goes something like this:
+
+<p>
+When we have a non-trivial covariant return situation,
+we create a new entry in the vtable for the new return type.
+The caller chooses which vtable entry to use based on the type they want.
+
+<p>
+This could be implemented several ways,
+at the discretion of the vendor:
+
+<ol>
+<p>
+<li>
+Multiple entry points to one function,
+with an internal flag indicating which type to return.
+<p>
+<li>
+Thunks which intercept the function's return and modify the return value.
+Note that unlike the case of calling virtual functions,
+for covariant returns we always know which adjustments will be needed,
+so we don't have to pay for a long branch.
+We do, however, lose the 1-1 correspondence between calls and returns,
+which apparently affects performance on the Pentium Pro.
+<p>
+<li>
+Function duplication.
+</ol>
+
+<p>
+The advantage of this approach to the complex case is that we don't have to
+do a dynamic_cast when faced with multiple levels of virtual derivation.
+It is also strictly simpler;
+Daveed's model already requires something like
+this in cases of multiple inheritance.
+
+<p>
+Of course, we can always mix and match;
+we could choose to only do this in cases of virtual inheritance,
+or use Daveed's proposal and do this only in
+cases of repeated virtual inheritance.
+In that case, the multiple returns
+would just be an optimization for the single virtual inheritance case.
+
+<p>
+Since we don't seem to care about the performance of
+anything but single nonvirtual inheritance,
+it seems simpler not to bother with multiple returns.
+
+<p>
+The remaining question is how to handle the case of nontrivial
+nonvirtual inheritance:
+do we use multiple slots or have the caller do the adjustment?
+My inclination is to have the caller adjust.
+
+<p>
+WRT patents,
+the idea of having the function return the base-most class and having
+the caller adjust is parallel to the patented Microsoft scheme whereby
+they pass the base-most class as the 'this' argument to virtual functions,
+but the word 'return' does not appear anywhere in the patent,
+so it seems safe.
+
+
+<p>
+<font color=blue>[990722 All]</font>
+The group was generally agreed that the simplicity of multiple entries
+in the vtable outweighed any space/performance advantage of more
+complex schemes (e.g. the method Daveed described on 15 July).
+Discussion focussed on whether it is worthwhile to eliminate some of
+the entries in cases where they are unnecessary because the caller
+knows the required conversion,
+namely when the return type has a unique non-virtual subobject of the
+original return type.
+
+<p>
+Agreement was reached to avoid the complication of eliminating some of
+the Vtable entries.
+Thus, the Vtable will have one entry for each accessible return type of
+a covariant virtual function.
+These may be implemented in a variety of ways,
+e.g. duplicated functions, separate entrypoints, or stubs,
+and the ABI need not specify the choice.
+The location of the Vtable entries is part of the separate Vtable
+layout issue B-6.
+
 <p> <hr> <p>
 <h3> C.  Object Construction/Destruction Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <td> C-8 </td>
+<td> Returning classes with non-trival copy constructors </td>
+<td> call </td>
+<td> closed </td>
+<td> All </td>
+<td> 990625 </td>
+<td> 990722 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How do we return classes with non-trivial copy constructors?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+The caller allocates space,
+and passes a pointer as an implicit first parameter
+(prior to the implicit <i>this</i> parameter).
+</td> </tr>
+
+</table>
 
 <p> <hr> <p>
 <h3> D.  Exception Handling Issues </h3>
