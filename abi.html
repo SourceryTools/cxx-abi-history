@@ -3219,13 +3219,11 @@ extern "C" void * __cxa_vec_new2 (
 	    void (*dealloc) ( void *obj ) );
 </pre></code></dt>
 <dd>
-Same as <code>__cxa_vec_new</code>,
-except that the given functions are used for allocation/deallocation
-instead of the default new/delete functions.
-If <code>dealloc</code> throws an exception,
-the result is undefined.
-The <code>alloc</code> and <code>dealloc</code> pointers may not be
-NULL.
+Same as <code>__cxa_vec_new</code>, except that the given functions
+are used for allocation/deallocation instead of the default new/delete
+functions.  If <code>dealloc</code> throws an exception,
+<code>std::terminate</code> is called.  The <code>alloc</code> and
+<code>dealloc</code> pointers may not be NULL.
 </dd>
 
 <dt><code><pre>
@@ -3239,14 +3237,8 @@ extern "C" void * __cxa_vec_new3 (
 	    void (*dealloc) ( void *obj, size_t size ) );
 </pre></code></dt>
 <dd>
-Same as <code>__cxa_vec_new</code>,
-except that the given functions are used for allocation/deallocation
-instead of the default new/delete functions.
-The deallocation function takes both the object address and its size.
-If <code>dealloc</code> throws an exception,
-the result is undefined.
-The <code>alloc</code> and <code>dealloc</code> pointers may not be
-NULL.
+Same as <code>__cxa_vec_new2</code> except that the deallocation
+function takes both the object address and its size.
 </dd>
 
 <dt><code><pre>
@@ -4909,6 +4901,12 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[030518]</font>
+Specify behavior of <code>__cxa_vec_new2</code> and
+<code>__cxa_vec_new3</code> when the deallocation function throws an
+exception.
 
 <p>
 <font color=blue>[030518]</font>
