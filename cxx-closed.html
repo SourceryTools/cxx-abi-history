@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 13 March 2000</i>
+<i>Revised 30 March 2000</i>
 
 </center>
 
@@ -2010,6 +2010,299 @@ resolve is whether to keep the two flags that Jason is unsure about.
 We will tentatively keep the has-public-base flag.
 Nathan has an action item to validate its usefullness when he
 implements.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A24></a> <td> A-24 </td>
+<td> RTTI for incomplete types </td>
+<td> data </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 000126 </td>
+<td> 000330 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How does RTTI represent incomplete types?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A24> Resolution</a></b>:
+Use class_type_info distinct from the complete type copy,
+add a flag to pointer_type_info if it points to incomplete type RTTI,
+and do mangled name comparison if an incomplete pointer is involved.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000126 CodeSourcery -- Nathan]</font>
+The amended (25th Jan) RTTI specification says:
+<blockquote>
+    Note that the full structure described by an RTTI descriptor may
+    include incomplete types not required by the Standard to be completed,
+    although not in contexts where it would cause ambiguity.
+</blockquote>
+
+<p>
+I don't believe this is the case,
+the example I posted a couple of weeks back pointed this out.
+Here it is, in a slightly more compact form
+<code><pre>
+        struct A;
+        struct B;
+
+        int main ()
+        {
+          try {
+            throw (B **)0;
+          } catch (A const * const *) {
+            abort ();
+          } catch (B const * const *) {
+            ;//ok
+          } catch (...) {
+            abort ();
+          }
+        }
+</code></pre>
+
+<p>
+I believe this is well formed and should not abort.
+The RTTI document indicates that `typeid (A const * const *)' and
+`typeid (B const * const *)' will produce __pointer_type_info chains
+that end at a weak symbol reference for A and B respectively.
+These will both resolve to zero.
+How is catch matching able to determine the difference between
+`A const * const *' and `B const * const *' under these circumstances?
+If this is a shortcoming of the ABI,
+or considered a defect in the standard, it should be documented.
+
+<p>
+There seems to be no discussion of this case.
+
+<p>
+<font color=blue><hr><p>[000127 All]</font>
+We decided on Thursday that this can be handled by not emitting info
+for A and B, just referring to them using weak references.
+The EH matcher will never look past the inner pointers.
+
+<p>
+<font color=blue><hr><p>[000128 CodeSourcery -- Nathan]</font>
+I'm sorry, I'm just not getting this.
+The type_infos for `B **' and `B *' will be,
+(I'm using g++'s existing name mangling, but these are new-abi structures):
+<code><pre>
+__tiPP1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC2
+        .long   0
+        .long   __tiP1B
+
+__tiP1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC3
+        .long   0
+        .long   __ti1B  ;; not emitted, will resolve to zero
+</code></pre>
+
+<p>
+In the catch matching,
+the type_infos for `A const *const *' and `A const *' will be:
+<code><pre>
+__tiPCPC1A:
+        .long   __vt_19__pointer_type_info
+        .long   .LC1
+        .long   1
+        .long   __tiPC1A
+
+__tiPC1A:
+        .long   __vt_19__pointer_type_info
+        .long   .LC4
+        .long   1
+        .long   __ti1A ;; not emitted, will resolve to zero
+</code></pre>
+
+<p>
+and those for `B const *const *' and `B const *':
+
+<code><pre>
+__tiPCPC1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC0
+        .long   1
+        .long   __tiPC1B
+
+__tiPC1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC5
+        .long   1
+        .long   __ti1B ;; not emitted, will resolve to zero
+</code></pre>
+
+<p>
+I fail to see how the catch matcher can get different results comparing
+__tiPP1B to __tiPCPC1A as opposed to comparing __tiPP1B to __tiPCPC1B.
+They both look like qualification conversions of pointers to pointers
+to incomplete type.
+In the first case we'll end up comparing __tiP1B to __tiPC1A,
+which still is a valid qualification conversion,
+then have two NULL pointers for the pointed to types,
+which somehow we have to tell apart.
+In the second case we'll end up comparing __tiP1B to __tiPC1B,
+and again have two NULL pointers for the pointed to types,
+but this time we have to consider them the same type.
+I don't see anything in [conv.qual] saying that qualification
+conversions don't have to deal with incomplete types.
+N.B.: old-abi g++ seg faults on the above code because it does wander
+into the NULL pointers.
+
+<p>
+<font color=blue><hr><p>[000129 Cygnus -- Jason]</font>
+Good point.  I was forgetting about multi-level qualification conversions.
+
+<p>
+I think that leaves us with something like what EDG does now:
+namely, comparisons are done by comparing the addresses of
+one-byte commons rather than of the type_info nodes themselves.
+Then we could emit incomplete info in one file and complete info in
+another file and they would compare the
+same because both refer to the same ID proxy.
+
+<p>
+We could mangle the complete and incomplete versions differently,
+so they would not be combined by the linker.
+
+<p>
+This would also change how we refer to type_infos;
+under the current scheme,
+references to type_infos in the EH type table need to be via
+relocs that will be resolved by the dynamic linker at runtime.
+If we don't need to compare addresses,
+we could use gp-relative references.
+Of course,
+we'd still have the absolute references in the type_infos to the ID proxies,
+so we're no better off.
+
+<p>
+<font color=blue><hr><p>[000130 CodeSourcery -- Nathan]</font>
+There's a bit of strangeness with loading & unloading a DSO which contains
+the complete definition of `struct A',
+into an executable which has the incomplete info.
+That too is in the original email.
+If both DSO and executable have __tiP1A (struct A *),
+they'll be merged, presumably with the DSO's copy ignored.
+However, the __tiP1A in the executable will point at the
+proxy incomplete A type_info
+(which will have already been filled with a weak NULL for its target).
+Somehow we have to arrange that the proxy is altered to now point at
+the __ti1A (struct A) type_info that the DSO supplied.
+If we don't do that, throwing `struct A *' in the DSO
+(which is valid, `cos the DSO source had complete information),
+will throw the __tiP1A in the executable which points to incomplete.
+Hence we wont find any base conversions if we're trying to catch a base of A.
+
+<p>
+<font color=blue><hr><p>[000203 All]</font>
+We can't seem to get around the need for an EDG-style implementation,
+i.e. a proxy for the type RTTI which is resolved by name,
+e.g. a one-byte common block referenced from the RTTI.
+We need a specific proposal for putting the reference in the RTTI,
+and a mangling for the name.
+
+<p>
+Since all we need from the common block is a distinct address,
+we may want to float a base ABI proposal for a new symbol type which is
+resolved by the linkers to a unique address without allocating storage.
+
+<p>
+<font color=blue><hr><p>[000210 All -- Matt]</font>
+The scheme we have been converging on: we extend __class_type_info
+by putting in a new field, id_proxy_ptr, of type char*.  It points
+to a one-byte comdat which serves only as a unique address.
+(We don't see a strong need to ask the base ABI group to mandate a
+magic unique-address feature in the linker.
+We may want to get input from our linker people, though.)
+
+<p>
+A class's __class_type_info object and its comdat proxy both receive
+mangled names.  We must make sure that the proxy's mangled name is the
+same for all complete and incomplete declarations of a class, that the
+mangled name of the __class_type_info object is the same for all
+complete declarations of a class, and that the mangled name of the
+__class_type_info object is different for incomplete declarations than
+for complete declarations.  One way to achieve this is to make
+__class_type_info objects for incomplete declarations static.
+
+<p>
+We add a new flag to __pointer_type_info; let's say bit 0x4.  If
+this is set, it means we have a pointer to an incomplete type (or
+pointer to pointer to incomplete type, etc.)
+
+<p>
+We compare two __class_type_infos for equality by pointer comparison
+of the id_proxy_ptr fields.  We compare two __pointer_type_infos for
+equality by looking at the addresses of the type_info objects,
+*unless* the incomplete bit is set in at least one of them.  If the
+incomplete bit is set, we have to compare the pointed-to types.  For
+everything other than classes and pointers we can just use address
+equality of the type_info objects themselves.
+
+<p>
+In response to Jason's 000129 question: we can't use gp-relative
+references for type_info objects because we're only using comdat
+proxies for __class_type_info, not for other kinds of type_info
+objects.
+
+<p>
+In response to Nathan's 000130 question: this is the reason to
+give the complete and incomplete __class_type_info objects different
+mangled names.  That way a complete __class_type_info object in a
+DSO won't be overridden by an incomplete __class_type_info object
+in the executable.
+
+<p>
+At the very end of this meeting we got a suggestion from Christophe
+for a complete different mechanism.  We agreed that we can't evaluate
+it without a writeup.  The suggestion: abandon these comdat proxies
+altogether.  Instead we have a new type_info class,
+__incomplete_class_type_info.  Comparisons involving two
+__class_type_info objects use address equality, comparisons involving
+two __incomplete_class_type_info objects, or a __class_type_info and
+an __incomplete_class_type_info, do string comparison on the name.  We
+still would have an incomplete bit in the __pointer_type_info class,
+which, again, we would use to determine whether two
+__pointer_type_info objects with different addresses might
+nevertheless represent the same pointer type.
+
+<p>
+<font color=blue><hr><p>[000309 All]</font>
+The group decided to go ahead and close this issue with the proxy solution.
+If Christophe comes up with a writeup of the alternate proposal,
+we can reopen.
+
+<p>
+<font color=blue><hr><p>[000314 SGI -- Jim]</font>
+I've incorporated the chosen scheme into the
+<a href=abi-layout.html#rtti>ABI layout</a> document.
+In working this out, though,
+I've remembered why SGI had an issue with the proxy commons,
+which is that, in large programs with lots of class types,
+they produce a lot of runtime relocation scattered through data.
+Matt and I think we understand the representation of Christophe's
+proposal, and will think about how to compare the mangled names.
+
+<p>
+<font color=blue><hr><p>[000330 All]</font>
+Adopt the proposed scheme.
+Make sure Nathan understands it.
 
 
 
@@ -6989,6 +7282,382 @@ Close this issue, and it can be reopened if a problem surfaces.
 
 <p> <hr> <p>
 <h3> F.  Name Mangling Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F1></a> <td> F-1 </td>
+<td> Mangling convention </td>
+<td> call </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 000330 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What rules shall be used for mangling names,
+i.e. for encoding the information other than the source-level object
+name necessary to resolve overloading?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F1> Resolution</a></b>:
+See the <a href=abi-layout.html#mangling>ABI Layout</a> document.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991019/28 various]</font>
+The following is assembled from several mail messages on the subject.
+
+<p>
+<h5> Objectives of the mangling scheme include:</h5>
+<p>
+<ul>
+<p>
+<li>
+Compression:  It is critical that name length be minimized (issue F-2).
+
+<p>
+<li>
+Character set:  Names should use a character set that does not cause
+problems in linkers (easy for Elf) or in assemblers (more problematic).
+This probably implies use of ~64 characters.
+
+<p>
+<li>
+Legibility:  It is desirable that the base name (i.e. the function or
+class name) be present and easy to identify (for readability).
+Other components of the name probably need to be difficult in order to
+attain compression (issue F-2).
+
+<p>
+<li>
+Cfront:  It is desirable that the names <b>not</b> be confusable with
+cfront manglings, to avoid apparent but incomplete compatibility with
+cfront-compiled objects.
+
+</ul>
+
+<p>
+<h5> Entities with linkable names to be resolved include:</h5>
+<p>
+<ul>
+<li> Global and member operator names
+<li> Global and member function names
+<li> Alternate versions of constructors/destructors.
+<li> Namespace scope variables
+<li> Static local variables
+<li> Static data members
+<li> Virtual function table names (primary and initialization)
+<li> RTTI structures (std::type_info derivations)
+<li> Template instances of the above
+<li> Namespace effects on the above (including anonymous namespaces)
+<li> Possibly string constants
+</ul>
+
+<p>
+For entities with C name linkage,
+the entity's linkable name is identical to its base name (as usual).
+
+<p>
+Note that linkable names include not only names with
+C++ global scope semantics,
+but also "local" names which for some reason end up
+requiring linker resolution
+(e.g. static local variables declared in inline functions).
+Note also that inlining requirements apply equally to functions
+declared inline and those chosen to be inlined by the compiler.
+
+<p>
+<h5> Name decomposition for function-like entities:</h5>
+<p>
+For function-like entities with C++ name linkage,
+the following components MUST be part of the of the name:
+<ul>
+<li> encoding of the base name (presumably, the base name itself)
+<li> encoding of the declarative scope (classes and namespaces),
+    when applicable
+<li> encoding of each parameter type (with known positions)
+<li> encoding of each template argument
+    and the parameter with which it is associated, when applicable
+</ul>
+
+<p>
+[ For the last item, consider: <code>
+<pre>    template<typename T1, typename T2> void f(T1, T2);
+    template<typename T1, typename T2> void f(T2, T1);
+</pre></code>
+The encoding of each of these templates instantiated for <char, char>
+should be distinct. ]
+
+<p>
+In addition, it may be desirable to encode the following components:
+<ul>
+<li> the function's return type
+<li> the function's exception specifications
+</ul>
+(Combined with the parameter types,
+this encodes the type of the function.
+Note that even though exception specifications are not
+considered part of the function type in the C++ standard;
+they actually are.)
+
+<p>
+<h5> Name decomposition for data entities:</h5>
+<p>
+Namespace scope variables and static data members have
+linkable names that must include at least:
+<ul>
+<li> encoding of the base name (presumably, the base name itself)
+<li> encoding of the declarative scope (classes and namespaces),
+    when applicable
+</ul>
+
+In addition, it may be desirable to encode:
+<ul>
+<li> the variable's type (possibly including exception specifications)
+</ul>
+<p>
+Note that although there are benefits to encoding array size,
+and therefore being able to catch mismatches,
+the ability to declare <code>a[]</code> makes this problematic.
+
+<p>
+<h5> Fundamental types and type operators:</h5>
+
+<p>
+fundamental types:
+<ul>
+<li> void
+<li> [signed|unsigned] {
+<li> char, short, int, long} (long long?, int<n>_t)
+<li> bool
+<li> float, double, (long double?)
+<li> wchar_t
+<li> ellipsis (not strictly a type)
+<li> complex
+</ul>
+
+<p>
+type modifiers/constructors:
+<ul>
+<li> const, volatile (restrict?)
+<li> array (with size?) of type
+<li> pointer to type
+<li> reference to type
+<li> function expecting type*, returning type
+<li> pointer to member function of type, expecting type*, returning type
+<li> pointer to member of type T, having type U (i.e. "U T::*")
+</ul>
+
+<p>
+The types in parentheses are available in C99,
+but not in standard C++.
+
+
+<p>
+<font color=blue><hr><p>[991021 all]</font>
+It was observed in the meeting that it might be better to deal with
+non-essential type information
+(e.g. exception specifications, array sizes)
+as a separate construct to allow error detection,
+rather than as a required part of the mangled name.
+This allows it to be elided or removed if unneeded.
+
+<p>
+<font color=blue>[991028 all]</font>
+Objectives of a specification were discussed,
+and have been added to the writeup above.
+
+<p>
+<font color=blue>[000127 IBM -- Mark]</font>
+[Ed.]:
+Mark raises the issue of how template expression parameters are mangled.
+The Standard requires that <i>equivalent</i> expressions be identified,
+but not all <i>functionally equivalent</i> ones.
+The relevant paragraph is 14.5.5.1.
+Don't lose this issue.
+
+<p>
+<font color=blue>[000127 All]</font>
+Notes from the meeting:
+<ul>
+<p>
+<li>
+One prefix should be enough, say _Z (General Structure).
+This would facilitate future revisions,
+which could be indicated by changing the prefix.
+
+<p>
+<li>
+Compression should address more than just types, e.g. other names.
+
+<p>
+<li>
+A number of pre-compressed abbreviations should be defined,
+e.g. for std, string, allocator, etc.
+
+<p>
+<li>
+String constants and static variables in inlined functions can be
+handled by using the function mangling plus a sequence ID.
+
+</ul>
+
+<p>
+<font color=blue><hr><p>[000210 All -- Matt]</font>
+Notes from the meeting:
+<p>
+We have agreed that local statics and local classes must be mangled.
+We agreed that string literals should also be mangled even if linker
+features might make it unnecessary.
+The motivation is a desire to support less capable linkers on other platforms.
+
+<p>
+For local statics and local classes,
+the mangled name consists of the mangled function name,
+a sequence number, and the name of the local class/varaible.
+For string literals the mangled name consists only of
+the mangled function name and the sequence number.
+
+<p>
+(There was concern that this might prevent merging of identical string
+literals.
+Jason believes that given a smart linker it
+will just result in multiple names for the same string literal.)
+
+<p>
+Sequence numbers are assigned in lexical order within a function,
+starting at 1.
+The entities that receive sequence numbers are local static variables,
+local classes, and string literals.
+Other entities (e.g. automatic variables)
+do not receive or affect sequence numbers.
+
+<p>
+Exception specification information must be part of the mangled name
+of a function.
+
+<p>
+Special entities that need to receive mangled names,
+in addition to those mentioned in Daveed's document:
+
+<ul>
+<li>
+Vtables (which should contain mangled name of complete type)
+<li>
+Construction vtables probably do not require mangled names, and
+table of vtables probably doesn't either.  Daveed will reserve
+prefixes for them just in case.
+<li>
+If we are using the comdat proxy method for class typeinfos,
+then both class typeinfo objects and the comdat proxies must be
+given mangled names.
+We must ensure that the comdat proxy for an incomplete class is the
+same as the one for a complete class with the same name,
+and we must ensure that the typeinfo object for an incomplete
+class is different from that of any complete class.
+(Either that, or make all typeinfo objects for incomplete classes static.)
+</ul>
+
+<p>
+Exported template may require other things to be mangled.  We don't
+have a detailed analysis.
+
+<p>
+We discussed the idea of having a small dictionary of well known
+names, so that mangled names could be shorter.
+Jason was concerned with readability of mangled names
+if we had too many things in this dictionary,
+and Daveed was concerned that a large dictionary wouldn't give enough
+of a space savings because an index would take too many bits.
+If we have such a dictionary it will have very few names in it.
+Some obvious candidates are:
+<pre><code>
+  std
+  std::char_traits<char>
+  std::allocator<char>
+  std::basic_string<char, char_traits<char>, std::allocator<char> >
+</code></pre>
+
+<p>
+<font color=blue><hr><p>[000215 HU-Berlin -- Martin]</font>
+(Re: sequence numbers for statics in inline functions.)
+
+<p>
+The C99 standard defines an implicit variable inside of each function:
+<center><code>
+  static const char __func__[]="function-name";
+</code></center>
+Even though this is not part of standard C++, it is likely that C++
+compilers will support this if the 'corresponding' C compiler supports
+it. If so, it might be useful to support it in the ABI.
+
+<p>
+<b>Proposal</b>: The sequence number of __func__ is 0.
+
+<p>
+Of course, there is always discussion what the value of __func__ is in
+C++ context; I think this does not necessarily need to be defined by
+the ABI (or the question whether __func__ is defined at all - if it is
+not used in a function, it does not matter).
+
+<p>
+<font color=blue><hr><p>[000217 Editor]</font>
+Note that the current mangling proposal is now part of the
+<a href=abi-layout.html#mangling>ABI Layout</a> document.
+
+<p>
+<font color=blue><hr><p>[000308 All]</font>
+Several loose ends were discussed (primarily vtable-related).
+Jason will do a YACC description to check for ambiguity.
+
+<p>
+<font color=blue>[000313 SGI -- Jim]</font>
+I have reworked the description in the
+<a href=abi-layout.html#mangling>ABI Layout</a> document
+to get a more precise grammar description,
+and to incorporate the loose ends decisions from the meeting
+and proposals for a few more.
+
+<p>
+<font color=blue>[000316 All]</font>
+Extensive discussions in the meeting,
+reflected in the updated
+<a href=abi-layout.html#mangling>ABI Layout</a> document.
+
+<p>
+<font color=blue>[000323 All]</font>
+Extensive discussions in the meeting,
+reflected in the updated
+<a href=abi-layout.html#mangling>ABI Layout</a> document.
+The principal decisions were:
+
+<ul>
+<li> CV-qualifiers must be ordered.
+<li> Substitution numbering starts from zero,
+    and is base 36 using upper-case letters.
+<li> Use "S_" for repeated substitutions.
+<li> Substitution candidates are added to dictionary only once.
+</ul>
+
+<p>
+<font color=blue>[000330 All]</font>
+Change virtual thunk mangling to encode static offset to nearest
+virtual derived class.
+Encode single void parameter type for parameterless functions,
+to facilitate demangling distinction from data objects.
+Use object name for named entities, hash for strings,
+in mangling local names,
+to minimize implementation mistakes.
 
 <p> <hr> <p>
 <h3> G.  Miscellaneous Issues </h3>
