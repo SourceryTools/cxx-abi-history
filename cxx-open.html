@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 26 January 2000</i>
+<i>Revised 1 February 2000</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000131]</font>
+Additions to <a href=#A20>A-20</a>, <a href=#A21>A-21</a>,
+<a href=#D11>D-11</a>, <a href=#F1>F-1</a>.
+New issues <a href=#A22>A-22</a>, <a href=#A23>A-23</a>,
+<a href=#A24>A-24</a>, <a href=#C11>C-11</a>, <a href=#C12>C-12</a>.
 
 <p>
 <font color=blue>[000121]</font>
@@ -65,6 +72,12 @@ The issues below make use of the following definitions:
 <dl>
 
 <p>
+<dt> <i>dynamic class</i> </dt>
+<dd>
+A class that requires a virtual pointer,
+due to either virtual functions or virtual bases.
+
+<p>
 <dt> <i>empty class</i> </dt>
 <dd>
 A class with no non-static data members other than zero-width bitfields,
@@ -82,12 +95,6 @@ A class that:
 <li> has at least one virtual function, possibly inherited from a base class.
 </ul>
 Such a class contains only a Vptr.
-
-<p>
-<dt> <i>super-polymorphic class</i> </dt>
-<dd>
-A class that requires a virtual pointer,
-due to either virtual functions or virtual bases.
 
 <p>
 <dt> <i>vague linkage</i> </dt>
@@ -354,12 +361,12 @@ Defined in the
 <tr> <td colspan=7>
 <b>Summary</b>:
 It is in general possible to share the virtual pointer with a
-super-polymorphic base class (the <i>primary</i> base class).
+dynamic base class (the <i>primary</i> base class).
 Which base class do we use for this?
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#A7> Resolution </a></b>:
-Share with the first non-virtual super-polymorphic base class,
+Share with the first non-virtual dynamic base class,
 or if none with the first nearly empty virtual base class.
 </td> </tr>
 
@@ -773,7 +780,8 @@ so that it can be deallocated correctly.
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#A20> Resolution</a></b>:
-Place cookie immediately before array, aligned naturally.
+In principle, place cookie immediately before array, aligned naturally.
+Defer to A-21 solution.
 </td> </tr>
 
 </table>
@@ -804,6 +812,7 @@ Therefore, there is a conflict between wanting to make delete()
 work on arrays created in this way,
 and wanting to avoid surprising users who haven't allocated enough
 space for the cookie.
+Also, are cookies allocated if there is no destructor?
 </td> </tr>
 
 </table>
@@ -961,6 +970,494 @@ For all other cases, same as proposal A.
 <p>
 Proposal A is simpler, but proposal B probably conforms more
 closely to user expectations.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A22></a> <td> A-22 </td>
+<td> RTTI for reference types </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000119 </td>
+<td>  </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+__reference_type_info does not appear to be necessary.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000119 CodeSourcery -- Nathan]</font>
+When would a type_info of a reference ever be generated?
+(So why __ref_type_info?)
+
+<ul>
+<li> typeid(T) will strip the reference [expr.typeid]/4
+<li> a thrown type will never be a reference, [except.throw]/3
+<li> a catch type ignores a reference [expr.handle]/3
+<li> an exception specification can contain a reference, but behaves the
+     same as a catch would. [except.spec]
+</ul>
+
+<p>
+<font color=blue>[000126 CodeSourcery -- Nathan]</font>
+
+<dl>
+<dt>[dcl.mptr] (8.3.3)/3
+<dd>
+A pointer to member shall not point to ... a member with reference type
+</dd>
+</dl>
+
+<p>
+<font color=blue>[000128 Cygnus -- Jason]</font>
+Based on that, I definitely think reference type_info can go away.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A23></a> <td> A-23 </td>
+<td> RTTI class descriptors </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000124 </td>
+<td>  </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Resolve several questions about the RTTI representation of class types.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000124 CodeSourcery -- Nathan]</font>
+<code>si_class_type_info</code>
+is for a single nonvirtual inheritance heirarchy.
+Presumably this single non-virtual inheritance is between the derrived
+and the base (the base may or may not have multiple or virtual bases).
+An additional constraint is that, if the derrived class is polymorphic,
+the base class is too. Rationale: if the derrived class adds
+polymorphism, the base will be at a non-zero offset.
+
+<p>
+<font color=blue>[000126 CodeSourcery -- Nathan]</font>
+More useful for dynamic cast (and possibly catch matching)
+{than the current set of flags -- editor}
+would be the following flags:
+
+<ul>
+<li> Contains non-diamond shaped multiple base object
+<li> Is diamond shaped
+<li> has virtual base
+<li> has non-virtual base
+<li> has public base
+<li> has non-public base
+</ul>
+
+<p>
+Note that the virtual/non-virtual and public/non-public are not
+mutually exclusive.
+Also note that I have not actually implemented anything with these flags,
+so I could be wrong.
+
+<p>
+[class.mi] (clause 10.1) provides good examples of "diamond shaped."
+Paragraph 4 gives a non-diamond shaped graph with multiple base object.
+At least one of the multiply inherited base objects must be non-virtual.
+<code> <pre>
+        struct L {};
+        struct A : L {};
+        struct B : L {};
+        struct C : A, B {};
+</pre> </code>
+
+<p>
+There are two distinct L base objects in C.
+C would have the non-diamond shaped multiple inheritance flag set.
+A, B and C would have the non-virtual base flag and public base flag set.
+
+<p>
+Paragraph 5 gives a diamond shaped graph.
+Such a multiply inherited base object must be virtual.
+<code> <pre>
+        struct V {};
+        struct A : virtual V {};
+        struct B : virtual V {};
+        struct C : A, B {};
+</pre> </code>
+
+<p>
+This time C would have the diamond shaped flag set.
+A, B & C would have the virtual base flag set and the public base flag set.
+C would also have the non-virtual base flag set.
+
+<p>
+Paragraph 6 gives a graph which contains both features.
+Here there is one non-virtual base and one virtual base.
+<code> <pre>
+        struct B {};
+        struct X : virtual B {};
+        struct Y : virtual B {};
+        struct Z : B {};
+        struct AA : X, Y, Z {};
+</pre> </code>
+
+<p>
+In that example, AA would have both diamond and non-diamond flags set.
+all would have the public base flag set, AA & Z would have the
+non-virtual
+base flag set, AA, X & Y would have the virtual base flag set.
+
+<p>
+The above is treating the non-virtual and virtual base flags differently,
+they should have the following meaning:
+<ul>
+<li> has non-virtual direct base
+<li> has virtual direct or indirect base
+</ul>
+
+Similarly the public and non-public flags mean:
+<ul>
+<li> has public direct base
+    (to have an indirect public base, there must be a direct public base)
+<li> has non-public direct or indirect base
+</ul>
+
+<p>
+My thinking is that for dynamic_cast,
+having such information will allow
+pruning parts of the inheritance graph walk.
+For instance, there can only be distinct multiple target base objects
+when the non-diamond shaped flag is set in the complete object.
+When we find them,
+the base sub-object started from can only be a common base for both of them,
+if the diamond shaped flag is set in the complete object.
+Alternatively,
+there can only be (at most) one instance of the target type when
+the non-diamond shaped flag is clear.
+When we find it via a non-public path,
+there could only be an alternative
+public path if the complete object has the diamond shaped flag set.
+Similar pruning should be possible for catch matching.
+Without such information,
+the graph walk has to be pessimistic,
+which I beleive will slow down the common case.
+
+<p>
+<font color=blue>[000126 CodeSourcery -- Nathan]</font>
+<code>__si_class_type_info</code> is documented for
+a single non-virtual hierarchy,
+and <code>__vmi_class_type_info</code> for a class containing
+(directly or indirectly)
+a multiple or virtual inheritance component.
+My mistake was to use <code>__si_class_type_info</code>
+for a class with a single base,
+regardless of the
+heirachy within the base (that is the current g++ behaviour).
+
+<p>
+<code>__si_class_type_info</code>
+is for both public and non-public inheritance
+(again, something I'd not noticed, thinking it was for public only).
+For this to work,
+the __class_type_info flag bit 0x8 'non-publicly inherited base'
+must mean `non-publicly inherited direct base'.
+Please can the wording about bases here explicitly say
+`direct base,' `indirect base,' or `direct or indirect base.'
+The description currently use `contains' and `has' which
+are open to interpretation.
+
+<p>
+In dynamic casting, access is important.
+In a cross cast from base A via complete type C to another base B,
+both B and A must be publicly accessible from C.
+It might be that dynamic_cast locates B,
+and, knowing that C does not have multiply inherited subobjects,
+determines it need look no further.
+However, it must determine access.
+If C has no non-public direct or indirect bases,
+access must be OK, without further inspection.
+However the hint flag 0x8 can't be indicating that,
+as it is only for direct bases.
+(This was the one case where I was able to take advantage of these flags,
+but alas it seems I can't.) 
+
+
+<p>
+<font color=blue>[000127 All]</font>
+We decided on Thursday that your "mistakes" are what we want.
+<code>__si_class_type_info</code> will be for any class with a
+single direct base at offset 0 which is public and non-virtual.
+
+<p>
+We also decided that the flags should move from
+<code>__class_type_info</code> into <code>__vmi_class_type_info</code>,
+and that the polymorphic flag should be removed.
+
+<p>
+<font color=blue>[000126 CodeSourcery -- Nathan]</font>
+I think this moving of the flags is a mistake.
+If I understood correctly,
+they indicated information about direct and indirect bases
+(whether there was virtuality anywhere in the heirarchy for instance).
+Such information can speed up dynamic cast.
+When walking the inheritance graph, we can take some early outs,
+if we know there are no multiple subobject types within the complete graph.
+With the flags in every class's type_info,
+it becomes easier to get hold of that info.
+With it only for vmi classes,
+we have to remember `unknown' when presented with a complete object
+of si type,
+and fill the information in when/if we find a vmi base.
+
+<p>
+Another case is in a potential cross-cast case,
+which I had in the previous email.
+Suppose we've found the target base,
+which we know is unique,
+but not found the source base (because we early outed, maybe).
+To be a valid cross-cast both the source and target base objects
+must be public in the complete object.
+If we know the complete heirarchy has no non-public bases,
+there's no need to search for the source base in this case.
+
+<p>
+<font color=blue><hr><p>[000129 Cygnus -- Jason]</font>
+So what you're saying is if we try to dynamic_cast from A* to B*,
+where B has a unique A subobject and the A* does not actually point
+to part of a B,
+if we know that B has no multiple subobjects we can check the passed offset,
+see that it doesn't match, and return failure.
+Without that information,
+we would have to recurse up the single-inheritance chain until
+we either reach the A or a class with multiple or virtual bases.
+
+<p>
+I think I'd rather pay that small performance hit than add a word to
+the type_info for each class.
+Matt, would this affect locales?
+
+<p>
+... cross-casts only come up in the context of classes with multiple bases,
+so it wouldn't make sense to look for this in single inheritance
+classes anyway.
+
+<p>
+<font color=blue><hr><p>[000127 All]</font>
+Note from the meeting:
+A proposed precise definition of a diamond-shaped object is one that
+has two different direct bases with the same virtual base,
+directly, indirectly, or vacuously (the direct base is the virtual base).
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A24></a> <td> A-24 </td>
+<td> RTTI for incomplete types </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000126 </td>
+<td>  </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How does RTTI represent incomplete types?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000126 CodeSourcery -- Nathan]</font>
+The amended (25th Jan) RTTI specification says:
+<blockquote>
+    Note that the full structure described by an RTTI descriptor may
+    include incomplete types not required by the Standard to be completed,
+    although not in contexts where it would cause ambiguity.
+</blockquote>
+
+<p>
+I don't believe this is the case,
+the example I posted a couple of weeks back pointed this out.
+Here it is, in a slightly more compact form
+<code><pre>
+        struct A;
+        struct B;
+
+        int main ()
+        {
+          try {
+            throw (B **)0;
+          } catch (A const * const *) {
+            abort ();
+          } catch (B const * const *) {
+            ;//ok
+          } catch (...) {
+            abort ();
+          }
+        }
+</code></pre>
+
+<p>
+I believe this is well formed and should not abort.
+The RTTI document indicates that `typeid (A const * const *)' and
+`typeid (B const * const *)' will produce __pointer_type_info chains
+that end at a weak symbol reference for A and B respectively.
+These will both resolve to zero.
+How is catch matching able to determine the difference between
+`A const * const *' and `B const * const *' under these circumstances?
+If this is a shortcoming of the ABI,
+or considered a defect in the standard, it should be documented.
+
+<p>
+There seems to be no discussion of this case.
+
+<p>
+<font color=blue><hr><p>[000127 All]</font>
+We decided on Thursday that this can be handled by not emitting info
+for A and B, just referring to them using weak references.
+The EH matcher will never look past the inner pointers.
+
+<p>
+<font color=blue><hr><p>[000128 CodeSourcery -- Nathan]</font>
+I'm sorry, I'm just not getting this.
+The type_infos for `B **' and `B *' will be,
+(I'm using g++'s existing name mangling, but these are new-abi structures):
+<code><pre>
+__tiPP1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC2
+        .long   0
+        .long   __tiP1B
+
+__tiP1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC3
+        .long   0
+        .long   __ti1B  ;; not emitted, will resolve to zero
+</code></pre>
+
+<p>
+In the catch matching,
+the type_infos for `A const *const *' and `A const *' will be:
+<code><pre>
+__tiPCPC1A:
+        .long   __vt_19__pointer_type_info
+        .long   .LC1
+        .long   1
+        .long   __tiPC1A
+
+__tiPC1A:
+        .long   __vt_19__pointer_type_info
+        .long   .LC4
+        .long   1
+        .long   __ti1A ;; not emitted, will resolve to zero
+</code></pre>
+
+<p>
+and those for `B const *const *' and `B const *':
+
+<code><pre>
+__tiPCPC1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC0
+        .long   1
+        .long   __tiPC1B
+
+__tiPC1B:
+        .long   __vt_19__pointer_type_info
+        .long   .LC5
+        .long   1
+        .long   __ti1B ;; not emitted, will resolve to zero
+</code></pre>
+
+<p>
+I fail to see how the catch matcher can get different results comparing
+__tiPP1B to __tiPCPC1A as opposed to comparing __tiPP1B to __tiPCPC1B.
+They both look like qualification conversions of pointers to pointers
+to incomplete type.
+In the first case we'll end up comparing __tiP1B to __tiPC1A,
+which still is a valid qualification conversion,
+then have two NULL pointers for the pointed to types,
+which somehow we have to tell apart.
+In the second case we'll end up comparing __tiP1B to __tiPC1B,
+and again have two NULL pointers for the pointed to types,
+but this time we have to consider them the same type.
+I don't see anything in [conv.qual] saying that qualification
+conversions don't have to deal with incomplete types.
+N.B.: old-abi g++ seg faults on the above code because it does wander
+into the NULL pointers.
+
+<p>
+<font color=blue><hr><p>[000129 Cygnus -- Jason]</font>
+Good point.  I was forgetting about multi-level qualification conversions.
+
+<p>
+I think that leaves us with something like what EDG does now:
+namely, comparisons are done by comparing the addresses of
+one-byte commons rather than of the type_info nodes themselves.
+Then we could emit incomplete info in one file and complete info in
+another file and they would compare the
+same because both refer to the same ID proxy.
+
+<p>
+We could mangle the complete and incomplete versions differently,
+so they would not be combined by the linker.
+
+<p>
+This would also change how we refer to type_infos;
+under the current scheme,
+references to type_infos in the EH type table need to be via
+relocs that will be resolved by the dynamic linker at runtime.
+If we don't need to compare addresses,
+we could use gp-relative references.
+Of course,
+we'd still have the absolute references in the type_infos to the ID proxies,
+so we're no better off.
+
+<p>
+<font color=blue><hr><p>[000130 CodeSourcery -- Nathan]</font>
+There's a bit of strangeness with loading & unloading a DSO which contains
+the complete definition of `struct A',
+into an executable which has the incomplete info.
+That too is in the original email.
+If both DSO and executable have __tiP1A (struct A *),
+they'll be merged, presumably with the DSO's copy ignored.
+However, the __tiP1A in the executable will point at the
+proxy incomplete A type_info
+(which will have already been filled with a weak NULL for its target).
+Somehow we have to arrange that the proxy is altered to now point at
+the __ti1A (struct A) type_info that the DSO supplied.
+If we don't do that, throwing `struct A *' in the DSO
+(which is valid, `cos the DSO source had complete information),
+will throw the __tiP1A in the executable which points to incomplete.
+Hence we wont find any base conversions if we're trying to catch a base of A.
 
 
 
@@ -1201,7 +1698,7 @@ See the ABI data layout document,
 <tr> <td colspan=7>
 <b>Summary</b>:
 Is it possible to allocate objects in shared memory?
-For super-polymorphic objects, this implies that the Vtable must also be
+For dynamic objects, this implies that the Vtable must also be
 in shared memory.
 </td> </tr>
 <tr> <td colspan=7>
@@ -2610,6 +3107,7 @@ for value parameters?
 
 </table>
 
+
 <p>
 <table border=on cellpadding=3>
 
@@ -2638,6 +3136,73 @@ No.
 </td> </tr>
 
 </table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C11></a> <td> C-11 </td>
+<td> Array constructors/destructors </td>
+<td> call </td>
+<td> open </td>
+<td> Cygnus </td>
+<td> 000130 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How are constructors/destructors run for arrays?
+Many compilers use a <code>__vec_new</code> function;
+g++ doesn't, to allow for inlining of constructors.
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C12></a> <td> C-12 </td>
+<td> Constructor return values </td>
+<td> call </td>
+<td> open </td>
+<td> Cygnus </td>
+<td> 000130 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What is the return value of a constructor?
+Void, this, ...?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000130 Cygnus -- Jason]</font>
+I don't see any reason to return a value from constructors,
+since we will always pass in the address of the object.
+g++ currently returns that address, for historical reasons
+(previously, to support assignment to 'this').
+
+<p>
+<font color=blue>[000131 IBM -- Mark]</font>
+Currently, we use the returned value from the ctor for cases like S().i.
+It wouldn't be hard to change the compiler,
+but we do need a decision one way or another.
+
 
 
 <p> <hr> <p> <a name=Dstart></a>
@@ -3132,6 +3697,112 @@ Extra expected functionality:
 <li> A way to identify if the pthread library is linked in,
     or, alternatively, stubs in libc.
 </ul>
+
+<p>
+<font color=blue><hr><p>[000201 SGI -- Jim]</font>
+We propose that the following functionality be required of the base ABI.
+The definitions are based on the <code>pthreads</code> package,
+with multi-threading semantics.
+However, it is expected that an implementation will provide default
+versions in the C++ (or C) library for single-threading programs,
+and override them in the thread library for multi-threading cases.
+
+<p>
+Two sets of functionality are provided:
+once-only initialization,
+and thread-private data key management.
+<font color=red>
+The group also wants a means of identifying whether the real pthreads
+implementation is present -- I have not yet proposed such a feature.
+</font>
+
+<p>
+<h5> Once-only Initialization </h5>
+
+<code> <pre>
+    typedef ... pthread_once_t;
+
+    pthread_once_t once_control = PTHREAD_ONCE_INIT;
+    int pthread_once ( pthread_once_t *once_control,
+		       void (*init_routine) (void) );
+</pre> </code>
+
+<p>
+The purpose of the <code>pthread_once</code> routine is to execute
+a particular initialization routine exactly once in a thread-safe manner.
+The user declares a control variable of type
+<code>pthread_once_t</code>
+statically initialized to <code>PTHREAD_ONCE_INIT</code>,
+and passes it to the <code>pthread_once</code> routine.
+
+<p>
+The first time <code>pthread_once</code> is called with a given
+<code>once_control</code> argument,
+it calls <code>init_routine</code> with no argument
+and changes the value of the <code>once_control</code>
+variable to record that initialization has been performed.
+Subsequent calls to <code>pthread_once</code> with the
+same <code>once_control</code> argument do nothing.
+<code>pthread_once</code> always returns 0.
+
+<p>
+The default single-threaded implementation need not lock
+accesses to <code>once_control</code>,
+whereas overriding versions in multi-threading libraries
+presumably will.
+
+<p>
+<h5> Thread-Private Data Key Management </h5>
+
+<code> <pre>
+    typedef ... pthread_key_t;
+
+    int pthread_key_create ( pthread_key_t *key,
+			     void (*destr_function) (void *) );
+    int pthread_setspecific ( pthread_key_t key,
+			      const void *pointer );
+    void * pthread_getspecific ( pthread_key_t key );
+</pre> </code>
+
+<p>
+The purpose of this functionality is to allow a program to manage
+data segments which are specific to a particular thread,
+but are identified by a key common to all threads.
+It is required in the C++ exception handling library, for example,
+to maintain thread-specific active exception lists.
+
+<p>
+The user program must first create a key variable of type
+<code>pthread_key_t</code>.
+It then obtains an identifying key value from the implementation
+by calling <code>pthread_key_create</code>,
+also specifying at that time a destructor routine that will be called
+if a thread terminates,
+with a single argument that is the value associated with the key
+for the terminating thread.
+This destructor call is only made if the associated value is not NULL,
+and it is set to NULL before making the call.
+
+<p>
+If successful, <code>pthread_key_create</code> returns zero,
+places the value of the key identifier in <code>*key</code>, and
+initializes the value associated with the key to NULL for all threads.
+If unsuccessful, e.g. exceeding the number of allocated keys,
+it returns an error code.
+
+<p>
+A user thread may then associate a value with the key,
+typically the address of a thread-specific data area,
+by calling <code>pthread_setspecific</code>.
+If successful, <code>pthread_setspecific</code> returns zero.
+If unsuccessful, e.g. because of an invalid key identifier,
+it returns an error code.
+
+<p>
+Later, a thread can obtain the value it has associated with the key
+by calling <code>pthread_getspecific</code>,
+which returns the value associated with <code>key</code> on success,
+and NULL on error.
 
 
 
@@ -3743,7 +4414,6 @@ cfront-compiled objects.
 <li> RTTI structures (std::type_info derivations)
 <li> Template instances of the above
 <li> Namespace effects on the above (including anonymous namespaces)
-<li> Possibly exception handling structures
 <li> Possibly string constants
 </ul>
 
@@ -3860,6 +4530,41 @@ This allows it to be elided or removed if unneeded.
 <font color=blue>[991028 all]</font>
 Objectives of a specification were discussed,
 and have been added to the writeup above.
+
+<p>
+<font color=blue>[000127 IBM -- Mark]</font>
+[Ed.]:
+Mark raises the issue of how template expression parameters are mangled.
+The Standard requires that <i>equivalent</i> expressions be identified,
+but not all <i>functionally equivalent</i> ones.
+The relevant paragraph is 14.5.5.1.
+Don't lose this issue.
+
+<p>
+<font color=blue>[000127 All]</font>
+Notes from the meeting:
+<ul>
+<p>
+<li>
+One prefix should be enough, say _Z (General Structure).
+This would facilitate future revisions,
+which could be indicated by changing the prefix.
+
+<p>
+<li>
+Compression should address more than just types, e.g. other names.
+
+<p>
+<li>
+A number of pre-compressed abbreviations should be defined,
+e.g. for std, string, allocator, etc.
+
+<p>
+<li>
+String constants and static variables in inlined functions can be
+handled by using the function mangling plus a sequence ID.
+
+</ul>
 
 
 
