@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 8 March 2000</i>
+<i>Revised 15 March 2000</i>
 
 </center>
 
@@ -25,6 +25,12 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000313]</font>
+New issues <a href=#C13>C-13</a>, <a href=#C14>C-14</a>.
+Closed <a href=#C11>C-11</a>, <a href=#C12>C-12</a>.
+Additions to <a href=#A24>A-24</a>, <a href=#C4>C-4</a>, <a href=#F1>F-1</a>.
 
 <p>
 <font color=blue>[000308]</font>
@@ -1132,6 +1138,22 @@ which, again, we would use to determine whether two
 __pointer_type_info objects with different addresses might
 nevertheless represent the same pointer type.
 
+<p>
+<font color=blue><hr><p>[000309 All]</font>
+The group decided to go ahead and close this issue with the proxy solution.
+If Christophe comes up with a writeup of the alternate proposal,
+we can reopen.
+
+<p>
+<font color=blue><hr><p>[000314 SGI -- Jim]</font>
+I've incorporated the chosen scheme into the
+<a href=abi-layout.html#rtti>ABI layout</a> document.
+In working this out, though,
+I've remembered why SGI had an issue with the proxy commons,
+which is that, in large programs with lots of class types,
+they produce a lot of runtime relocation scattered through data.
+Matt and I think we understand the representation of Christophe's
+proposal, and will think about how to compare the mangled names.
 
 
 
@@ -2743,6 +2765,15 @@ has been incorporated in the
 Coleen has generated <a href=abi-layout.html#vtable-ctor>a proposal</a>.
 
 <p>
+<font color=blue>[000308 All]</font>
+Discussed and clarified the proposal.
+Jim will clarify the content descriptions.
+Coleen will describe how some of the base vtables can be eliminated
+from the construction vtable groups given vbase promotion.
+She should be out to California in two weeks,
+so we can finalize this issue.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -2951,16 +2982,21 @@ No.
 <tr> <a name=C11></a> <td> C-11 </td>
 <td> Array constructors/destructors </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> Cygnus </td>
 <td> 000130 </td>
-<td> </td>
+<td> 000309 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How are constructors/destructors run for arrays?
 Many compilers use a <code>__vec_new</code> function;
 g++ doesn't, to allow for inlining of constructors.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C11> Resolution</a></b>:
+Define standard library entries for array construction/destruction.
+See the <a href=abi-layout.html#array-ctor>ABI Layout</a> document.
 </td> </tr>
 
 </table>
@@ -2978,31 +3014,92 @@ g++ doesn't, to allow for inlining of constructors.
 <tr> <a name=C12></a> <td> C-12 </td>
 <td> Constructor return values </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> Cygnus </td>
 <td> 000130 </td>
-<td> </td>
+<td> 000309 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 What is the return value of a constructor?
 Void, this, ...?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C11> Resolution</a></b>:
+Void.
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C13></a> <td> C-13 </td>
+<td> Allocating constructors </td>
+<td> call </td>
+<td> open </td>
+<td> HP </td>
+<td> 000309 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we define allocating constructors?
+</td> </tr>
 
 </table>
 
 <p>
-<font color=blue>[000130 Cygnus -- Jason]</font>
-I don't see any reason to return a value from constructors,
-since we will always pass in the address of the object.
-g++ currently returns that address, for historical reasons
-(previously, to support assignment to 'this').
+<font color=blue>[000308 HP -- Christophe]</font>
+We should consider defining alternate constructors which
+allocate the object before constructing it.
+
 
 <p>
-<font color=blue>[000131 IBM -- Mark]</font>
-Currently, we use the returned value from the ctor for cases like S().i.
-It wouldn't be hard to change the compiler,
-but we do need a decision one way or another.
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C14></a> <td> C-14 </td>
+<td> Local-scope dynamic constructors </td>
+<td> data </td>
+<td> open </td>
+<td> all </td>
+<td> 000309 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+The Standard requires that local static objects with dynamic
+constructors be initialized exactly once,
+the first time the containing scope is entered.
+This requires a data object to serve as a guard variable;
+define its content or interface.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000309 All]</font>
+We have defined a mangling for the guard variable object (issue F-1),
+but we need to define at least its size and either its content or
+a library interface to it.
+This is tied up with multithreading issue G-4.
+If we want the initialization to be implicitly thread-safe,
+the object probably needs to contain both an initialized flag
+and a thread semaphore,
+and it is desirable that they be in different cache lines.
 
 
 
@@ -4401,6 +4498,19 @@ not used in a function, it does not matter).
 <font color=blue><hr><p>[000217 Editor]</font>
 Note that the current mangling proposal is now part of the
 <a href=abi-layout.html#mangling>ABI Layout</a> document.
+
+<p>
+<font color=blue><hr><p>[000308 All]</font>
+Several loose ends were discussed (primarily vtable-related).
+Jason will do a YACC description to check for ambiguity.
+
+<p>
+<font color=blue>[000313 SGI -- Jim]</font>
+I have reworked the description in the
+<a href=abi-layout.html#mangling>ABI Layout</a> document
+to get a more precise grammar description,
+and to incorporate the loose ends decisions from the meeting
+and proposals for a few more.
 
 
 <p>
