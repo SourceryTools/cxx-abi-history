@@ -3587,7 +3587,7 @@ After constructing a global (or local static) object,
 that will require destruction on exit,
 a termination function is <i>registered</i> as follows:
 <center><code>
-extern "C" int __cxa_atexit ( void (*f)(void *), void *p, dso_handle d );
+extern "C" int __cxa_atexit ( void (*f)(void *), void *p, void *d );
 </code></center>
 This registration, e.g. <code>__cxa_atexit(f,p,d)</code>,
 is intended to cause the call <code>f(p)</code> when DSO <code>d</code> is unloaded,
@@ -3624,7 +3624,7 @@ as long as they are different in different DSOs.)
 It should also include a call to the following function in the FINI
 list (to be executed first):
 <center><code>
-extern "C" void __cxa_finalize ( dso_handle d );
+extern "C" void __cxa_finalize ( void *d );
 </code></center>
 The parameter passed should be <code>&__dso_handle</code>.
 
@@ -4901,6 +4901,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[030609]</font>
+Use <code>void*<code> instead of <code>dso_handle</code>.
 
 <p>
 <font color=blue>[030518]</font>
