@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 25 August 1999</i>
+<i>Revised 1 September 1999</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990901]</font>
+Additions to <a href=#A6>A-6</a>, <a href=#B6>B-6</a>.
 
 <p>
 <font color=blue>[990825]</font>
@@ -523,7 +527,7 @@ from std::extended_type_info; the possible types are:
   <li> std::__function_type_info
   <li> std::__enum_type_info
   <li> std::__class_type_info
-  <li> std::__qualifier_type_info
+  <li> <strike>std::__qualifier_type_info</strike>
 </ul>
 std::extended_type_info derives from std::type_info but adds no fields
 to the latter;
@@ -560,8 +564,10 @@ but describes references.
 
 <p>
 <li>
+<strike>
 std::__qualifier_type_info is similar to std::__pointer_type_info
 but describes top level qualifiers as in "int const" and "char *const".
+</strike>
 
 <p>
 <li>
@@ -712,6 +718,17 @@ These tests are implemented by std::__dynamic_cast.
      }
    }
 </pre></code>
+
+<p>
+<font color=blue>[990826 All]</font>
+Discussion centered on whether the representation should include all
+base classes or just the direct ones,
+and in the former case how hashing might be handled.
+It was agreed that the __qualifier_type_info variant is not needed,
+and it is now striken in the above proposal.
+Also, a pointer-to-member variant is needed.
+Christophe will provide a description of the HP hashing approach,
+and Daveed will update the specification.
 
 
 <p>
@@ -2164,6 +2181,28 @@ of N1 in X etc. is X's constructor and destructor,
 and maybe some derived classes that find they are able to reuse some pieces.
 All that code is aware of X's declaration and can map out its tables.
 What am I missing?
+
+<p>
+<font color=blue>[990826 All]</font>
+There is still considerable confusion about what will work.
+Key questions are
+(1) whether member functions can share offsets to base classes,
+or each need their own; and
+(2) when we need a no-this-adjustment override entry.
+
+<p>
+<font color=blue>[990901 SGI -- Jim]</font>
+Being confused myself by all the discussion,
+I've constructed a <a href=cxx-vtable-ex.html>new page</a>
+containing (initially)
+an example of a class hierarchy supplied by Christophe,
+and attempted to identify possible function calls,
+the class data layout,
+and the class vtable layout based on Christophe's original proposal.
+Please provide corrections,
+and if you're proposing alternative vtable constructions,
+describing them for this example might help (me, at least).
+Also feel free to provide additional examples illustrating other points.
 
 
 <p>
