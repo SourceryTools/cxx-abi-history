@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 27 July 1999</i>
+<i>Revised 29 July 1999</i>
 
 </center>
 
@@ -346,6 +346,58 @@ omitted, those (empty) parameters will also be elided.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <td> A-7 </td>
+<td> Vptr sharing with primary base class </td>
+<td> data </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 990729 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+It is in general possible to share the virtual pointer with a
+polymorphic base class (the <i>primary</i> base class).
+Which base class do we use for this?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Share with the first non-virtual polymorphic base class,
+or if none with the first nearly empty virtual base class.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990617 All]</font>
+It will be shared with the first polymorphic non-virtual base class,
+or if none, with the first nearly empty polymorphic virtual base class.
+(See A-2 for the definition of <i>nearly empty</i>.)
+
+<p>
+<font color=blue>[990624 All]</font>
+HP noted that Taligent chooses a base class with virtual bases before
+one without as the primary base class),
+probably to avoid additional "this" pointer adjustments.
+SGI observed that such a rule would prevent users from controlling the
+choice by their ordering of the base classes in the declaration.
+The bias of the group remains the above resolution,
+but HP will attempt to find the Taligent rationale before this is decided.
+
+<p>
+<font color=blue>[990729 All]</font>
+Close with the agree resolution.
+If a convincing Taligent rationale is found, we can reconsider.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <td> A-8 </td>
 <td> (Virtual) base class alignment </td>
 <td> data </td>
@@ -477,6 +529,17 @@ The precise placement of empty bases when they don't fit at offset zero
 remains imprecise in the above.
 Accordingly, a precise layout algorithm is described in
 a separate writeup of <a href=abi-layout.html>Data Layout</a>.
+
+<p>
+<font color=blue>[990729 all]</font>
+The layout writeup was accepted,
+with the first choice for empty base placement.
+That is, if placement at offset zero doesn't work,
+it will be placed like a normal base/member.
+The concensus was that this won't happen often,
+and such bases will often overlap with the preceding tail padding or
+following components anyway.
+Jim will modify the writeup accordingly.
 
 <p>
 <table border=on cellpadding=3>
