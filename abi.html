@@ -160,6 +160,25 @@ We use the term&nbsp; <i>proper base class</i>
 to exclude T itself from the list.
 
 <p>
+<dt> <i>base object destructor</i> of a class T</dt>
+<dd>
+A function that runs the destructors for non-static data members of T and
+non-virtual direct base classes of T.
+
+<p>
+<dt> <i>complete object destructor</i> of a class T</dt>
+<dd>
+A function that, in addition to the actions required of a base
+object destructor, runs the destructors for the virtual base classes of T.
+
+<p>
+<dt> <i>deleting destructor</i> of a class T</dt>
+<dd>
+A function that, in addition to the actions required of a complete
+object destructor, calls the appropriate deallocation function
+(i.e,. <code>operator delete</code>) for T.
+
+<p>
 <dt> <i>direct base class order</i> </dt>
 <dd>
 When the direct base classes of a class are viewed as an ordered set,
@@ -1090,7 +1109,7 @@ that adjusts the result pointer before returning.
 <p>
 The entries for virtual destructors are actually pairs of entries.
 The first destructor,
-called the non-deleting destructor,
+called the complete object destructor,
 performs the destruction without calling delete() on the object.
 The second destructor,
 called the deleting destructor,
@@ -2990,6 +3009,14 @@ and the base class subobject constructors use
 their complete object virtual tables for initialization.
 
 <p>
+If a class has a non-virtual destructor, and a deleting destructor is
+emitted for that class, the deleting destructor must correctly
+handle the case that the <code>this</code> pointer is
+<code>NULL</code>.  All other destructors, including deleting
+destructors for classes with a virtual destructor, may assume that the
+<code>this</code> pointer is not <code>NULL</code>.
+
+<p>
 <i>
 Suppose we have a subobject class D that needs a construction virtual table,
 derived from a base B that needs a construction virtual table as part of D,
@@ -4814,20 +4841,21 @@ or user-defined, are emitted under the same rules as other functions.
 That is, user-defined constructors or destructors, unless the function
 is declared inline, or has internal linkage, are emitted where
 defined, with their complete, and base object variants.  For
-destructors, the deleting variant is emitted as well.  A user-defined
-constructor or destructor with non-inline, internal linkage is emitted
-where defined, with only the variants actually referenced.
-Implicitly-defined or inline user-defined constructors and destructors
-are emitted where referenced, each in its own COMDAT group identified
-by the constructor or destructor name.
+destructors, in classes with a virtual destructor, the deleting
+variant is emitted as well.  A user-defined constructor or destructor
+with non-inline, internal linkage is emitted where defined, with only
+the variants actually referenced.  Implicitly-defined or inline
+user-defined constructors and destructors are emitted where
+referenced, each in its own COMDAT group identified by the constructor
+or destructor name.
 
 <p>
-This ABI does not require the generation or use of allocating constructors,
-although it specifies names for them if an implementation chooses to use them.
-If the object where a constructor is defined may be compiled by
-another implementation,
-an implementation using it must emit it whereever referenced,
-in a COMDAT group identified by the constructor name.
+This ABI does not require the generation or use of allocating
+constructors or deleting destructors for classes without a virtual
+destructor.  However, if an implementation emits such functions, it
+must use the external names specified in this ABI.  If such a function
+has external linkage, it must be emitted wherever referenced, in a
+COMDAT group whose name is the external name of the function.
 
 <p>
 <a name=vague-itemplate></a>
@@ -4888,6 +4916,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021021]</font>
+Specify place and manner of emission for deleting destructors.
 
 <p>
 <font color=blue>[021021]</font>
