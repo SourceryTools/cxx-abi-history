@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 14 September 1999</i>
+<i>Revised 6 October 1999</i>
 
 </center>
 
@@ -25,6 +25,16 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990905]</font>
+New issue <a href=#F4>F-4</a>.
+Additions to <a href=#A6>A-6</a>, <a href=#B5>B-5</a>, <a href=#B6>B-6</a>,
+<a href=#C4>C-4</a>, <a href=#D5>D-5</a>, <a href=#D7>D-7</a>.
+
+<p>
+<font color=blue>[990929]</font>
+Additions to <a href=#D0>D-*</a>, <a href=#D9>D-9</a>.
 
 <p>
 <font color=blue>[990914]</font>
@@ -387,6 +397,21 @@ They are filing for a patent on the algorithms described.
 
 <p>
 <font color=blue>[990819 EDG -- Daveed]</font>
+(Proposal replaced by later version on 6 October.)
+
+<p>
+<font color=blue>[990826 All]</font>
+Discussion centered on whether the representation should include all
+base classes or just the direct ones,
+and in the former case how hashing might be handled.
+It was agreed that the __qualifier_type_info variant is not needed,
+and it is now striken in the above proposal.
+Also, a pointer-to-member variant is needed.
+Christophe will provide a description of the HP hashing approach,
+and Daveed will update the specification.
+
+<p>
+<font color=blue><hr><p>[991006 EDG -- Daveed]</font>
 
 <p>
 <h5>Run-time type information</h5>
@@ -406,340 +431,41 @@ it can be caught by a handler that catches "int const*".
 
 
 <p>
-<h5>Open questions</h5>
-<ul>
-<li> What is the type of base class offsets?
-<li> What is the limit on the number of classes?
-<li> Should the common dynamic_cast case be optimized by adding an entry
-	to the vtable
-	(to indicate a polymorphic base subobject appears on more than
-	one derivation path to the complete object type)?
-</ul>
-
+<h5>Deliberations</h5>
 <p>
-<h5>Place of emission</h5>
-
-<p>
-It is probably desirable to minimize the number of places where a
-particular bit of RTTI is emitted.
-For polymorphic types, a similar problem occurs for virtual function tables,
-and hence the information can be appended at the end
-of the primary vtable for that type.
-For other types, they must presumably be emitted at the location
-where their use is implied:
-the object file containing the typeid, throw or catch.
-Basic type information (such as for "int", "bool", etc.)
-could be kept in the run-time support library but the benefits
-of that may be limited.
-
-
-<p>
-<h5>The typeid operator</h5>
-
-<p>
-The typeid operator produces a reference to a std::type_info structure
-with the following public interface:
-
-<pre><code>
-  struct std::type_info {
-     virtual ~type_info();
-     bool operator==(type_info const&) const;
-     bool operator!=(type_info const&) const;
-     bool before(type_info const&) const;
-     char const* name() const;
-  };
-</pre></code>
-
-<p>
-Assuming that after linking and loading only one type_info structure is
-active for any particular type symbol,
-the equality and inequality operators can be
-written as address comparisons:
-to type_info structures describe the same type
-if and only if they are the same structure (at the same address).
-In a flat address space
-(such as that of the IA-64 architecture),
-the before() member is also easily written in terms of an address comparison.
-The only additional piece of information that is required is the
-NTBS that encodes the name.
-The type_info structure itself can hold a pointer into a read-only segment
-that contains the text bytes.
-
-
-<p>
-<h5>Matching throw expressions with handlers</h5>
-
-<p>
-When an object is thrown a copy is made of it and the type of that copy
-is TT.
-A handler that catches type HT will match that throw if:
-<ul>
-  <li> HT is equal to TT except that HT may be a reference and that HT
-	may have top-level cv qualifiers
-	(i.e., HT can be "TT cv", "TT&" or "TT cv&"); or
-  <li> HT is a reference to a public and unambiguous base type of TT; or
-  <li> HT has a pointer type to which TT can be converted by a standard
-	pointer conversion (though only public,
-	unambiguous derived-to-base conversions are permitted)
-	and/or a qualification conversion.
-</ul>
-
-<p>
-This implies that the type information must keep a description of the public,
-unambiguous inheritance relationship of a type, as well as the const
-and volatile qualifications applied to types.
-
-
-<p>
-<h5>The dynamic_cast operator</h5>
-
-<p>
-Although dynamic_cast can work on pointers and references,
-from the point of view of representation we need only to worry
-about polymorphic class types.
-Also, some kinds of dynamic_cast operations are handled at compile time
-and do not need any RTTI.
-There are then three kinds of truly dynamic cast operations:
-<ul>
-<li> dynamic_cast<void cv*>, which returns a pointer to the complete lvalue,
-<li> dynamic_cast operation from a base class to a derived class, and
-<li> dynamic_cast across the hierarchy which can be seen as a cast to
-	the complete lvalue and back to a sibling base.
-</ul>
-
-<p>
-
-<h5>RTTI layout</h5>
-
-<ol type=1>
-
-<p>
-<li>
-The RTTI layout for a given type depends on whether a 32-bit or
-64-bit mode is in effect.
-
-<p>
-<li>
-Every vtable shall contain one entry describing the offset from a
-vptr for that vtable to the origin of the object containing that vptr
-(or equivalently: to the vptr for the primary vtable).
-This entry is directly useful to implement dynamic_cast<void cv*>,
-but is also needed for the other truly dynamic casts.
-
-<p>
-<li>
-Every vtable shall contain one entry pointing to an object derived
-from std::extended_type_info; the possible types are:
-<ul>
-  <li> std::__fundamental_type_info
-  <li> std::__pointer_type_info
-  <li> std::__reference_type_info
-  <li> std::__array_type_info
-  <li> std::__function_type_info
-  <li> std::__enum_type_info
-  <li> std::__class_type_info
-  <li> <strike>std::__qualifier_type_info</strike>
-</ul>
-std::extended_type_info derives from std::type_info but adds no fields
-to the latter;
-it is introduced solely to follow the suggestion of the C++ standard.
-
-<p>
-<li>
-std::type_info contains just two pointers:
-<ul>
-  <li> its vptr
-  <li> a pointer to a NTBS representing the name of the type
-</ul>
-
-<p>
-<li>
-std::__pointer_type_info adds two fields:
-<ul>
-  <p>
-  <li> a word describing the cv-qualification of what is pointed to
-    (e.g., "int volatile*" should have the "volatile" bit set in that word)
-  <p>
-  <li> a pointer to the std::type_info derivation for the unqualified type
-    being pointed to
-</ul>
-
-<p>
-Note that the first bits should not be folded into the pointer because
-we may eventually need more qualifier bits (e.g. for "restrict").
-
-<p>
-<li>
-std::__reference_type_info is similar to std::__pointer_type_info
-but describes references.
-
-<p>
-<li>
-<strike>
-std::__qualifier_type_info is similar to std::__pointer_type_info
-but describes top level qualifiers as in "int const" and "char *const".
-</strike>
-
-<p>
-<li>
-std::__class_type_info introduces a variable length structure.
-The variable part that follows consists of a sequence of base class
-descriptions having the following structure:
-
-<pre><code>
-    struct std::__base_class_info {
-  
-       std::type_info *type; /* Null if unused. */
-       std::ptrdiff_t offset;
-       std::__base_class_index next; /* Hash table link. */
-       int is_direct: 1;
-       int is_floating: 1; /* I.e., virtual or base of virtual
-subobject. */
-       int is_virtual: 1; /* Implies is_floating. */
-       int is_shared: 1; /* Implies is_floating and the virtual
-subobject
-                            appears on multiple derivation paths. */
-       int is_accessible: 1;
-       int is_ambiguous: 1;
-
-    };
-</pre></code>
-
-<p>
-The fixed length introduction adds the following fields to
-std::type_info:
-<ul>
-  <li> a word with flags describing details about the class such as whether
-    it is a class/struct/union and whether it is polymorphic.
-  <li> a hashvalue that can be used for quick lookups in a variable length
-    structure describing base classes.
-  <li> the number of base class descriptions that follow it (a power of two).
-</ul>
-
-</ol>
-
-
-<h5>std::type_info::name()</h5>
-<p>
-The NTBS returned by this routine is the mangled name of the type.
-
-
-<p>
-<h5>The dynamic_cast algorithm</h5>
-
-<p>
-Dynamic casts to "void cv*" are inserted inline at compile time.
-So are dynamic casts of null pointers and dynamic casts that are really
-static.
-
-<p>
-This leaves the following test to be implemented in the run-time
-library for truly dynamic casts of the form "dynamic_cast<T>(v)":
-(see [expr.dynamic_cast] 5.2.7/8)
+The following conclusions were arrived at by the attending members of
+the C++ IA-64 ABI group:
 
 <ul>
 <p>
-<li>
-If, in the most derived object pointed (referred) to by v, v points
-(refers) to a public base class sub-object of a T object [note:
-this can be checked at compile time],
-and if only one object of type T is derived
-from the sub-object pointed (referred) to by v,
-the result is a pointer (an lvalue referring) to that T object.
-
+<li> The exact layout for type_info objects is dependent on whether a
+    32-bit or 64-bit model is supported.
 <p>
-<li>
-Otherwise, if v points (refers) to a public base class sub-object
-of the most derived object,
-and the type of the most derived object has an
-unambiguous public base class of type T,
-the result is a pointer
-(an lvalue referring) to the T sub-object of the most derived object. 
-
+<li> Advantage should be taken of COMDAT sections and symbol preemption:
+    two type_info pointers point to equivalent types if and only if the
+    pointers are equal.
 <p>
-<li>
-Otherwise, the run-time check fails.
+<li> A simple dynamic_cast algorithm that is efficient in the common
+    case of base-to-most-derived cast case is preferrable over more
+    sophisticated ideas that handle deep-base-to-in-between-derived
+    casts more efficiently at a slight cost to the common case.
+    Hence, the original scheme of providing a hash-table into the
+    list of base classes
+    (as is done e.g. in the HP aC++ compiler)
+    has been dropped.
+<p>
+<li> The GNU egcs development team has implemented an idea of this ABI
+    group to accelerate dynamic_cast operations by a-posteriori
+    checking a "likely outcome".
+    The interface of std::__dynamic_cast therefore keeps the
+    src2dst_offset hint.
+<p>
+<li> std::__extended_type_info is dropped.
 </ul>
 
-The first check corresponds to a "base-to-derived cast" and the second
-to a "cross cast".
-These tests are implemented by std::__dynamic_cast.
-
-<pre><code>
-   void* std::__dynamic_cast(void *sub, std::__class_type_info *src,
-                                        std::__class_type_info *dst,
-                                        std::ptrdiff_t src2dst_offset)
-   {
-  
-     // Pick up vtable pointer from given object:
-     void *vptr = *(void**)sub;
-     if (src2dst_offset>=0 && NO_VBASE(sub, vptr)) {
-       // If the type of "v" was not an accessible nonvirtual base type of
-       // "T", src2dst_offset should have been set to -1 if it was an
-       // accessible but floating base of "T" and to -2 if it was not at all
-       // an accessible base of "T".
-       // In addition, the vtable should contain an entry to indicate that
-       // the complete object has no virtual bases (e.g., a count of the
-       // vbase locator entries).
-       return (char*)sub+src2dst_offset;
-     } else {
-       // Slower case
-       void *result = 0;
-       if (src2dst_offset==-1) {
-         // Possibly a "floating" base-to-derived cast:
-         result = floating_base2derived(sub, src, dst);
-       }
-       if (result==0) {
-         // The base-to-derived case did not succeed, so we should attempt
-         // the cross-cast (which is really a derived-to-base cast from the
-         // complete object):
-         result = derived2base(complete, dst);
-       }
-     }
-     return result;
-   }
-</pre></code>
-
 <p>
-<h5>The exception handler matching algorithm</h5>
-
-<pre><code>
-   bool __eh_match(std::type_info *thrown_type,
-                   std::type_info *handled_type) {
-     if (thrown_type == handled_type) {
-       return true;
-     } else if (IS_REFTYPE(handled_type)) {
-       std::type_info *caught_type = REMOVE_REFTYPE(handled_type);
-       if (IS_CVQUAL(caught_type)) {
-         caught_type = REMOVE_CVQUAL(caught_type);
-       }
-       return thrown_type==caught_type;
-     } else if (IS_PTRTYPE(handled_type)) {
-       cvqual_match(&thrown_type, &handled_type);
-       if (thrown_type==handled_type) {
-         return true;
-       } else if (IS_CLASSTYPE(thrown_type) &&
-		  IS_CLASSTYPE(handled_type)) {
-         return derived2base_check(thrown_type, handled_type);
-       } else {
-         return false;
-       }
-     } else {
-       return false;
-     }
-   }
-</pre></code>
-
-<p>
-<font color=blue>[990826 All]</font>
-Discussion centered on whether the representation should include all
-base classes or just the direct ones,
-and in the former case how hashing might be handled.
-It was agreed that the __qualifier_type_info variant is not needed,
-and it is now striken in the above proposal.
-Also, a pointer-to-member variant is needed.
-Christophe will provide a description of the HP hashing approach,
-and Daveed will update the specification.
+The full proposal has been incorporated in the
+<a href=abi-layout.html#rtti>ABI data layout document</a>.
 
 
 <p>
@@ -1838,6 +1564,505 @@ IBM's version is restricted to one symbol per section.
 Jim will look for Microsoft's PECOFF definition.
 Anyone else with a usable definition should send it.
 
+<p>
+<font color=blue><hr><p>[991004 SGI]</font>
+<h2> C++ ABI:  COMDAT Proposal </h2>
+
+<p>
+<h3> Introduction </h3>
+
+<p>
+C++ has many situations where the compiler may need to emit code or data,
+but may not be able to identify a unique compilation unit
+where it should be emitted.
+The approach chosen by the C++ ABI group to deal with this problem,
+is to allow the compiler to emit the required information in multiple
+compilation units,
+in a form which allows the linker to remove all but one copy.
+This is essentially the idea called COMDAT in several existing
+implementations.
+
+<p>
+Our objectives include:
+
+<ul>
+
+<p>
+<li>
+Use existing structures as far as possible,
+to minimize impact on existing tools.
+
+<p>
+<li>
+Minimize impact on the linker by defining the unit of duplication
+as a section.
+
+<p>
+<li>
+Maximize generality.
+The C++ needs are rather varied,
+and similar needs from other languages should also be handled.
+
+<p>
+<li>
+In general, duplicated code or data sections are accompanied by
+additional duplicated sections, e.g. containing debug information.
+We want to define a mechanism which can deal with arbitrary such
+associations, without predicting them in advance.
+
+<p>
+<li>
+It is conceivable that duplicates may occur for something which is not
+recognized as a full duplicate at compile time.
+A possible example is a template instantiation which duplicates a
+full specialization in some compilation unit.
+It is desirable to deal with this case if possible.
+
+</ul>
+
+<p>
+<h3> Proposal </h3>
+
+<p>
+The proposal below is based on the HP definition,
+with minor modifications and more precise definitions.
+
+<p>
+<h4> SHF_COMDAT: Potentially Duplicate Sections </h4>
+
+A section which may be duplicated,
+and for which only one copy is required,
+is identified by a new section header attribute:
+
+<dl>
+<dt> SHF_COMDAT
+<dd> This section is subject to duplication in other relocatable objects,
+    and the linker should choose only one copy to retain.
+    This section must be referenced in a SHT_COMDAT_GROUP section (see below).
+</dl>
+
+<p>
+This attribute flag may be set in any section header,
+and no other modification or indication is made in the potentially
+duplicated sections.
+All additional information is contained in the associated
+SHT_COMDAT_GROUP section (see below).
+
+<p>
+<h4> SHT_COMDAT_GROUP: COMDAT Group Definition </h4>
+
+<p>
+COMDAT sections are assumed to occur in interrelated groups.
+For instance, an out-of-line definition of an inline function might require,
+in addition to its .text section,
+a read-only data section containing literals referenced,
+one or more debug information sections,
+and/or other informational sections.
+Furthermore, there may be internal references among these sections that
+would not make sense if one of them were replaced by a duplicate from
+another object.
+Therefore, we assume that such groups are to be included or omitted
+from the linked object as a unit.
+To facilitate this, we define a SHT_COMDAT_GROUP section:
+
+<p>
+The section header attributes of a COMDAT Group Section are:
+
+<p>
+<TABLE align=center BORDER=2 CELLSPACING=2 CELLPADDING=2>
+
+<TR>
+<TD><b> name </b></TD>
+<TD><code> .COMDAT_group </codet></TD>
+</TR>
+
+<TR>
+<TD><code> sh_type </code></TD>
+<TD><code> SHT_COMDAT_GROUP </code></TD>
+</TR>
+
+<TR>
+<TD><code> sh_link </code></TD>
+<TD><code> .symtab </code> section index </TD>
+</TR>
+
+<TR>
+<TD><code> sh_info </code></TD>
+<TD> symbol index </TD>
+</TR>
+
+<TR>
+<TD><code> sh_flags </code></TD>
+<TD> none </TD>
+</TR>
+
+<TR>
+<TD><code> sh_entsize </code></TD>
+<TD> size of section indices (<code>4</code>) </TD>
+</TR>
+
+<TR>
+<TD> requirements </TD>
+<TD> may not be stripped </TD>
+</TR>
+
+</TABLE>
+
+<p>
+The COMDAT group's <code> sh_link </code> field identifies a symbol
+table section, and its <code> sh_info </code> field the index of a
+symbol in that section.
+The name of that symbol is treated as the identifier of the COMDAT group.
+If multiple COMDAT groups in different object files are identified
+by symbols with the same name,
+the linker should remove all but one of the groups.
+If the identifying symbol is defined in a non-COMDAT section in
+some object, the linker should remove all of the COMDAT groups
+identified by that symbol.
+
+<p>
+The section data of a SHT_COMDAT_GROUP section is a flag word
+followed by a sequence of section indices.
+The flag word may contain the following flags:
+
+<ul>
+&lt;To be defined>
+</ul>
+
+<p>
+The section indices in the SHT_COMDAT_GROUP section identify
+the sections which make up the group.
+Either none of them or all of them will be removed by the linker.
+
+<p>
+The <code>sh_size</code> value is <code>sh_entsize</code> times
+one plus the number of sections in the group.
+
+<p>
+<h4> Requirements </h4>
+
+<ul>
+<p>
+<li>
+References to the sections comprising a COMDAT group,
+from sections outside the group,
+must be made via global symbols.
+They may not reference local symbols for addresses in the group's
+sections, including section symbols.
+
+<p>
+<li>
+There may not be non-symbol references to the sections comprising a
+COMDAT group from sections outside the group, e.g. in sh_link fields.
+For example, relocations of one of the group's sections must be in a
+relocation section which is also part of the group.
+
+<p>
+The above rules allow a COMDAT group to be removed without leaving
+dangling references, with only minimal processing of the symbol table.
+
+<p>
+<li>
+An entry in a symbol table section not in the COMDAT group,
+defined as an address in one of the group's sections,
+should be handled as follows:
+<ul>
+<li> If global but not referenced, remove it.
+<li> If global and referenced, change it to UNDEF.
+     (This may cause a link error if the retained version of the
+     COMDAT group does not define the same symbol.)
+<li> If local, remove it.
+     (This will cause a link error if the symbol is referenced.)
+</ul>
+
+<p>
+<li>
+The SHT_COMDAT_GROUP section must precede the sections in the group
+(in the section table).
+
+</ul>
+
+<p>
+<h4> Questions </h4>
+
+<ul>
+
+<p>
+<li>
+Do we want flags to specify checking prior to removal of duplicates,
+e.g. for identical sections, same defined global symbols, etc.?
+If so, should there be one flags word per section index,
+instead of per group?
+(We don't see a need, but this was suggested in other proposals.)
+
+<p>
+<li>
+Do we want more control over when global symbols are removed vs. being
+converted to UNDEF?
+Alternatively, should we simply require that all symbols defined as
+addresses in the group be removed,
+and that references to them from outside do so via distinct UNDEF
+global symbols?
+
+<p>
+<li>
+Do we want to replace the symbol rule by simply requiring that any
+symbols defined as addresses in the group be defined in a .symtab
+section that is itself in the group?
+
+</ul>
+
+<p>
+<font color=blue><hr><p>[991005 SGI]</font>
+<h2> gABI:  Section Indices </h2>
+<font size=-1>
+
+<p>
+<h3> Background </h3>
+
+<p>
+The following proposal attempts to remove the limitation of 64K sections.
+Obviously, even if the problem is real,
+it will actually arise in very few compilation units.
+Therefore, the elements of the proposed solution are defined so as to
+leave unchanged object files which do not encounter the problem.
+We consider this compatibility objective as primary --
+much more important than performance or
+clean definitions for the problematic object files --
+particularly as it should allow vendors to merge the solution into
+existing tool chains at convenient times without disrupting existing
+programs.
+
+<p>
+Proposed ABI wording is in normal font; commentary is in italics.
+Section numbers are from the Intel IA-64 psABI.
+
+<p>
+<hr>
+
+<p>
+<h3> Proposed gABI Changes </h3>
+
+<p>
+<h4> General Approach </h4>
+<i>
+
+<p>
+The range of section indices from 0xff00 (SHN_LORESERVE) to
+0xffff (SHN_HIRESERVE) is reserved for special purposes,
+and the gABI already forbids real sections with these indices.
+Our approach is to deal with situations where section indices cannot
+be compatibly expanded to a full 32 bits
+by using one of these indices as an escape value indicating that the
+actual index will be found elsewhere.
+
+</i>
+
+<p>
+<h4> 4.1 Elf Header </h4>
+<i>
+
+<p>
+The ELF header has two relevant 16-bit fields:
+e_shnum contains the section count,
+and e_shtrndx the index of a string section.
+We modify their descriptions,
+and add two new optional fields as follows:
+</i>
+
+<dl>
+<p>
+<dt> <code>ElfXX_Half e_shnum;</code>
+<dd>
+This member holds the number of entries in the section header table.
+Thus the product of <code>e_shentsize</code> and <code>e_shnum</code>
+gives the section header table's size in bytes.
+If a file has no section header table,
+<code>e_shnum</code> holds the value zero.
+<p>
+If the number of sections is greater than
+<code>SHN_LORESERVE</code> (<code>0xff00</code>),
+this member has the value <code>SHN_XINDEX</code> (<code>0xffff</code>),
+and the actual number of section header table entries is in the member
+<code>e_xshnum</code> (below).
+</dd>
+
+
+<p>
+<dt> <code>ElfXX_Half e_shstrndx;</code>
+<dd>
+This member holds the section header table index of the entry
+associated with the section name string table.
+If the file has no section name string table,
+this member holds the value <code>SHN_UNDEF</code>.
+See ``Sections'' and ``String Table'' below for more information.
+<p>
+If the section name string table index is greater than
+<code>SHN_LORESERVE</code> (<code>0xff00</code>),
+this member has the value <code>SHN_XINDEX</code> (<code>0xffff</code>),
+and the actual index of the section name string table is in the member
+<code>e_xshstrndx</code> (below).
+</dd>
+
+<p>
+<dt> <code>ElfXX_Word e_xshnum;</code>
+<dd>
+This member holds the number of entries in the section header table,
+if that number is too large to fit in <code>e_shnum</code>.
+It need not be present in the ELF header if it is not needed,
+and <code>e_ehsize</code> should reflect its presence or absence.
+</dd>
+
+
+<p>
+<dt> <code>ElfXX_Word e_xshstrndx;</code>
+<dd>
+This member holds the section header table index of the entry
+associated with the section name string table,
+if that index is too large to fit in <code>e_shstrndx</code>.
+It need not be present in the ELF header if it is not needed
+(in which case <code>e_xshnum</code> is also needed),
+and <code>e_ehsize</code> should reflect its presence or absence.
+</dd>
+
+</dl>
+
+<p>
+<h4> 4.2 Sections </h4>
+<i>
+
+<p>
+We define a new special section index as an escape value for
+large section indices, as referenced above:
+</i>
+
+<dl>
+<p>
+<dt> <code>SHN_XINDEX (0xffff)</code>
+<dd>
+This special section index means, conventionally,
+that the actual section index is too large to fit in the field
+where it appears,
+and is to be found in another location
+(specific to the structure where it appears).
+</dd>
+
+</dl>
+
+<p>
+<i>
+We note here that the section header contains two fields commonly used
+to hold section indices, <code>sh_link</code> and <code>sh_info</code>,
+but they are already defined as ElfXX_Word, and require no change.
+</i>
+
+<p>
+<i>
+A new section type is defined:
+</i>
+
+<dl>
+<p>
+<dt> <code>SHT_SYMTAB_IDX (17)</code>
+<dd>
+A section of this type is paired with an SHT_SYMTAB section,
+if any of the symbols in that section reference a section index
+larger than 16 bits.
+It contains a table of 32-bit section indices,
+one for each symbol in the symbol table section,
+in the same order.
+<p>
+The <code>sh_link</code> field of this section contains the index of the
+associated <code>SHT_SYMTAB</code> section.
+</dd>
+
+</dl>
+
+<p>
+<i>
+A new special section name is defined:
+</i>
+
+<dl>
+<p>
+<dt> <code>.symtab_idx</code>
+<dd>
+This section holds a section header index table for an associated
+<code>.symtab</code> section.
+The section's attributes will include the <code>SHF_ALLOC</code> bit
+if the associated <code>.symtab</code> section does;
+otherwise, that bit will be off.
+</dd>
+
+</dl>
+
+<p>
+<i>
+There is no available field to point from the <code>.symtab</code> section
+to its associated <code>.symtab_idx</code> section,
+so we use the <code>sh_link</code> field in the latter to point back.
+It is recommended (but not required) that implementations place the
+<code>.symtab_idx</code> section immediately after its associated
+<code>.symtab</code> section (in the section header table)
+to make it easy for the linker to find.
+</i>
+
+<p>
+<h4> 4.x Symbol Table </h4>
+<i>
+
+<p>
+The symbol table is the most problematic.
+It has no convenient location for an expanded section index.
+Therefore, we propose that the escape value imply redirection to a
+separate, parallel table containing full-size section indices.
+
+<p>
+Modify the definition of <code>st_shndx</code> as follows:
+</i>
+
+<dl>
+<p>
+<dt> <code>st_shndx</code>
+<dd>
+Every symbol table entry is defined in relation to some section.
+This member holds the relevant section header table index.
+<p>
+As the <code>sh_link</code> and <code>sh_info</code> interpretation
+table and the related text describe,
+section indexes in the range 0xff00 to 0xffff indicate special meanings.
+In particular, <code>SHN_XINDEX (0xffff)</code> indicates that the
+real index is too large to fit in this field,
+and must be found in the associated SHT_SYMTAB_IDX table (above).
+</dd>
+
+</dl>
+
+<p>
+If any of the <code>st_shndx</code> fields in a symbol table section
+contain the value <code>SHN_XINDEX (0xffff)</code>,
+there must be an associated <code>SHT_SYMTAB_IDX</code> section,
+with a <code>sh_link</code> field containing the index of this
+<code>SHT_SYMTAB</code> section.
+That section contains an array of 32-bit section indices,
+matching the symbol table entries 1-1 in the same order.
+Entries corresponding to <code>SHN_XINDEX (0xffff)</code> values of
+<code>st_shndx</code> in the symbol table must contain the actual
+section header index to be used.
+Others should contain either the correct section header index
+(i.e. duplicating the value in <code>st_shndx</code>), or zero.
+
+
+<p>
+<h4> Compatibility </h4>
+
+<p>
+<i>
+There should be no compatibility impact on existing environments,
+since only very large section counts require object file changes.
+Individual vendors can postpone implementation until convenient,
+with no impact on typical programs.
+</i>
 
 
 <p>
@@ -1872,304 +2097,9 @@ Issue split from A-1.
 <font color=blue>[990630 HP - Christophe]</font>
 
 <p>
-Here is a short description of the virtual tables layout. This is
-mostly taken out of the existing Taligent runtime.
+The current full proposal has been incorporated in the
+<a href=abi-layout.html#vtable>ABI data layout document</a>.
 
-
-<p>
-<h4>Virtual tables</h4>
-
-<p>
-Virtual tables (vtables) are used to dispatch virtual functions, to  
-access virtual base class subobjects, and to access information for  
-runtime type identification (RTTI). Each class that has virtual
-member functions or virtual bases has an associated set of vtables.  
-The vtable pointers within all the objects (instances) of a class
-point to the same set of vtables.
-
-
-<p>
-<h4>Vtable layout</h4>
-
-<p>
-Each vtable consists of the following parts, in the order listed.
-All offsets in a vtable are of type ptrdiff_t.
-
-<p>
-"Virtual base offsets" are used to access the virtual bases of an
-object and to non virtual bases when pointer adjustment is required  
-for some overriden virtual function. Each entry is a displacement to  
-a virtual base subobject from the location within the object of the  
-vtable pointer that addresses this vtable. These entries are only
-necessary if the class directly or indirectly inherits from virtual  
-base classes, or if it overrides a virtual function defined in a base  
-class and if  adjustment from the based to the derived class is
-needed. The values can be positive or negative.
-
-<p>
-"Offset to top" holds the displacement to the top of the object from  
-the location within the object of the vtable pointer that addresses  
-this vtable. A negative value indicates the vtable pointer is part of  
-an embedded base class subobject; otherwise it is zero. The offset
-provides a way to find the top of the object from any base subobject  
-with a vtable
-pointer. This is necessary for dynamic_cast<void*> in particular.
-The virtual pointer points to the "offset to top" field.
-
-<p>
-"Typeinfo pointer" points to the typeinfo object used for RTTI. All  
-entries in each of the vtables for a given class point to the same
-typeinfo object.
-
-<p>
-"Duplicate base information pointer" points to a table used to
-perform runtime disambiguation of duplicate base classes for dynamic  
-casts. The entries in each of the vtables for a given class do not
-all point to the same table of duplicate base information.
-
-<p>
-Function pointers are used for virtual function dispatch. Each
-pointer holds either the address of a virtual function of the class,  
-or the address of a secondary entry point that performs certain
-adjustments before transferring control to a virtual function. [To be  
-discussed] In the case of shared library builds, [Solution 1] a
-function pointer entry contains the address of a function descriptor,  
-which contains the target GP value and the actual function address
-[Solution 2] a function pointer entry contains two words: the value  
-of the target GP value and the actual function address [Solution 3] a  
-function pointer points to an import table generated by the dynamic  
-loader, which will transfer control to the target function.
-
-<p>
-The function pointers are grouped so that the entries for all
-virtual functions introduced by a base class are kept together, in
-declaration order. Function pointers from a derived class immediately  
-follow those for the base class. The order of function pointers
-therefore depends on the static type of subobject whose vtable
-pointer points to that virtual table.
-
-<p>
-A vtable pointer in an object addresses the "offset to top" field
-of a vtable. This location is known as the address point of the
-vtable. Note that the virtual base offsets are at negative
-displacements from the address point.
-
-<p>
-The typeinfo and duplicate base information are covered in separate  
-discussions.
-
-
-
-<p>
-<h4>Types of vtables</h4>
-
-<p>
-The following categories describe the rules for how vtables of a
-class are constructed from the vtables of its bases.
-
-<p>
-<b>Category 1</b>
-
-<p>
-This category is for a class that inherits no base classes. If the
-class declares no virtual functions, then it has no vtable, and its  
-objects have no vtable pointers.
-
-If the class declares virtual functions, then it has a single vtable  
-containing RTTI fields followed by function pointer entries. There  
-is one function pointer entry for each virtual function declared in  
-the class. The vtable pointer in an object of the class addresses
-this vtable.
-
-<p>
-<b>Category 2</b>
-
-<p>
-This category is for a class that inherits only non-virtual base
-classes, and the non- virtual base classes have no base classes, and  
-there is no adjustment in any of the overriden virtual functions.
-
-<p>
-If none of the base classes have vtables, a vtable is constructed
-for the class according to the same rules as in Category 1. Otherwise  
-the class has a vtable for each base class that has a vtable. The
-class's vtables are constructed from copies of the base class
-vtables. The entries are the same, except:
-<ul>
-<li>The RTTI fields contain information for the class, rather than
-for the base class.
-<p>
-<li>The function pointer entries for virtual functions inherited from  
-the base class and
-overridden by this class are replaced with the addresses of the
-overridden functions
-(or the corresponding adjustor secondary entry points),
-<p>
-<li>At negative offsets, offsets to the base classes are generated if  
-used by adjustor secondary entry points.
-</ul>
-
-<p>
-Informally, each of these vtables has a name in the form
-Base-in-Derived vtable, where Base is a base class and Derived is the  
-derived class. Each vtable pointer in an object addresses one of
-these vtables for the class. The vtable pointer of an A subobject
-within a B object would address the A-in-B vtable.
-
-<p>
-The vtable copied from the primary base class is also called the
-primary vtable; it is addressed by the vtable pointer at the top of  
-the object. The other vtables of the class are called secondary
-vtables; they are addressed by vtable pointers inside the object.
-
-
-<p>
-Aside from the function pointer entries that correspond to those of  
-the primary base class, the primary vtable holds the following
-additional entries at its tail:
-- Entries for virtual functions introduced by this class
-- Entries for overridden virtual functions not already in the
-vtable. (These are also called replicated entries because they are
-already in the secondary vtables of the class.) [I wonder if this is  
-actually needed, this seems to be a consequence of RRBC]
-
-<p>
-The primary vtable, therefore, has the base class functions
-appearing before the derived
-class functions. The primary vtable can be viewed as two vtables
-accessed from a shared
-vtable pointer.
-
-
-<p>
-Note Another benefit of replicating virtual function entries is
-that it reduces the number of this pointer adjustments during virtual  
-calls. Without replication, there would be more cases where the this  
-pointer would have to be adjusted to access a secondary vtable prior  
-to the call. These additional cases would be exactly those where the  
-function is overridden in the derived class, implying an additional  
-thunk adjustment back to the original pointer. Thus replication saves  
-two adjustments for each virtual call to an overridden function
-introduced by a non-primary base class.
-
-
-<p>
-<b>Category 3</b>
-
-<p>
-This category is for a class that inherits only virtual base
-classes, and the virtual base classes have no base classes.
-
-<p>
-The class has a vtable for each virtual base class that has a
-vtable. These are all secondary vtables and are constructed from
-copies of the base class vtables according to the same rules as in
-Category 2. The vtable pointers of the virtual base subobjects within  
-the object address these vtables.
-
-<p>
-The class also has a vtable that is not copied from the virtual base  
-class vtables. This vtable is the primary vtable of the class and
-addressed by the vtable pointer at the top of the object, which is
-not shared. It holds the following function pointer entries:
-<ul>
-<li>
-Entries for virtual functions introduced by this class
-<li>
-Entries for overridden virtual functions. (These are also called
-replicated entries, because they are already in the secondary vtables  
-of the class)
-</ul>
-
-<p>
-The primary vtable also has virtual base offset entries to allow
-finding the virtual base subobjects. There is one virtual base
-offset entry for each virtual base class. For a class that inherits  
-only virtual bases, the entries are in the reverse order in which the  
-virtual bases appear in the class declaration, that is, the entry
-for the leftmost virtual base is
-closest to the address point of the vtable.
-
-
-<p>
-<b>Category 4</b>
-
-<p>
-This category is for a class that directly or indirectly inherits
-base classes that are either virtual or non-virtual.
-
-<p>
-The rules for constructing vtables of the class are a combination of  
-the rules from Categories 2 and 3, and for the most part can be
-determined inductively. However the rules for placing virtual base
-offset entries in the vtables requires elaboration.
-
-<p>
-The primary vtable has virtual base offset entries for all virtual
-bases directly or indirectly inherited by the class. Each secondary  
-vtable has entries only for virtual bases visible to the
-corresponding base class. The entries in the primary vtable are
-ordered so that entries for virtual bases visible to the primary base  
-class appear below entries for virtual bases only visible to this
-class.
-
-<p>
-For virtual bases only visible to this class, the entries are in the  
-reverse order in which the virtual bases are encountered in a
-depth-first, left-to-right traversal of the inheritance graph formed  
-by the class definitions. Note
-that this does not follow the order that virtual bases are placed in  
-the object.
-
-
-
-<p>
-<h4>Vtables for partially constructed objects</h4>
-
-<p>
-In some situations, a special vtable, called a construction vtable
-is used during the execution of base class constructors and
-destructors. These vtables are for specific cases of virtual
-inheritance.
-
-<p>
-During the construction of a class object, the object assumes the
-type of each of its base classes, as each base class subobject is
-constructed. RTTI queries in the base class constructor will return  
-the type of the base class, and virtual calls will resolve to member  
-functions of the base class rather than the complete class. Normally,  
-this behavior is accomplished by setting, in the base class
-constructor, the object's vtable pointers to the addresses of the
-vtables for the base class.
-
-<p>
-However, if the base class has direct or indirect virtual bases, the  
-vtable pointers have to be set to the addresses of construction
-vtables. This is because the normal base class vtables may not hold  
-the correct virtual base index values to access the virtual bases of  
-the object under construction, and adjustment addressed by these
-vtables may hold
-the wrong this parameter adjustment if the adjustment is to cast
-from a virtual base to another part of the object. The problem is
-that a complete object of a base class and a complete object of a
-derived class do not have virtual bases at the same offsets.
-
-<p>
-A construction vtable holds the virtual function addresses and the
-RTTI information associated with the base class and the virtual base  
-indexes and the addresses of adjustor entry points with this
-parameter adjustments associated with objects of the complete class.
-
-<p>
-To ensure that the vtable pointers are set to the appropriate
-vtables during base class construction, a table of vtable pointers,  
-called the VTT, which holds the addresses of construction and
-non-construction vtables is generated for the complete class. The
-constructor for the complete class passes to each base class
-constructor a pointer to the appropriate place in the VTT where the  
-base class constructor can find its set of vtables. Construction
-vtables are used in a similar way during the execution of base class  
-destructors.
 
 
 <p>
@@ -2334,6 +2264,12 @@ Please provide corrections,
 and if you're proposing alternative vtable constructions,
 describing them for this example might help (me, at least).
 Also feel free to provide additional examples illustrating other points.
+
+<p>
+<font color=blue>[990930 Cygnus -- Jason]</font>
+Jason has updated the Vtable layout description in
+<a href=abi-layout.html>abi-layout.html</a>
+to reflect the approach from Cygnus and IBM.
 
 
 <p>
@@ -2802,7 +2738,7 @@ requires a mechanism for early destruction of a subset.
 </table>
 
 <p>
-<font color=blue>[990804 SGI -- Jim]</font>
+<font color=blue><hr><p>[990804 SGI -- Jim]</font>
 <h4> Proposal </h4>
 
 <p>
@@ -2954,6 +2890,12 @@ some other means is required for accessing the correct vfunc.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990630 HP -- Christophe]</font>
+A rough idea from Christophe's original vtable layout proposal
+has been incorporated in the
+<a href=abi-layout.html#vtable-ctor>ABI data layout document</a>.
 
 <p>
 <table border=on cellpadding=3>
@@ -3231,6 +3173,379 @@ though it hasn't gone beyond specifying more of the underlying base ABI part.
 I will go farther once I get back from my trip.
 
 <p>
+<li>
+<font color=blue>[990922 HP -- Christophe]</font>
+
+<P>Here is a quick description of the personality routine interface
+and semantics. This description is a slight extension of the existing
+personality routine implemented by HP for IA64. The extension is to
+allow multiple runtimes from possibly different vendors or for
+possibly different languages to cooperate in processsing an
+exception.</P>
+
+<P>This document assumes that the chapter 11 of the Intel/HP &quot;IA-64 =
+Software Conventions and Runtime Architecture&quot; document is known to =
+the reader.</P>
+
+<P><B><I><FONT SIZE=3D5>INTERFACE:</FONT></I></B></P>
+
+<P>The complete exception processing framework consists of at least the =
+following routines: <TT>_RaiseException</TT>, <TT>_ResumeUnwind</TT>, =
+<TT>_DeleteException</TT>, <TT>_Unwind_getGR</TT>, =
+<TT>_Unwind_setGR</TT>, <TT>_Unwind_getIP</TT>, <TT>_Unwind_setIP</TT>, =
+<TT>_Unwind_getLanguageSpecificData</TT>, =
+<TT>_Unwind_getRegionStart</TT>. In addition, a language and vendor =
+specific personality routine will be stored by the compiler in the =
+unwind descriptor for the stack frames requiring exception =
+processing.</P>
+
+<P><B><FONT SIZE=3D4>UNWIND RUNTIME ROUTINES:</FONT></B></P>
+
+<P>The unwind runtime routines have the following interface and =
+semantics (all routines are <TT>extern &quot;C&quot;</TT>):</P>
+
+<P><TT>uint64 _RaiseException</TT><TT>(uint64 exception_class, void =
+*exception_object);</TT></P><BLOCKQUOTE>
+
+<P>Raise an exception, passing along the given exception class and =
+exception object. The exception object has been allocated by the =
+language-specific runtime, and has a language-specific format. =
+<TT>_RaiseException</TT> does not return, unless an error condition is =
+found (such as no handler accepting to handle the exception, bad stack =
+format, etc).</P>The first 4 words (32 bytes) of the exception object =
+are allocated for use exclusively by the unwinder, and should not be =
+written by the personality routine or other parts of the =
+language-specific runtime. The first word is used to store the exception =
+class. The second word points to the personality routine of the frame =
+that threw the exception intially. The two next words are reserved for =
+use by the unwinder. [Note: Typical use is to keep the state of the =
+unwinder while executing user code, such as our current frame_handle =
+pointer.]</BLOCKQUOTE>
+
+<P><TT>void _ResumeUnwind (void =
+*exception_object);</TT></P><BLOCKQUOTE>Resume propagation of an =
+existing exception. [Note: _ResumeUnwind should not be used to implement =
+rethrowing. To the unwinding runtime, the catch code that rethrows was a =
+handler, and the previous unwinding session was terminated before =
+entering it.] [Note:&nbsp;Compared to HP runtime, the exception class =
+and frame handle arguments have been removed. They also need no longer =
+be passed to the landing pads. Instead, the unwinder will store the =
+information in one of its 2 reserved words.]</BLOCKQUOTE>
+
+<P><TT>void _DeleteException(void =
+*exception_object);</TT></P><BLOCKQUOTE>If a given runtime resumes =
+normal execution after catching a foreign exception, it will not know =
+how to delete that exception. This exception will be deleted by calling =
+<TT>_DeleteException</TT>, which in turn will delegate the task to the =
+original personality routine (see <TT>EH_DELETE_EXCEPTION_OBJECT</TT> =
+below).</BLOCKQUOTE>
+
+<P><TT>uint64 _Unwind_getGR(void *context, int index);<BR>uint64 =
+_Unwind_getIP(void *context);<BR>void _Unwind_setGR(void *context, int =
+index, uint64 new_value);<BR>void _Unwind_setIP(void *context, uint64 =
+new_value);</TT></P><BLOCKQUOTE>Get or set registers from the given =
+unwinder context. The 'context' argument is the same argument passed to =
+the personality routine (see below).[Note: Minor changes compared to the =
+existing unwinding interface, mostly to hide the register =
+classes]</BLOCKQUOTE>
+
+<P><TT>uint64 _Unwind_getLanguageSpecificData(void =
+*context)</TT></P><BLOCKQUOTE>Get the address of the language-specific =
+data area for the current stack frame. The '<TT>context</TT>' argument =
+is the same argument passed to the personality routine.[Note: This is =
+not stricly required: it could be accessed through getIP using the =
+documented format of the UnwindInfoBlock, but since this work has been =
+done for finding the personality routine in the first place, it makes =
+sense to cache the result in the context, as we currently =
+do]</BLOCKQUOTE>
+
+<P><TT>uint64 _Unwind_getRegionStart(void =
+*context)</TT></P><BLOCKQUOTE>Get the address of the beginning of the =
+current procedure or region of code. [Note: This is required for us =
+because we store data relative to the beginning of the code. So let's =
+make it mandatory ;-]</BLOCKQUOTE>
+
+<P><B><FONT SIZE=3D4>PERSONALITY ROUTINE:</FONT></B></P>
+
+<P>The personality routine is defined with the following =
+interface:</P><BLOCKQUOTE><TT>int =
+PersonalityRoutine<BR>&nbsp;&nbsp;&nbsp;&nbsp;(int =
+version,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int =
+phase,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UInt64 =
+exceptionClass,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void * =
+exceptionObject,<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void =
+*context);</TT></BLOCKQUOTE>
+
+<P>[Note: the frame_handle argument has been removed: it was used only =
+once in the runtime, and the cost of reading it back from the exception =
+object is really minimal, compared to the cost of having to spill it in =
+all landing pads... The context argument type has been made opaque]</P>
+
+<P></P>
+
+<P>The arguments have the following role and meanings:</P><UL><LI>
+
+<P><B>version</B>: Version number that the compiler and personality =
+routine agree on, identifying for instance language-specific table =
+format. This version number is read from the unwind information block =
+(unwind tables)</P></LI></UL><UL><LI>
+
+<P><B>phase</B>: Indicates what processing the personality routine is =
+supposed to perform. The possible actions are described below under =
+'<B>UNWINDING PHASES</B>'</P></LI></UL><UL><LI>
+
+<P><B>exceptionClass</B>: An 8-bytes identifier specifying the type of =
+the thrown exception. By convention, the high 4 bytes indicate the =
+vendor (for instance HP\0\0), and the low 4 bytes indicate the language =
+(for instance C++\0.) [Note: For C++, it is expected that agreement will =
+be reached on a common 'exceptionObject', but different vendors may =
+still chose to have different personality routines with different table =
+formats.]</P></LI></UL><UL><LI>
+
+<P><B>exceptionObject</B>: The pointer to a memory location recording =
+the necessary information for processing the exception according to the =
+semantics of a given language. [Note: For C++, it is assumed that the =
+format of this exception object can be agreed upon, even if we disagree =
+on the LSDA and/or landing pad registers or similar =
+details.]</P></LI></UL><UL><LI>
+
+<P><B>context</B>: Unwinder state information for use by the personality =
+routine. This is used by the personality routine in particular to access =
+the frame's registers. [Note: I don't see how anything could work =
+without a minimal common unwinder interface - which is why it has been =
+defined above]</P></LI></UL><UL><LI>
+
+<P><B>return value</B>: The return value from the personality routine =
+indicates how further undinwind should happen, as well as possible error =
+conditions. See &quot;<B>UNWINDING&nbsp;PHASES</B>&quot; below for =
+details.</P></LI></UL>
+
+<P><B><FONT SIZE=3D4>UNWINDING&nbsp;PHASES</FONT></B></P>
+
+<P>Unwinding is a 2-phases process.</P><UL><LI>
+
+<P>PASS 1 unwinds through the stack, looking for a &quot;handler&quot;, =
+that is a code that has the potential to stop the exception propagation. =
+For C++, this would be a 'catch' clause. The first pass can do a =
+&quot;quick&quot; unwind, meaning it does not need to maintain full =
+registers state.</P></LI></UL><UL><LI>
+
+<P>PASS 2 starts once a handler has been found. For each stack frame =
+that requires some cleanup, it performs that cleanup. For C++, this =
+would be destructors in addition to catch clauses. If compensation code =
+for some optimization is required, this is also the pass this code will =
+be executed. During that pass, the stack is actually unwound, and full =
+register state is restored prior to executing any cleanup, compensation =
+or handler code.</P></LI></UL>
+
+<P>[Note: Cleanup code is code doing some user-defined cleanup such as =
+destructors. Compensation code is code inserted by the compiler to =
+compensate for an optimization that moved code past the throwing call. =
+Handler code is user-defined code that possibly can resume normal =
+execution]</P>
+
+<P>The unwinding phase argument to the personality routine is a bitwise =
+or of the following constants:</P><UL><LI><TT>EH_SEARCH_PHASE</TT> =3D =
+1: Indicates that the personality routine should check if the current =
+frame contains a handler, and if so return <TT>EH_HANDLER_FOUND</TT>, or =
+otherwise return <TT>EH_CONTINUE_UNWIND</TT>. <TT>EH_SEARCH_PHASE</TT> =
+cannot be set at the same time as =
+<TT>EH_CLEANUP_PHASE</TT>.</LI></UL><UL><LI><TT>EH_CLEANUP_PHASE</TT> =3D =
+2: Indicates that the personality routine should perform cleanup for the =
+current frame. The personality routine can perform this cleanup itself, =
+by calling nested procedures, and return <TT>EH_CONTINUE_UNWIND</TT> [ =
+Note: This is required to support the Intel nested procedures model]. =
+Alternatively, it can setup the registers (including the IP) for =
+transferring control to a &quot;landing pad&quot;, and return =
+<TT>EH_INSTALL_HANDLER</TT> (See &quot;<B>TRANSFERRING CONTROL TO A =
+LANDING PAD</B>&quot; below).</LI></UL><UL><LI><TT>EH_HANDLER_FRAME</TT> =
+=3D 4: During pass 2, indicates to the personality routine that the =
+current frame is the one which was flagged as the handler frame during =
+pass 1.</LI></UL><UL><LI><TT>EH_DELETE_EXCEPTION_OBJECT</TT> =3D 8: =
+During pass 2, indicates that the runtime that actually caught the =
+exception does not know how to delete it, and called =
+<TT>_DeleteException</TT>. '<TT>context</TT>' should not be used in that =
+case.</LI></UL><UL><LI><TT>EH_FATAL_PASS2_ERROR</TT> =3D 16:&nbsp;During =
+pass 2, indicates that a fatal unwinding error occured. In that case, =
+the personality routine should not return. This is sent to the original =
+personality routine associated to the initial exception object. [Note: =
+This is required if we want to ensure that <TT>_ResumeUnwind</TT> never =
+returns, and if we also want to be able to call <TT>terminate() </TT>in =
+the case a stack inconsistency is found during pass 2. An error detected =
+during pass 1 is reported by returning from =
+<TT>_RaiseException</TT>.]</LI></UL><UL><LI>
+
+<P><TT>EH_FORCE_UNWIND</TT> =3D 32:&nbsp;During pass 2, indicates that =
+no language is allowed to &quot;catch&quot; the exception. This flag is =
+set while unwinding the stack for setjmp or during thread cancellation. =
+User-defined code in a catch clause may still be executed, but the catch =
+clause has to resume unwinding at its end.</P></LI></UL>
+
+<P><FONT SIZE=3D4><B>TRANSFERRING CONTROL TO A LANDING =
+PAD:</B></FONT></P>
+
+<P>In the case the personality routine wants to transfer control to a =
+landing pad, it setups registers (including IP) to suitable values for =
+entering the landing pad. Prior to executing code in the landing pad, =
+registers not altered by the personality routine will be restored to the =
+exact state they were in that frame before the call that threw the =
+exception.</P>
+
+<P>The landing pad can either resume execution to normal (as, for =
+instance, at end of a C++ <TT>catch</TT>), or resume unwinding by =
+calling the <TT>_ResumeUnwind</TT> function and passing it the =
+'<TT>exceptionObject</TT>' argument received by the personality routine. =
+<TT>_ResumeUnwind</TT> will never return.</P>
+
+<P><TT>_ResumeUnwind</TT> should be called if and only if the =
+personality routine did not return <TT>EH_HANDLER_FOUND</TT> during =
+phase 1. In other words, the unwinder can allocate some resources (for =
+instance memory) and keep track of them in the exception object reserved =
+words. It should then free these resources before transferring control =
+to the last (handler) landing pad. It does not need to free the =
+resources before entering non-handler landing-pads, since =
+<TT>_ResumeUnwind</TT> will ultimately be called.</P>
+
+<P>The landing pad will receive various arguments from the runtime, =
+typically passed in registers set using <TT>_Unwind_setGR</TT> by the =
+personality routine. For a landing pad that can lead to =
+<TT>_ResumeUnwind</TT>, one argument must be the =
+<TT>exceptionObject</TT> pointer, which must be preserved to be passed =
+to <TT>_ResumeUnwind</TT>. [Note: Thanks to the 4 reserved words in the =
+exception object, 2 landing-pad arguments have been eliminated.] The =
+landing pad may receive other arguments, for instance a 'switch value' =
+indicating the type of the exception being caught.</P>
+
+<P><B><FONT SIZE=3D4>RULES FOR CORRECT INTER-LANGUAGE =
+OPERATION:</FONT></B></P>
+
+<P>The following rules must be observed for correct operation between =
+languages and/or runtimes from different vendors:</P><UL><LI>
+
+<P>An exception which has an unknown class must not be altered by the =
+personality routine. The semantics of foreign exception processing =
+depend on the language of the stack frame being unwound. This covers in =
+particular how exceptions from a foreign language are mapped to the =
+native language in that frame.</P></LI></UL><UL><LI>
+
+<P>If a runtime resumes normal execution, and the caught exception was =
+created by another runtime, it should call <TT>_DeleteException</TT>. =
+This is true even if it understands the exception object format (such as =
+would be the case between different C++ runtimes). [Note:&nbsp;This is =
+because the other runtime might have to update some global variables =
+that point to the exception being deleted.]</P></LI></UL><UL><LI>
+
+<P>A runtime is not allowed to catch an exception if the =
+EH_FORCE_UNWIND&nbsp;flag was passed to the personality =
+routine.</P></LI></UL>
+
+<P><B><FONT SIZE=3D4>CATCHING FOREIGN EXCEPTIONS IN C++</FONT></B></P>
+
+<P>Foreign exception can be caught in a <TT>catch(...)</TT>. They can =
+also be caught as if they were of a <TT>__foreign_exception</TT> class, =
+defined in <TT>&lt;exception&gt;</TT>. [Note:&nbsp;The =
+<TT>__foreign_exception</TT> may have subclasses, such as =
+<TT>__java_exception</TT> and <TT>__ada_exception</TT>, if the runtime =
+is capable of identifying some of the foreign languages.]</P>
+
+<P>The behavior is undefined in the following cases:</P><UL><LI>
+
+<P>A <TT>__foreign_exception</TT> catch argument is accessed in any way =
+(including taking its address).</P></LI></UL><UL><LI>
+
+<P>A <TT>__foreign_exception</TT> is active at the same time as another =
+exception (either there is a nested exception while catching the foreign =
+exception, or the foreign exception was itself =
+nested)</P></LI></UL><UL><LI>
+
+<P><TT>uncaught_exception()</TT>, <TT>set_terminate()</TT>, =
+<TT>set_unexpected()</TT>, <TT>terminate()</TT> or <TT>unexpected()</TT> =
+is called at a time a foreign exception exists (for instance, calling =
+<TT>set_terminate</TT>() during unwinding of a foreign =
+exception)</P></LI></UL>
+
+<P>[Note: All these cases might involve accessing the C++ specific =
+content of the thrown exception, for instance to chain active =
+exceptions]</P>
+
+<P>Otherwise, a catch block catching a foreign exception is =
+allowed:</P><UL><LI>
+
+<P>To resume normal execution, thereby stopping propagation of the =
+foreign exception and deleting it,</P></LI><LI>
+
+<P> Or to rethrow the foreign exception. In that case, the original =
+exception object should have been unaltered in any way by the =
+C++&nbsp;runtime.</P></LI></UL>
+
+<P>A catch-all block may be executed during forced unwinding. For =
+instance, a setjmp may execute code in a catch(...) during stack =
+unwinding. However, if this happens, unwinding will proceed at the end =
+of the catch-all block, whether or not there is an explicit =
+rethrow.</P>Setting the low 4 bytes of exception class to C++\0 is =
+reserved for use by C++&nbsp;runtimes compatible with the common =
+C++&nbsp;ABI.
+
+<p>
+<li>
+<font color=blue>[990923 All]</font>
+Extensive discussion at the meeting was generally positive about the HP
+proposal.
+Several changes came up, ranging from editorial to substantive.
+Christophe will modify the specification.
+
+<ul>
+<p>
+<li>
+Use <i>doubleword</i> instead of <i>word</i> for 8-byte items.
+
+<p>
+<li>
+By the time the personality routine is called,
+the runtime either knows where the language-specific data area is,
+or can get it trivially.
+Therefore, pass it to the personality routine,
+instead of providing _Unwind_getLanguageSpecificData.
+
+<p>
+<li>
+Most references to <code>setjmp</code> in the document should be to
+<code>longjmp</code>.
+
+<p>
+<li>
+The description of EH_DELETE_EXCEPTION_OBJECT was unclear.
+
+<p>
+<li>
+Clarify the distinction between passes 1 and 2, and the final steps
+(which are generally referred to as pass 2).
+
+<p>
+<li>
+The group agreed that the performance benefit of allowing a simplified
+setjmp which supports only a full-unwinding longjmp
+is outweighed by the interoperability benefit of having a single setjmp
+which will support either a C-style direct or a C++ full-unwind longjmp.
+
+<p>
+<li>
+We will follow the lead of IBM (?) and specify a distinct longjmp call
+which is defined to do a full-unwind longjmp.
+
+<p>
+<li>
+Pthreads cancellation will be supported by specifying:
+  <ul>
+  <li> New exceptions (cancel and exit).
+  <li> catch(...) always rethrows.
+  <li> catch(...) catches anything, including foreign languages.
+  </ul>
+
+</ul>
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -3438,6 +3753,33 @@ able to perform cleanup actions during handling of foreign-language
 exceptions, but not attempt to catch them.
 
 <p>
+<font color=blue>[991006 All]</font>
+The concensus of the group,
+from the discussion of the low-level exception API, is:
+<ul>
+<p>
+<li>
+A foreign-language exception,
+passing through a C++ frame,
+will cause normal destructor invocations exactly as a C++ exception would.
+<p>
+<li>
+Since catch(...) is commonly used as a cleanup mechanism (with a rethrow)
+rather than as a true catch,
+it is appropriate to catch and rethrow even foreign-language exceptions.
+<p>
+<li>
+Function exception specifications present a more complex issue.
+A foreign exception will generally not match any of the specified
+allowed exceptions
+(though implementations might deal with special cases).
+For consistency, it is expected that a foreign exception will be
+caught by a throw specification and not passed through,
+i.e. that unexpected() will be called.
+
+</ul>
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -3508,6 +3850,10 @@ if it does not exit the handler.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[991006 All]</font>
+This common ABI will not allow throwing exceptions from a signal handler.
 
 <p>
 <table border=on cellpadding=3>
@@ -3675,6 +4021,33 @@ although that would not be optimal for the unwind and catch case,
 since setjmp doesn't need to save much information in that case
 as most of what is needed is in the unwind descriptors.)
 
+<p>
+<font color=blue>[990923 All]</font>
+We agreed that:
+<ul>
+<p>
+<li>
+We will use a single setjmp which retains enough information for a
+traditional C direct longjmp.
+
+<p>
+<li>
+We will define a new longjmp call which always does full unwinding.
+
+<p>
+<li>
+Implementations may implement longjmp as either the direct or the
+full-unwind form, as a default, or using a user option.
+
+<p>
+<li>
+catch(...) will catch all exceptions, including foreign-language ones.
+It will always rethrow.
+</ul>
+
+<p>
+See the HP low-level exception writeup at the beginning of the
+exception issues section.
 
 
 <p> <hr> <p>
@@ -3870,6 +4243,33 @@ and specialization (in different translation units),
 should we name them differently?
 If we do so in an easily recognizable way,
 the linker could check for conflicts and report the ODR violation.
+</td> </tr>
+
+</table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F4></a> <td> F-4 </td>
+<td> Empty throw specs
+</td>
+<td> call g </td>
+<td> open </td>
+<td> HP </td>
+<td> 990930 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+It is useful to be able to identify functions with empty throw specifications,
+to allow calling of unexpected() from the runtime during unwinding.
+Can this specification be merged into the function's name mangling?
 </td> </tr>
 
 </table>
