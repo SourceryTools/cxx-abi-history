@@ -361,8 +361,9 @@ This is necessary for dynamic_cast<void*> in particular.
 <p>
 <li>
 The <i>typeinfo pointer</i> points to the typeinfo object used for RTTI.
-All entries in each of the vtables for a given class point to the same
-typeinfo object.
+All entries in each of the vtables for a given class must point to the
+same typeinfo object.
+A correct implementation of typeinfo equality is to check pointer equality.
 
 <p>
 <li>
