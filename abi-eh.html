@@ -15,7 +15,7 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 11 October 2000.
+<i>Revised 7 November 2000.
 <a href=#revisions>Revision history</a> at end of document.
 </i>
 
@@ -545,7 +545,6 @@ Possibilities are:
 
 <p>
 If the unwinder encounters an unexpected error during phase 2,
-<font color=red>
 it should return <code>_URC_FATAL_PHASE2_ERROR</code> to its caller.
 <i>
 In C++, this will usually be <code>__cxa_throw</code>,
@@ -559,7 +558,6 @@ or landing pad code may have corrupted them.
 As a result, the the caller of <code>_Unwind_RaiseException</code>
 can make no assumptions about the state of its stack or registers.
 </i>
-</font>
 
 <p>
 <a name=forced></a>
@@ -636,10 +634,8 @@ If the <code>stop</code> function returns any reason code other than
 the stack state is indeterminate from the point of view of the caller
 of <code>_Unwind_ForcedUnwind</code>.
 Rather than attempt to return, therefore,
-<font color=red>
 the unwind library
 should return <code>_URC_FATAL_PHASE2_ERROR</code> to its caller.
-</font>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -1255,20 +1251,18 @@ The fields in the exception object are as follows:
 <li>
 The <code>exceptionType</code> field encodes the type of
 the thrown exception.
-<font color=red>
 The <code>__cxa_throw_type_info</code> type contains a pointer to a
 <code>type_info</code> as defined by the common IA-64 runtime,
 and a function pointer to a destructor,
 both for the type being thrown.
-</font>
 This type must be stored in the exception object
 since non-polymorphic and built-in types can be thrown.
-<code><pre><font color=red>
+<code><pre>
 	class __cxa_throw_type_info {
 	  std::type_info *tinfo;
 	  void (*destructor) (void *this);
 	};
-</font></pre></code>
+</pre></code>
 
 <p>
 <li>
@@ -1471,7 +1465,7 @@ will produce code approximating the template:
 	#endif
 
 	// Pass the exception object to unwind library:
-	__cxa_throw(temp1, typeid(X)); // Never returns
+	__cxa_throw(temp1, <font color=red>__cxa_throw_type_info&lt;X></font>); // Never returns
 
 	// Landing pad for copy constructor:
 	L1: __cxa_free_exception(temp1) // never throws
@@ -1549,9 +1543,9 @@ After constructing the exception object with the throw argument value,
 the generated code calls the <code>__cxa_throw</code> runtime library
 routine.
 This routine never returns.
-<code><pre><font color=red>
+<code><pre>
     void __cxa_throw (void *thrown_exception, __cxa_throw_type_info *thrown);
-</font></pre></code>
+</pre></code>
 The arguments are:
 <ul>
 <p>
@@ -1561,11 +1555,9 @@ The arguments are:
 <p>
 <li> A <code>__cxa_throw_type_info</code> pointer,
      giving the static type of the throw argument
-<font color=red>
      as a <code>std::type_info</code> pointer,
      used for matching potential catch sites to the thrown exception,
      and a destructor pointer to be used eventually to destroy the object.
-</font>
 </ul>
 
 <p>
@@ -1961,7 +1953,7 @@ and implementations may note this fact, e.g. with pragmas.
 
 <p> <hr> <p>
 <a name=cxx-rt></a>
-<h3> Level III. Implementation </h3>
+<h3> Level III. Suggested Implementation </h3>
 
 
 <p>
@@ -1997,10 +1989,8 @@ Definition of what HP calls the exception class value.
 <p>
 The vocal attendees at the meeting wish to achieve the third level,
 and we will attempt to do so.
-<font color=red>
 What follows is a subset of the required information;
 See the HP exception handling specification for elaboration at this time.
-</font>
 
 
 
