@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 1 August 2000</i>
+<i>Revised 14 August 2000</i>
 
 </center>
 
@@ -34,6 +34,7 @@ C++ ABI for IA-64 (Draft)
   <li> <a href=#limits>		1.2 Limits </a>
   <li> <a href=#namespace>	1.3 Namespace and Header </a>
   <li> <a href=#scope>		1.4 Scope of This ABI </a>
+  <li> <a href=#docs>		1.5 Base Documents </a>
   </ul>
 <li> <a href=#layout> Chapter 2: Data Layout </a>
   <ul>
@@ -127,6 +128,16 @@ document to be clarified.
 
 <p>
 <h4> Recent Revisions </h4>
+
+<p>
+<font color=blue>[000807]</font>
+Added base document section (1.5).
+Further RTTI field name cleanup (2.9.5).
+Update proposed one-time construction API (3.3.2).
+Update proposed object construction priority API (3.3.4).
+Removed &lt;name> substitution (5.1.2).
+COMDAT not generally necessary for internal linkage (5.2).
+COMDAT for local static guard variables (5.2.2).
 
 <p>
 <font color=blue>[000727]</font>
@@ -457,6 +468,69 @@ experience is available.
 </i>
 
 
+<font color=red>
+<p> <hr> <p>
+<a name=scope>
+<h3> 1.5 Base Documents </h3>
+
+<p>
+A number of other documents provide a basis on which this ABI is built,
+and are occasionally referenced herein:
+
+<ul>
+<p>
+<li> [gABI]
+The <b>System V Application Binary Interface</b>,
+otherwise known as the <i>Generic ABI</i>.
+This document describes processor-independent object file formats
+and binary software interfaces for C under Unix.
+A somewhat out-of-date version is available from the SCO website,
+<a href=http://www.sco.com/developer/devspecs/>
+http://www.sco.com/developer/devspecs/</a>.
+A newer version, produced in conjunction with the next document,
+should be released in the future.
+Included by reference in this ABI.
+
+<p>
+<li> [psABI]
+The Intel <b>Unix System V Application Binary Interface,
+IA-64 Processor Supplement</b>.
+This document describes IA-64 processor-specific object file formats
+and binary software interfaces, primarily for C, under Unix.
+Available from the Intel IA-64 software developer website,
+<a href=http://developer.intel.com/design/ia-64/devinfo.htm>
+http://developer.intel.com/design/ia-64/devinfo.htm</a>.
+Included by reference in this ABI.
+
+<p>
+<li> [SWCONV]
+The Intel <b>IA-64 Software Conventions and Runtime Architecture Guide</b>.
+This document describes IA-64 processor-specific binary software interfaces,
+notably including register usage, subprogram calling conventions, and
+stack unwind facilities, under all systems.
+Available from the Intel IA-64 software developer website,
+<a href=http://developer.intel.com/design/ia-64/devinfo.htm>
+http://developer.intel.com/design/ia-64/devinfo.htm</a>.
+Included by reference in this ABI.
+
+<p>
+<li> [ABI-EH]
+The <a href=abi-eh.html><b>C++ ABI for IA-64: Exception Handling</b></a>.
+Its Level II is considered an integral part of this document (Chapter 4).
+It also contains the base specification of unwind support for [psABI].
+
+<p>
+<li> [C++FDIS]
+The <b>Final Draft International Standard, Programming Language C++</b>,
+ISO/IEC FDIS 14882:1998(E).
+References herein to the "C++ Standard," or to just the "Standard,"
+are to this document.
+
+</ul>
+
+</font>
+
+
 <p> <hr> <p>
 <a name=layout>
 <h2> Chapter 2: Data Layout </h2>
@@ -603,7 +677,6 @@ Layout (of type C) is done using the following procedure.
       </ol>
   </ol>
 
-<font color=red>
 <br>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
@@ -616,7 +689,6 @@ class virtual pointer will often save a load,
 and no adjustment to the <code>this</code> pointer will be required for
 calls to its virtual functions.
 </i>
-</font>
 
 <p>
 <li> <h5> Non-Virtual-Base Allocation </h5>
@@ -665,14 +737,21 @@ allocate as follows:
 
        <p>
        In either case,
-       update sizeof(C) and dsize(C) to include the last byte
-       containing (part of) the bitfield.
+<font color=red>
+       update dsize(C) to include the last byte
+       containing (part of) the bitfield,
+       and update sizeof(C) to max(sizeof(C),dsize(C)).
+</font>
 
   <p>
   <li> Otherwise, if D is not an empty base class
 	(including all data members),
 	start at offset dsize(C),
-	incremented if necessary to alignment nvalign(type(D)).
+	incremented if necessary for alignment
+<font color=red>
+	to nvalign(type(D)) for base classes or
+	to align(type(D)) for data members.
+</font>
 	Place D at this offset unless doing so would result in two
 	components (direct or indirect) of the same type having the
 	same offset.
@@ -1054,7 +1133,7 @@ Structure:
 
 <p>
 Such a class has no associated virtual table,
-and its objects contain no virtual pointer.
+and an object of such a class contains no virtual pointer.
 
 <p>
 <h5> Category 1: Leaf </h5>
@@ -1141,9 +1220,7 @@ at its tail:
      non-primary or virtual base class of the other.
      (If the base is primary, no result pointer adjustment is required.
      But if it is virtual,
-<font color=red>
      it may not be primary in a more-derived class hierarchy.)
-</font>
 </ul>
 
 The primary virtual table, therefore,
@@ -1177,7 +1254,7 @@ Structure:
 <li> Only virtual base classes
 (but those may have non-virtual bases).
 <li> The virtual
-base classes are not empty or nearly empty.
+base classes are neither empty nor nearly empty.
 </ul>
 
 <p>
@@ -1249,7 +1326,10 @@ and is addressed by the virtual table pointer at the top of the object,
 which is not shared
 because there are no nearly empty virtual bases to be primary.
 It holds the following function pointer entries,
-following those of any primary base's virtual table:
+following those of any primary base's virtual table,
+<font color=red>
+in the virtual functions' declaration order:
+</font>
 
 <ul>
 <p>
@@ -1305,11 +1385,9 @@ can now have (nearly empty) primary bases:
     class.
     There are entries for overridden virtual functions from the primary
     base class only if the result types are different (covariant).
-<font color=red>
     For purposes of this case,
     the two types are considered different if one of them is a
     non-primary or virtual base class of the other.
-</font>
 
 </ul>
 
@@ -1817,9 +1895,18 @@ to allow distinct instances of the function
 
 <p>
 The size of the guard variable is 64 bits.
-The low-order byte shall contain the value 0 prior to initialization of
+<font color=red>
+The first byte (i.e. the byte at the address of the full variable)
+</font>
+shall contain the value 0 prior to initialization of
 the associated variable, and 1 after initialization is complete.
 Usage of the other bytes of the guard variable is implementation-defined.
+
+<font color=red>
+<p>
+See <a href=once-ctor>Section 3.3.2</a>
+for the API for references to this guard variable.
+</font>
 
 
 
@@ -1883,8 +1970,8 @@ for every X in: void, bool, wchar_t, char, unsigned char, signed char,
 short, unsigned short, int, unsigned int, long, unsigned long, long long,
 unsigned long long, float, double, long double.
 (Note that various other type_info objects for class types may reside
-in the run-time support library by virtue of the preceding rules;
-e.g., that of std::bad_alloc.)
+in the run-time support library by virtue of the preceding rules,
+e.g. that of <code>std::bad_alloc</code>.)
 
 
 <p>
@@ -1974,9 +2061,10 @@ inherited hierarchy.
 <li>
 The class definitions below are to be interpreted as implying a memory
 layout following the class layout rules for the host ABI.
-<font color=red>
 They specify data members only,
 and do not imply anything about the member functions of these classes.
+<font color=red>
+The data member names are not normative.
 </font>
 
 <p>
@@ -2007,15 +2095,15 @@ the entry is zero.
 <pre><code>
       class type_info {
 	private:
-         void *virtual_table;
+         void *__virtual_table;
 	public:
-	 char *type_name;
+	 char *__type_name;
       };
 
 </pre></code>
 <ul>
-<li> <code>virtual_table</code> is the class type_info virtual pointer
-<li> <code>type_name</code> is a pointer to a NTBS
+<li> <code>__virtual_table</code> is the class type_info virtual pointer
+<li> <code>__type_name</code> is a pointer to a NTBS
     representing the name of the type
 </ul>
 
@@ -2088,7 +2176,7 @@ declared "<code>__class_type_info const *type</code>".
 <pre><code>
       class __si_class_type_info : public __class_type_info {
 	public:
-	  __class_type_info const *base_type;
+	  __class_type_info const *__base_type;
       };
 
 </pre></code>
@@ -2103,61 +2191,63 @@ It is derived from <code>abi::__class_type_info</code>:
 <pre><code>
       class __vmi_class_type_info : public __class_type_info {
 	public:
-	  unsigned int flags;
-	  unsigned int base_count;
-	  __base_type_info const base_info[1];
+	  unsigned int __flags;
+	  unsigned int __base_count;
+	  __base_class_type_info __base_info[1];
 
-	  enum flags_masks {
-	    non_diamond_repeat_mask = 0x1,
-	    diamond_shaped_mask = 0x2
+	  enum __flags_masks {
+	    __non_diamond_repeat_mask = 0x1,
+	    __diamond_shaped_mask = 0x2
 	  };
       };
 
 </pre></code>
   <ul>
   <p>
-  <li> <code>flags</code> is a word with flags describing details
+  <li> <code>__flags</code> is a word with flags describing details
       about the class structure,
       which may be referenced by using the
-      <code>flags_masks</code> enumeration.
+      <code>__flags_masks</code> enumeration.
 	<ul>
 	<li> 0x01: class has non-diamond repeated inheritance
 	<li> 0x02: class is diamond shaped
 	</ul>
       These flags refer to both direct and indirect bases.
-      The type of the <code>flags</code> field is defined by each psABI,
+      The type of the <code>__flags</code> field is defined by each psABI,
       but must be at least 16 bits.
       For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
 
   <p>
-  <li> <code>base_count</code> is a word with the number of
+  <li> <code>__base_count</code> is a word with the number of
       direct proper base class descriptions that follow.
-      The type of the <code>base_count</code> field is defined by each psABI.
+      The type of the <code>__base_count</code> field is defined by each psABI.
       For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
 
   <p>
-  <li> <code>base_info[]</code> is an array of base class descriptions --
+  <li> <code>__base_info[]</code> is an array of base class descriptions --
        one for every direct proper base.
        Each description is of the type:
 <pre><code>
       struct abi::__base_class_info {
 	public:
-         __class_type_info const *base;
-	 long offset_flags;
+         __class_type_info const *<font color=red>__base_type</font>;
+	 long __offset_flags;
 
-	 enum offset_flags_masks {
-	   virtual_mask = 0x1,
-	   public_mask = 0x2 
+	 enum __offset_flags_masks {
+	   __virtual_mask = 0x1,
+	   __public_mask = 0x2,
+	   <font color=red>__offset_shift = 8</font>
 	 };
 
       };
 </pre></code>
 
       <p>
-      The <code>base</code> member points to the RTTI for the base type.
+      The <font color=red><code>__base_type</code></font>
+      member points to the RTTI for the base type.
 
       <p>
-      The upper 56 bits of <code>offset_flags</code> are a signed offset.
+      The upper 56 bits of <code>__offset_flags</code> are a signed offset.
       For a non-virtual base,
       this is the offset in the object of the base subobject.
       For a virtual base,
@@ -2166,9 +2256,9 @@ It is derived from <code>abi::__class_type_info</code>:
       (negative).
 
       <p>
-      The low-order byte of vmi_offset_flags contains flags,
+      The low-order byte of <code>__offset_flags</code> contains flags,
       as given by the masks from the enumeration
-      <code>offset_flags_masks</code>:
+      <code>__offset_flags_masks</code>:
 	<ul>
 	<li> 0x1: Base class is virtual
 	<li> 0x2: Base class is public
@@ -2199,15 +2289,15 @@ It adds two data members:
 <pre><code>
       class __pbase_type_info : public std::type_info {
 	public:
-	  unsigned int qualifier_flags;
-	  const std::type_info *pointee;
+	  unsigned int <font color=red>__flags</font>;
+	  const std::type_info *__pointee;
 
-	  enum qualifier_masks {
-	    const_mask = 0x1,
-	    volatile_mask = 0x2,
-	    restrict_mask = 0x4,
-	    incomplete_mask = 0x8,
-	    incomplete_class_mask = 0x10
+	  enum <font color=red>__masks</font> {
+	    __const_mask = 0x1,
+	    __volatile_mask = 0x2,
+	    __restrict_mask = 0x4,
+	    __incomplete_mask = 0x8,
+	    __incomplete_class_mask = 0x10
 	  };
       };
 
@@ -2216,29 +2306,32 @@ It adds two data members:
 
 <ul>
   <p>
-  <li> <code>qualifier_flags</code> is a flag word describing the
+  <li> <font color=red><code>__flags</code></font> is a flag word describing the
       cv-qualification and other attributes of the type pointed to
       (e.g., "int volatile*" should have the
       "volatile" bit set in that word);
       and
   <p>
-  <li> <code>pointee</code> is a pointer to the
+  <li> <code>__pointee</code> is a pointer to the
       <code>std::type_info</code> derivation for the unqualified type
       being pointed to.
 </ul>
 
 <p>
-Note that the <code>qualifier_flags</code> bits should not be folded
+Note that the <font color=red><code>__flags</code></font>
+bits should not be folded
 into the pointer to allow future definition of additional flags.
 It contains the following bits,
 and may be referenced using the flags defined in the
-<code>qualifier_masks</code> enum:
+<font color=red><code>__masks</code></font> enum:
 <ul>
-<li> 0x1: target type has const qualifier
-<li> 0x2: target type has volatile qualifier
-<li> 0x4: target type has restrict qualifier
-<li> 0x8: target type is incomplete
-<li> 0x10: class containing target is incomplete (in pointer to member)
+<li> 0x1: <font color=red><code>__pointee</code></font> type has const qualifier
+<li> 0x2: <font color=red><code>__pointee</code></font> type has volatile qualifier
+<li> 0x4: <font color=red><code>__pointee</code></font> type has restrict qualifier
+<li> 0x8: <font color=red><code>__pointee</code></font> type is incomplete
+<li> 0x10: class containing
+	  <font color=red><code>__pointee</code></font>
+	  is incomplete (in pointer to member)
 </ul>
 
 <p>
@@ -2249,7 +2342,7 @@ When it is for a direct or indirect pointer to a member of
 an incomplete class type,
 the incomplete class type flag is set.
 In addition, it and all of the intermediate
-<code>abi::__pointer_type_info</font> structs in the chain
+<code>abi::__pointer_type_info</code> structs in the chain
 down to the <code>abi::__class_type_info</code> for the
 incomplete class type must be prevented from resolving to the
 corresponding type_info structs for the complete class type,
@@ -2279,12 +2372,12 @@ to <code>abi::__pbase_type_info</code>:
 <pre><code>
       class __pointer_to_member_type_info : public __pbase_type_info {
 	public:
-	  abi::__class_type_info *context_class;
+	  <font color=red>const abi::__class_type_info *__context</font>;
       };
 
 </pre></code>
 <ul>
-<li> <code>context_class</code> is a pointer to an
+<li> <font color=red><code>__context</code></font> is a pointer to an
     <code>abi::__class_type_info</code> corresponding to the class type
     containing the member pointed to (e.g., the "A" in "int A::*")
 </ul>
@@ -2362,7 +2455,7 @@ These tests are implemented by abi::__dynamic_cast:
 			  const abi::__class_type_info *dst,
 			  std::ptrdiff_t src2dst_offset);
    /* sub: source address to be adjusted; nonnull, and since the
-    *      source object is polymoprhic, *(void**)sub is a virtual
+    *      source object is polymorphic, *(void**)sub is a virtual
     pointer.
     * src: static type of the source object.
     * dst: destination type (the "T" in "dynamic_cast&lt;T>(v)").
@@ -2430,14 +2523,12 @@ follow those specified by the underlying processor-specific ABI for C,
 whenever there is an analogous construct in C.
 This chapter specifies exceptions required by C++-specific semantics,
 or by features without analogues in C.
-<font color=red>
 It also specifies the APIs of a variety of runtime utility routines
 required to be part of the support library of an ABI-conforming
 implementation for use by compiled code.
 In addition, reference is made to the separate description of
 <a href=abi-eh.html>exception handling</a> in this ABI,
 which defines a large number of runtime utility routine APIs.
-</font>
 
 <p>
 <a name=normal-call>
@@ -2921,7 +3012,7 @@ A test program for this can be found in the
 </dl>
 
 
-<font color=red>
+<font color=purple>
 <p>
 <a name=once-ctor></a>
 <h4> 3.3.2 One-time Construction API </h4>
@@ -2937,19 +3028,17 @@ initializing if and only if its value is zero,
 and then setting it to a non-zero value.
 
 <p>
-However, an implementation intending to support automatically
-thread-safe one-time initialization
+However, an implementation intending to support
+automatically thread-safe, one-time initialization
 (as opposed to requiring explicit user control for thread safety)
 requires more control,
 and should use the following API to achieve interoperability with other
 such implementations.
-
-<p>
-The basic initialization sequence for such objects becomes:
 <code><pre>
 	if ( <i>obj_guard.first_byte</i> == false ) {
 	  if ( __cxa_guard_acquire (<i>obj_guard</i>) ) {
 	    <i>... initialize the object ...</i>;
+	    <i>... queue object destructor with __cxa_atexit() ...</i>;
 	    __cxa_guard_release (<i>obj_guard</i>);
 	  }
 	}
@@ -2995,7 +3084,7 @@ and return.
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-An implementation may also include a simple inline test of the
+An implementation need not include the simple inline test of the
 initialization flag in the guard variable around the above sequence.
 If it does so,
 the cost of this scheme,
@@ -3003,6 +3092,22 @@ when run single-threaded with minimal versions of the above functions,
 will be two extra function calls,
 each of them accessing the guard variable,
 the first time the scope is entered.
+
+<p>
+An implementation supporting thread-safety on multiprocessor systems
+must also guarantee that references to the initialized object do not
+occur before the load of the initialization flag.
+On IA-64, this can be done by using a <code>ld1.acq</code> operation to
+load the flag.
+
+<p>
+The intent of specifying an 8-byte structure for the guard variable,
+but only describing one byte of its contents is to allow
+flexibility in the implementation of the API above.
+On systems with good small lock support,
+the second word might be used for a mutex lock.
+On others, it might identify (as a pointer or index)
+a more complex lock structure to use.
 </i>
 
 </font>
@@ -3193,7 +3298,7 @@ call the given destructor on each (if non-NULL) and rethrow.
 </dl>
 
 
-<font color=red>
+<font color=purple>
 <p>
 <a name=ctor-order>
 <h4> 3.3.4 Controlling Object Construction Order </h4>
@@ -3226,30 +3331,30 @@ initialization ordering specified in the base ABI.
 <p>
 A user may specify the construction priority with the pragma:
 <code><pre>
-    #pragma init_priority ( &lt;priority> [, &lt;variable name>] )
+    #pragma init_priority ( &lt;priority> )
 </pre></code>
 
 The &lt;priority> parameter specifies a 32-bit signed initialization
 priority, with lower numbers meaning earlier initialization.
 The range of priorities [MIN_INT .. MIN_INT+1023] is reserved
 to the implementation.
-If a &lt;variable name> is specified,
-the priority applies only to the given variable name.
-Otherwise, it applies to all file scope variables in the file where it
-appears except those with explicit priority specifications.
-If different priorities are used for variables in the same file,
-the behavior is undefined unless variables defined later have
-priority numbers at least as large as those defined earlier.
-
-<p>
-Objects with no specified initialization priority are assumed to have
-priority zero,
-as are initialization actions specified by other means,
+<font color=red>
+The pragma applies to all file scope variables in the file where it
+appears, from the point of appearance to the next priority pragma or
+the end of the file.
+Objects defined before any priority pragmas have a default priority of zero,
+as do initialization actions specified by other means,
 e.g. <code>DT_INIT_ARRAY</code> entries.
+For consistency with the C++ Standard requirements on initialization order,
+behavior is undefined unless the priorities appearing in a single file,
+including any default zero priorities,
+are in non-decreasing numeric (non-increasing priority) order.
 
 <p>
-The relative initialization order of entries from different files
-(or link command options) with the same priority is not specified.
+Initialization entries with the same priority from different files
+(or from other sources such as link command options)
+will be executed in an unspecified order.
+</font>
 
 <p>
 <h5> 3.3.4.3 Object File Representation </h5>
@@ -3268,15 +3373,28 @@ The elements are structs:
 	  ElfXX_Addr	pi_addr;
 	} ElfXX_Priority_Init;
 </pre></code>
-The semantics are that <code>pi_addr</code> is a function pointer,
-with an <code>unsigned int</code> priority parameter,
+<font color=red>
+The field <code>pi_addr</code> is a function pointer,
+as defined by the base ABI
+(a pointer to a function descriptor on IA-64).
+The function takes a single <code>unsigned int</code> priority parameter,
 which performs some initialization at priority <code>pi_pri</code>.
 The priority value is obtained from the signed int in the source pragma
 by subtracting MIN_INT, so the default priority is -MIN_INT.
-Each of these functions will be called with the GP of the
-executable object containing the table.
+</font>
 The section header field <code>sh_entsize</code> is 8 for ELF-32,
 or 16 for ELF-64.
+
+<font color=red>
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+An implementation may initialize as many (or as few) objects of the
+same prioriry as it chooses in a single such initialization function,
+as long as the sequence of such initialization entries for a given file
+preserves the source code order of objects to be initialized.
+</i>
+</font>
 
 <p>
 <h5> 3.3.4.4 Runtime Library Support </h5>
@@ -3304,6 +3422,7 @@ as specified above, is the default behavior specified by the generic
 ABI for unknown section types.
 
 <p>
+<img src=warning.gif alt="<b>NOTE</b>:">
 <i>
 Given minimum static linker processing,
 an implementation supporting priority initialization would need to
@@ -3618,8 +3737,8 @@ The type is omitted for variables and static data members.
 	   ::= &lt;unscoped-name>
 	   ::= &lt;unscoped-template-name> &lt;template-args>
 	   ::= &lt;local-name>	# See <a href=#mangling-scope>Scope Encoding</a> below
-</font><font color=red>
-	   ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below (problem for name w/o signature)
+</font><font color=red><strike>
+	   ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below </strike>
 </font><font color=blue>
 
     &lt;unscoped-name> ::= &lt;unqualified-name>
@@ -3835,9 +3954,7 @@ either of which may be either virtual or non-virtual.
 
 <p>
 Constructors and destructors are simply special cases of
-<font color=red>
 &lt;unqualified-name>,
-</font>
 where the final &lt;unqualified-name> of a nested name
 is replaced by one of the following:
 
@@ -3987,10 +4104,8 @@ The type of nontemplate function objects
 or the target function type in thunk manglings)
 includes only the parameter types.
 For template functions
-<font color=red>
 and operators,
 except for template conversion operators,
-</font>
 or for function type specifications such as function parameters,
 &lt;type> includes the return type followed by the parameter types.
 Thus:
@@ -4473,11 +4588,11 @@ they are not part of the actual mangled name, and should be ignored.
 <br> (Note: the return type is always explicitly encoded for template
 functions taking parameters.)</td></tr>
 
-<tr class=small><td> <font color=red>_Z5firstI3DuoEvS0_</font> </td>
+<tr class=small><td> _Z5firstI3DuoEvS0_ </td>
 <td> void first&lt;Duo>(/*nondependent*/Duo);
-<br><font color=red>
+<br>
 (Note: first template is S_, Duo is S0_, first<Duo>(Duo) is S1_.
-<br>Since the function parameter is not dependent, don't use T_.)</font>
+<br>Since the function parameter is not dependent, don't use T_.)
 </td></tr>
 
 <tr class=small><td> _Z5firstI3DuoEvT_ </td>
@@ -4506,10 +4621,9 @@ functions taking parameters.)</td></tr>
 _ZngILi42EE v N1A I XplT_Li2EE E 1TE </td>
 <td> void operator-&lt;/*int J=*/42>(A&lt;J+2>::T); </td></tr>
 
-<tr class=small><td> <font color=red>_Z4makeI7FactoryiE T_IT0_E v</font> </td>
+<tr class=small><td> _Z4makeI7FactoryiE T_IT0_E v </td>
 <td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
-<br> <font color=red>
-(Note: T_ = factory (a template), T0_ - int)</font> </td></tr>
+<br> (Note: T_ = factory (a template), T0_ = int) </td></tr>
 
 <tr class=small><td> _Z3foo 5Hello5WorldS0_S_ </td>
 <td> void foo(Hello,World,World,Hello)
@@ -4523,7 +4637,7 @@ _ZngILi42EE v N1A I XplT_Li2EE E 1TE </td>
 <tr class=small><td> _ZlsRSoRKSs </td>
 <td> operator&lt;&lt; (std::ostream&,std::string const&) </td></tr>
 
-<tr class=small><td> <font color=red>_ZTI7a_class</font> </td>
+<tr class=small><td> _ZTI7a_class </td>
 <td>  typeid(class a_class)  </td></tr>
 
 </table>
@@ -4549,6 +4663,15 @@ gABI to remove duplicates.
 We will refer to this simply as using a COMDAT group,
 and specify the symbol to be used to identify duplicates in the
 <code>SHT_GROUP</code> section.
+
+<font color=red>
+<p>
+Note that nothing in this section should be construed to require COMDAT
+usage for objects with internal linkage unless they may in fact be
+referenced outside the translation unit where they appear,
+for instance due to inlining.
+</font>
+
 
 <p>
 <a name=vague-inline></a>
@@ -4583,6 +4706,15 @@ identified by the symbol name described in the
 <a href=#scope-encoding> Scope Encoding </a> section above.
 Each COMDAT group must be emitted in any object with references
 to the symbol for the object it contains, whether inline or out-of-line.
+
+<font color=red>
+<p>
+Local static data objects generally have associated guard variables
+used to ensure that they are initialized only once
+(see <a href=once-ctor>3.3.2</a>).
+If the object is emitted using a COMDAT group,
+the guard variable must be too, identified by its name.
+</font>
 
 
 <p>
