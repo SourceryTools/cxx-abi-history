@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 1 February 2000</i>
+<i>Revised 4 February 2000</i>
 
 </center>
 
@@ -92,6 +92,13 @@ Array placement new requires resolution (A-21).
 <h3> Revisions </h3>
 
 <p>
+<font color=blue>[000203]</font>
+Incorporate discussion of 3 Febrary.
+Remove __reference_type_info (issue A-22).
+Restructure struct RTTI and flags (issue A-23).
+Clarify __base_class_info layout.
+
+<p>
 <font color=blue>[000125]</font>
 Incorporate discussion of 20 January, generally clarifications.
 Resolved A-19 (choice of a primary virtual base).
@@ -165,11 +172,17 @@ A value A such that any object X of type T has an address satisfying
 the constraint that &X modulo A == 0.
 
 <p>
-<font color=red>
 <dt> <i>direct base class order</i> </dt>
 <dd>
 When the direct base classes of a class are viewed as an ordered set,
 the order assumed is the order declared, left-to-right.
+
+<p>
+<dt> <i>diamond-shaped inheritance</i> </dt>
+<dd>
+A class has diamond-shaped inheritance iff it has a virtual base class
+that can be reached by distinct inheritance graph paths through
+more than one direct base.
 
 <p>
 <dt> <i>dynamic class</i> </dt>
@@ -177,7 +190,6 @@ the order assumed is the order declared, left-to-right.
 A class requiring a virtual table pointer
 (because it or its bases have one or more virtual member functions or
 virtual base classes).
-</font>
 
 <p>
 <dt> <i>empty class</i> </dt>
@@ -1272,7 +1284,6 @@ The possible derived types are:
 <ul>
   <li> std::__fundamental_type_info
   <li> std::__pointer_type_info
-  <li> std::__reference_type_info
   <li> std::__array_type_info
   <li> std::__function_type_info
   <li> std::__enum_type_info
@@ -1306,11 +1317,6 @@ the bit 0x2 encodes "volatile".
 
 <p>
 <li>
-std::__reference_type_info is similar to std::__pointer_type_info
-but describes references.
-
-<p>
-<li>
 std::__array_type_info and std::__function_type_info do not add fields
 to std::type_info
 (these types are only produced by the typeid operator;
@@ -1326,52 +1332,75 @@ Three different types are used to represent type information:
 <li>
 std::__class_type_info is used for class types having no bases,
 and is also a base type for the other two class type representations.
-It adds one word to std::type_info with flags describing details
-about the class (most for use of the derived classes):
-  <ul>
-  <li> 0x1: contains multiply inherited subobject
-  <li> 0x2: is polymorphic
-  <li> 0x4: has virtual bases
-  <li> 0x8: has non-publicly inherited base
-  </ul>
 
 <p>
 <li>
-For classes containing only a single, nonvirtual inheritance hierarchy,
+For classes containing only a single, public, non-virtual base
+at offset zero (i.e. the derived class is dynamic iff the base is),
 class std::__si_class_type_info is used.
 It adds to std::__class_type_info
-a single pointer to the type_info structure for the base type,
-of type "<code>__class_type_info const *type</code>".
+a single member pointing to the type_info structure for the base type,
+declared "<code>__class_type_info const *type</code>".
 
 <p>
 <li>
-For class containing (directly or indirectly)
-a multiple or virtual inheritance component in their hierarchy,
+For classes with bases that do not satisfy the
+__si_class_type_info constraints,
 std::__vmi_class_type_info is used.
-It is derived from std::__class_type_info, and adds:
+It is derived from std::__class_type_info, and adds fields:
   <ul>
-  <li> a word with the number of direct base class descriptions that follow
-  <li> base class descriptions for every direct base;
+  <p>
+  <li> vmi_flags: a word with flags describing details
+      about the class (most for use of the derived classes):
+	<ul>
+	<li> 0x01: class has non-diamond multiple inheritance
+	<li> 0x02: class is diamond shaped
+	<li> 0x04: class has virtual base(s)
+	<li> 0x08: class has non-virtual base(s)
+	<li> 0x10: class has publicly inherited base(s)
+	<li> 0x20: class has non-publicly inherited base(s)
+	</ul>
+      The type of the _VMI_flags field is defined by each psABI,
+      but must be at least 16 bits.
+      For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
+
+  <p>
+  <li> vmi_base_count: a word with the number of direct base class
+      descriptions that follow.
+      The type of the _VMI_base_count field is defined by each psABI.
+      For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
+
+  <p>
+  <li> vmi_bases[]: base class descriptions for every direct base;
        each description is of the type:
 <pre><code>
       struct std::__base_class_info {
          __class_type_info const *type;
-         std::ptrdiff_t offset;
-	 int vmi_flags;
+	 long vmi_offset_flags;
       };
 </pre></code>
-  </ul>
 
-<p>
-The <code>type</code> member points to the RTTI for the base type.
-The <code>offset</code> member is the offset in the vtable of the
-virtual base offset for the virtual base referenced
-(in general, negative if it is introduced in this primary vtable,
-or positive if it is reused from a non-virtual base's vtable).
-The vmi_flags field contains one or more flags:
-  <ul>
-  <li> 0x1: Base class is virtual
-  <li> 0x2: Base class is public
+      <p>
+      The <code>type</code> member points to the RTTI for the base type.
+
+      <p>
+      The upper 56 bits of vmi_offset_flags are a signed offset.
+      For a non-virtual base,
+      this is the offset in the object of the base subobject.
+      For a virtual base,
+      this is the offset in the vtable of the
+      virtual base offset for the virtual base referenced
+      (in general, negative if introduced in this primary vtable,
+      or positive if reused from a non-virtual base's vtable).
+
+      <p>
+      The lower byte of vmi_offset_flags contains flags,
+      as given by the following masks:
+	<ul>
+	<li> 0x1: Base class is virtual
+	<li> 0x2: Base class is public
+	</ul>
+
   </ul>
 
 <p>
