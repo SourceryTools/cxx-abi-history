@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 27 July 2000</i>
+<i>Revised 8 August 2000</i>
 
 </center>
 
@@ -6786,6 +6786,47 @@ but we do need a decision one way or another.
 Decided to return void.
 Open another issue (C-13) to consider alternate allocating constructors
 (low priority).
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C13></a> <td> C-13 </td>
+<td> Allocating constructors </td>
+<td> call </td>
+<td> closed </td>
+<td> HP </td>
+<td> 000309 </td>
+<td> 000803 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we define allocating constructors?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C13> Resolution</a></b>:
+Their use is optional.
+Their name mangling is specified.
+If used, they must be emitted everywhere referenced as a COMDAT group
+(Draft ABI section 5.2.5).
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000308 HP -- Christophe]</font>
+We should consider defining alternate constructors which
+allocate the object before constructing it.
+
+<p>
+<font color=blue>[000803 All]</font>
+The definition in the Draft, section 5.2.5, is accepted.
 
 
 <p>
