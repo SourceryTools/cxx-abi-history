@@ -15,7 +15,7 @@ C++ ABI for IA-64: Mangling
 
 <font size=-1>
 <p>
-<i>Revised 14 March 2000</i>
+<i>Revised 21 March 2000</i>
 
 </center>
 
@@ -111,8 +111,15 @@ C++ ABI for IA-64: Mangling
 <tr><td>oper</td> <td>r</td> <td> z </td> <td> Operator sizeof </td> </tr>
 <tr><td>type</td> <td>R</td> <td></td> <td> reference type </td> </tr>
 <tr><td>type</td> <td>s</td> <td></td> <td> builtin type short </td> </tr>
-<tr><td>abbr</td> <td>S</td> <td> &lt;digit></td> <td> previous name </td> </tr>
-<tr><td>type</td> <td>S</td> <td> b </td> <td> abbreviation ::std::basic_string </td> </tr>
+<tr><td>abbr</td> <td>S</td> <td> &lt;digit></td> <td> substituted name </td> </tr>
+<tr><td>type</td> <td>S</td> <td> b </td>
+<td> abbreviation ::std::basic_string </td> </tr>
+<tr><td>type</td> <td>S</td> <td> d </td>
+<td> abbreviation ::std::basic_iostream&lt;char, std::char_traits&lt;char> > </td> </tr>
+<tr><td>type</td> <td>S</td> <td> i </td>
+<td> abbreviation ::std::basic_istream&lt;char, std::char_traits&lt;char> > </td> </tr>
+<tr><td>type</td> <td>S</td> <td> o </td>
+<td> abbreviation ::std::basic_ostream&lt;char, std::char_traits&lt;char> > </td> </tr>
 <tr><td>type</td> <td>S</td> <td> s </td>
 <td> abbreviation ::std::basic_string&lt;char, ::std::char_traits&lt;char>,
 			    ::std::allocator&lt;char> ></td> </tr>
@@ -120,11 +127,13 @@ C++ ABI for IA-64: Mangling
 <tr><td>type</td> <td>t</td> <td></td> <td> builtin type unsigned short </td> </tr>
 <tr><td>abbr</td> <td>T</td> <td> &lt;digit></td> <td> template parameter </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> D </td> <td> typeinfo common proxy </td> </tr>
-<tr><td>obj </td> <td>T</td> <td> h </td> <td> virtual function override thunk </td> </tr>
+<tr><td>obj </td> <td>T</td> <td> h </td> <td> virtual function non-virtual override thunk </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> I </td> <td> typeinfo structure </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> T </td> <td> VTT table </td> </tr>
+<tr><td>obj </td> <td>T</td> <td> v </td> <td> virtual function virtual override thunk </td> </tr>
 <tr><td>obj </td> <td>T</td> <td> V </td> <td> virtual table </td> </tr>
 <tr><td>type</td> <td>u</td> <td></td> <td> vendor extended builtin type </td> </tr>
+<tr><td>type</td> <td>U</td> <td></td> <td> vendor extended type qualifier </td> </tr>
 <tr><td>type</td> <td>v</td> <td></td> <td> builtin type void </td> </tr>
 <tr><td>oper</td> <td>v</td> <td> x </td> <td> vendor extended operator </td> </tr>
 <tr><td>type</td> <td>V</td> <td></td> <td> volatile qualifier </td> </tr>
@@ -132,10 +141,10 @@ C++ ABI for IA-64: Mangling
 <tr><td>type</td> <td>x</td> <td></td> <td> builtin type long long </td> </tr>
 <tr><td>delim</td> <td>X</td> <td></td> <td> expression prefix </td> </tr>
 <tr><td>type</td> <td>y</td> <td></td> <td> builtin type unsigned long long </td> </tr>
+<tr><td>type</td> <td>Y</td> <td></td> <td> extern "C" type qualifier </td> </tr>
 <tr><td>type</td> <td>z</td> <td></td> <td> ellipsis </td> </tr>
 <tr><td>obj </td> <td>Z</td> <td></td> <td> local name prefix </td> </tr>
 <tr><td>obj </td> <td>&lt;digit></td><td></td> <td> name (length followed by name) </td> </tr>
-<tr><td>type</td> <td>_</td> <td></td> <td> unspecified type </td> </tr>
 
 </table>
 </ol>
