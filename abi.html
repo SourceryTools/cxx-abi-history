@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 20 May 2000</i>
+<i>Revised 21 June 2000</i>
 
 </center>
 
@@ -137,6 +137,14 @@ clarified:
 
 <p>
 <h4> Recent Revisions </h4>
+
+<p>
+<font color=blue>[000621]</font>
+Add scope section 1.4.
+Specify guard variables and vague linkage of static data (5.2.2)
+and instantiated templates (5.2.4).
+Clarify vcall offsets (2.5.3), VTT (2.6.2),
+mangling compression rules (5.1.7), and mangling examples.
 
 <p>
 <font color=blue>[000511]</font>
@@ -1358,7 +1366,7 @@ destructors.
 <h4> 2.6.2 VTT Order</h4>
 
 <p>
-An array of vtable addresses, called the VTT,
+An array of vtable addresses, called the <i><b>VTT</b></i>,
 is declared for each class type that needs a construction vtable.
 A class needs a construction vtable if it has
 indirect or direct virtual base classes.
@@ -1371,7 +1379,7 @@ The elements of the VTT array for a class D are in this order:
 
 <ol type=1>
 <li>
-<i>Primary vptr</i>:
+<i>Primary virtual pointer</i>:
 address of the primary vtable for the complete object D.
 
 <p>
@@ -1387,8 +1395,9 @@ and secondary virtual pointers
 (but no virtual VTTs).
 
 <p>
+<img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-Note that this construction is applied recursively to embed sub-VTTs for
+This construction is applied recursively to embed sub-VTTs for
 non-virtual subobjects encountered in each of the base classes.
 </i>
 
@@ -1401,20 +1410,38 @@ between the declaration and D,
 the address of the secondary vtable for X-in-D.
 These include virtual and non-virtual, direct and indirect subobjects,
 <font color=red>
-with the exception of primary non-virtual bases,
+with the exception of primary non-virtual bases.
 </font>
-in inheritance graph preorder.
-(When constructing a sub-VTT for a subclass B of D in part 2 above,
-the relevant condition (b) for the inclusion of a secondary virtual
-pointer in the sub-VTT for B is the existence of a virtual function
-declaration overridden along a virtual path between the declaration and B,
-since otherwise the complete object virtual table for B is used.)
 The order of the virtual pointers is
 inheritance graph preorder.
 
 <p>
+When constructing a sub-VTT for a subclass B of D in part 2 above,
+the relevant condition (b) for the inclusion of a secondary virtual
+pointer in the sub-VTT for B is the existence of a virtual function
+declaration overridden along a virtual path between the declaration and B,
+since otherwise the complete object virtual table for B is used
+<font color=red>
+to initialize the B subobject.
+</font>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-Note that secondary virtual pointers may be required for base classes
+<font color=red>
+"Along a virtual path" refers to the path in the inheritance graph
+between the class that declares the overridden virtual function
+and the class derived from it that declares the overriding virtual
+function.
+This is considered a virtual path if one of the class derivations it
+represents is from a virtual base.
+</font>
+</i>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+Secondary virtual pointers may be required for base classes
 that do not require secondary VTTs.
 This may occur if, for D derived from B derived from A,
 A does not contain virtual bases,
@@ -1444,23 +1471,58 @@ not of the first vcall offset.
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-It is intended that the VTT for a complete class D be identical in
+It is
+<font color=red> required </font>
+that the VTT for a complete class D be identical in
 structure to the sub-VTT for the same class D as a subclass of another
-class E derived from it.
+class E derived from it,
+<font color=red>
+so that the constructors for D can depend on that structure.
+</font>
 Therefore, the various components of its VTT are present based on the
 rules given, even if they point to the D complete object vtable or its
 secondary vtables.
 That is, secondary VTTs are present for all bases with virtual bases
-(including the virtual bases themselves in the virtual VTT section),
+(including the virtual bases themselves,
+<font color=red>
+which have their secondary VTTs
+</font>
+in the virtual VTT section),
 and secondary virtual pointers are present for all bases with either
 virtual bases or virtual function declarations overridden along a
 virtual path.
 The only exception is that a primary non-virtual base class does not
 require a secondary virtual pointer.
-</i>
+
+<p>
+<font color=red>
+Parts (1) and (3) of a primary (not secondary, i.e. nested) VTT,
+that is the primary and secondary virtual pointers,
+are used for the final initialization of an object's virtual pointers
+before the full-object initialization and later use,
+and must therefore point to the main virtual table group for the class.
+Those bases which do not have secondary virtual pointers in the VTT
+have their virtual pointers explicitly initialized to the main virtual
+table group by the constructors
+(see <a href=#subobj-ctor>Subobject Construction and Destruction</a>).
+
+<p>
+The virtual pointers in the secondary VTTs and virtual VTTs are used for
+subobject construction,
+and may always point to special construction virtual tables laid out as
+described in the following subsections.
+However, it will sometimes be possible to use either the full-object
+virtual table for the subclass,
+or its secondary virtual table for the full class being constructed.
+This ABI does not specify a choice,
+nor does it specify names for the construction virtual tables,
+so the constructors must use the VTT rather than assuming that a
+particular construction virtual table exists.
+</font>
 
 <p>
 For example, suppose we have the following hierarchy:
+</i>
 <code><pre>
   class A1 { int i; };
   class A2 { int i; virtual void f(); };
@@ -1476,10 +1538,12 @@ For example, suppose we have the following hierarchy:
 
 </pre></code>
 
+<i>
 Then the VTT for D would appear in the following order,
 where indenting indicates the sub-VTT structure,
 and asterisks (*) indicate that construction vtables instead of
 complete object vtables are required.
+</i>
 <code><pre>
   // 1. Primary virtual pointer:
   [0] D has virtual bases (complete object vptr)
@@ -1510,9 +1574,11 @@ complete object vtables are required.
 </pre></code>
 
 <p>
+<i>
 If A2 is a virtual base of V1,
 the VTT will contain 14 elements
 (exercise left to the astute reader).
+</i>
 
 <p>
 <h4> 2.6.3 Construction VTABLE Layout</h4>
@@ -3570,12 +3636,12 @@ Occasionally entities in local scopes must be mangled too
 (e.g. because inlining or template compilation causes
 multiple translation units to require access to that entity).
 The encoding for such entities is as follows:
-<code><pre>
+<code><pre><font color=blue>
   &lt;local-name> := Z &lt;<i>function</i> encoding> E &lt;<i>entity</i> name> [&lt;discriminator>]
                := Z &lt;<i>function</i> encoding> E s [&lt;discriminator>]
 
   &lt;discriminator> := _ &lt;number> 
-</pre></code>
+</font></pre></code>
 
 <p>
 The first production is used for named local static objects,
@@ -3887,6 +3953,9 @@ _ZngILi42EE v N1A I XplT_Li2EE E 1TE </font></td>
 
 <tr class=small><td> _ZlsRSoRKSs </td>
 <td> operator&lt;&lt; (std::ostream&,std::string const&) </td></tr>
+
+<tr class=small><td><font color=red> _ZN7a_classTIE </font></td>
+<td> <font color=red> typeid(class a_class) </font> </td></tr>
 
 </table>
 
