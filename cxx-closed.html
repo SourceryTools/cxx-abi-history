@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 19 July 2000</i>
+<i>Revised 27 July 2000</i>
 
 </center>
 
@@ -6839,6 +6839,141 @@ The low-order byte shall contain the value 0 prior to initialization of
 the associated variable, and 1 after initialization is complete.
 Usage of the other bytes of the guard variable is
 implementation-defined.
+
+
+<p> <a name=C15></a>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#C15> <td> C-15 </td></a>
+<td> Alternate array allocators </td>
+<td> call </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 000628 </td>
+<td> 000720 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Allow alternate allocators/deallocators to
+<code>__cxa_vec_new</code> and <code>__cxa_vec_delete</code>.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C15> Resolution</a></b>:
+Add two new allocators, and two new deallocators,
+with one of each pair using a simple user deallocator
+and one using a user deallocator requiring a size.
+See the <a href=abi.html#array-ctor>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000628 CodeSourcery -- Mark]</font>
+__cxa_vec_new and __cxa_vec_delete would be a lot more useful if
+they accepted pointers to the allocation and deallocation functions
+as well.
+As it is, they are hard-wired to use the `::operator new[]' and
+`::operator delete[]'.
+Since the whole purpose of these functions is to provide compilers
+a convenient way to manage construction and destruction,
+I think we should either add allocation/deallocation
+routine pointers to these functions,
+or add additional entry points.
+This additional flexibility would also be useful for C++-compatible
+allocations from other languages, etc.
+
+<p>
+<font color=blue>[000706 All]</font>
+We agreed to do this.  Jim will write it up.
+
+<p>
+<font color=blue>[000720 All]</font>
+Accepted as documented.
+
+
+<p> <a name=C16></a>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a href=cxx-open.html#C16> <td> C-16 </td></a>
+<td> Copy constructor runtime </td>
+<td> call </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 000628 </td>
+<td> 000720 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define a runtime support routine for copy constructors.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C16> Resolution</a></b>:
+Add a new runtime for vector copy construction.
+See the <a href=abi.html#array-copy-ctor>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000628 CodeSourcery -- Mark]</font>
+I think we should also add a runtime support routine for copy
+constructors.  Here's a sample definition:
+
+<pre><code>
+  extern "C" void
+  __cxa_vec_cctor (void *dest_array,
+                   void *src_array,
+                   size_t element_count,
+                   size_t element_size,
+                   void (*constructor) (void *, void *),
+                   void (*destructor) (void *))
+  {
+    size_t ix = 0;
+    char *dest_ptr = static_cast <char *> (dest_array);
+    char *src_ptr = static_cast <char *> (src_array);
+
+    try
+      {
+        if (constructor)
+          for (; ix != element_count; 
+               ix++, src_ptr += element_size, dest_ptr += element_size)
+            constructor (dest_ptr, src_ptr);
+      }
+    catch (...)
+      {
+        __uncatch_exception ();
+        __cxa_vec_dtor (dest_array, ix, element_size, destructor);
+        throw;
+      }
+  }
+</code></pre>
+
+<p>
+This routine will be useful to compilers when copying a structure
+containing an array.  The EDG front-end uses this method.
+
+<p>
+<font color=blue>[000706 All]</font>
+We agreed to do this.  Jim will write it up.
+
+<p>
+<font color=blue>[000720 All]</font>
+Accepted as documented.  NULL constructor is not allowed.
+An allocating version is not needed.
+
+
 
 <p> <hr> <p>
 <h3> D.  Exception Handling Issues </h3>
