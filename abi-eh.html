@@ -15,7 +15,7 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 27 September 2000.
+<i>Revised 11 October 2000.
 <a href=#revisions>Revision history</a> at end of document.
 </i>
 
@@ -158,15 +158,7 @@ The following open issues remain to be resolved in this document:
 
 <p>
 <li>
-There was a discussion about the typeinfo argument to __cxa_throw.
-Should it actually be a function pointer that can be used to find the
-right __cxa_throw_type_info?  (2.4.3)
-
-<p>
-<li>
-Is specification of the caught exception stack
-(<a href=#cxx-exc-caught>Section 2.2.2</a>) necessary at Level II,
-or is it an implementation detail for Level III?
+...
 
 </ol>
 
@@ -435,13 +427,11 @@ The <code>exception_class</code> field is a language- and
 implementation-specific identifier of the kind of exception.
 It allows a personality routine to distinguish between native and
 foreign exceptions, for example.
-<font color=red>
 By convention, the high 4 bytes indicate the vendor
 (for instance HP\0\0),
 and the low 4 bytes indicate the language.
 For the C++ ABI described in this document,
 the low four bytes are C++\0.
-</font>
 
 <p>
 The <code>exception_cleanup</code> routine is called whenever an
@@ -555,16 +545,21 @@ Possibilities are:
 
 <p>
 If the unwinder encounters an unexpected error during phase 2,
-the unwind runtime may have modified the stack,
-e.g. popped frames from it,
-or landing pad code may have caused stack corruption.
-As a result, the unwind library probably could not find a return address,
-and the caller of <code>_Unwind_RaiseException</code>
-could make no assumptions about the state of its stack.
-Rather than attempt to return, therefore,
-the unwind library should use the <code>exception_cleanup</code>
-entry in the exception,
-and then call <code>abort()</code>.
+<font color=red>
+it should return <code>_URC_FATAL_PHASE2_ERROR</code> to its caller.
+<i>
+In C++, this will usually be <code>__cxa_throw</code>,
+which will call <code>terminate()</code>.
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+The unwind runtime will likely have modified the stack
+(e.g. popped frames from it) or register context,
+or landing pad code may have corrupted them.
+As a result, the the caller of <code>_Unwind_RaiseException</code>
+can make no assumptions about the state of its stack or registers.
+</i>
+</font>
 
 <p>
 <a name=forced></a>
@@ -641,9 +636,10 @@ If the <code>stop</code> function returns any reason code other than
 the stack state is indeterminate from the point of view of the caller
 of <code>_Unwind_ForcedUnwind</code>.
 Rather than attempt to return, therefore,
-the unwind library should use the <code>exception_cleanup</code>
-entry in the exception,
-and then call <code>abort()</code>.
+<font color=red>
+the unwind library
+should return <code>_URC_FATAL_PHASE2_ERROR</code> to its caller.
+</font>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -1259,12 +1255,19 @@ The fields in the exception object are as follows:
 <li>
 The <code>exceptionType</code> field encodes the type of
 the thrown exception.
-The <code>__cxa_throw_type_info</code> type is a
-<code>type_info</code> as defined by the common IA-64 runtime.
+<font color=red>
+The <code>__cxa_throw_type_info</code> type contains a pointer to a
+<code>type_info</code> as defined by the common IA-64 runtime,
+and a function pointer to a destructor,
+both for the type being thrown.
+</font>
 This type must be stored in the exception object
 since non-polymorphic and built-in types can be thrown.
 <code><pre><font color=red>
-	typedef std::type_info __cxa_throw_type_info;
+	class __cxa_throw_type_info {
+	  std::type_info *tinfo;
+	  void (*destructor) (void *this);
+	};
 </font></pre></code>
 
 <p>
@@ -1372,11 +1375,9 @@ Thus, <code>caughtExceptions</code> is a list of exceptions thrown and
 caught by the current thread,
 and <code>uncaughtExceptions</code> is a count of exceptions thrown and
 not yet caught by the current thread.
-<font color=red>
 (This includes rethrown exceptions,
 which may still have active handlers,
 but are not considered caught.)
-</font>
 
 <p>
 The <code>__cxa_eh_globals</code> for the current thread can be obtained
@@ -1419,9 +1420,7 @@ transferring control to the unwind library for handling.
 <i>
 <p>
 In broad outline,
-<font color=red>
 a possible implementation of
-</font>
 the processing necessary to throw an exception includes the following
 steps:
 
@@ -1441,10 +1440,8 @@ If evaluation of the thrown expression exits by throwing an exception,
 that exception will propagate instead of the expression itself.
 Cleanup code must ensure that <code>__cxa_free_exception</code>
 is called on the just allocated exception object.
-<font color=red>
 (If the copy constructor itself exits by throwing an exception,
-<code>terminate()</code> is called.
-</font>
+<code>terminate()</code> is called.)
 
 <p>
 <li>
@@ -1483,16 +1480,12 @@ will produce code approximating the template:
 <p>
 <i>
 The following sections will describe
-<font color=red>
 the ABI facilities available to implement
-</font>
 these steps,
 or possible variants,
 in more detail.
-<font color=red>
 One possible variant is to evaluate the thrown expression
 before allocating the exception object and always copy the value.
-</font>
 </i>
 
 <p>
@@ -1505,11 +1498,9 @@ This storage must persist while stack is being unwound,
 since it will be used by the handler,
 and must be thread-safe.
 Exception object storage will therefore normally be allocated in the heap,
-<font color=red>
 although implementations may provide an emergency buffer to support
 throwing <code>bad_alloc</code> exceptions under low memory conditions
 (see <a href=#imp-emergency>Section 3.3.1</a>).
-</font>
 
 <p>
 Memory will be allocated by the <code>__cxa_allocate_exception</code>
@@ -1519,11 +1510,10 @@ This routine is passed the size of the exception object to be thrown
 and returns a pointer to the temporary space for the exception object.
 It will allocate the exception memory on the heap if possible.
 If heap allocation fails,
-<font color=red>
 an implementation may use other backup mechanisms
 (see <a href=#imp-allocate>Section 3.4.1</a>).
-</font>
 
+<p>
 If <code>__cxa_allocate_exception</code> cannot allocate an exception
 object under these constraints, it calls <code>terminate()</code>.
 <code><pre>
@@ -1560,7 +1550,7 @@ the generated code calls the <code>__cxa_throw</code> runtime library
 routine.
 This routine never returns.
 <code><pre><font color=red>
-    void __cxa_throw (void *thrown_exception, __cxa_throw_type_info *typeinfo);
+    void __cxa_throw (void *thrown_exception, __cxa_throw_type_info *thrown);
 </font></pre></code>
 The arguments are:
 <ul>
@@ -1570,10 +1560,12 @@ The arguments are:
      as specified above).
 <p>
 <li> A <code>__cxa_throw_type_info</code> pointer,
-     giving the static type of the throw argument,
-     used for matching potential catch sites to the thrown exception.
-     The dynamic type of <code>typeinfo</code> is derived from,
-     but not necessarily the same as, <code>std::type_info</code>.
+     giving the static type of the throw argument
+<font color=red>
+     as a <code>std::type_info</code> pointer,
+     used for matching potential catch sites to the thrown exception,
+     and a destructor pointer to be used eventually to destroy the object.
+</font>
 </ul>
 
 <p>
@@ -1638,12 +1630,10 @@ assuming that there was no handler for the exception.
 <h5> 2.5.1  Overview of Catch Processing </h5>
 
 <i>
-<font color=red>
 See <a href=#imp-catch>Section 3.5</a> below for an overview of a
 possible implementation of catch processing.
 This section specifies the interfaces which must be supported by
 ABI-compliant exception handling runtime libraries.
-</font>
 </i>
 
 <p>
@@ -1694,12 +1684,10 @@ which it does by setting up the context and returning
 
 <p>
 If the exception is not a C++ exception,
-<font color=red>
 the C++ personality routine must not catch it,
-that is, return _URC_CONTINUE_UNWIND in both phases,
+that is it should return _URC_CONTINUE_UNWIND in both phases,
 after performing any required cleanup actions in the second phase.
 See the specification in Section 1.6.4.
-</font>
 
 <p>
 The Level I specification requires that the personality routine
@@ -1832,22 +1820,16 @@ but it is also possible to rethrow within an
 
 <p>
 A catch handler rethrows the
-<font color=red>
 exception on top of the caughtExceptions stack
-</font>
 by calling:
 <code><pre>
 	void __cxa_rethrow ();
 </pre></code>
 This routine marks the
-<font color=red>
 exception object on top of the caughtExceptions stack
-</font>
 (in an implementation-defined way)
 as being rethrown.
-<font color=red>
 If the caughtExceptions stack is empty,
-</font>
 it calls <code>terminate()</code> (see [C++FDIS] [except.throw], 15.1.8).
 It then returns to the handler that called it,
 which must call <code>__cxa_end_catch()</code>,
@@ -1874,9 +1856,7 @@ An exception is considered <i>finished</i>:
 <li> When the corresponding catch clause exits
      (normally, by another throw, or by rethrow).
 <li> When <code>unexpected()</code> exits (by throwing),
-<font color=red>
      after being entered due to a throw.
-</font>
 </ul>
 
 <p>
@@ -1931,9 +1911,7 @@ try block depends on the conditions:
      as the exception propagates from the outer catch.
 <li> In case case3,
      the exception lives outside both the innermost and outermost catch block.
-<font color=red>
      (The effect is the same as case1.)
-</font>
 <li> Otherwise,
      the exception is finished at the end of the outermost catch block.
 </ul>
@@ -2019,11 +1997,10 @@ Definition of what HP calls the exception class value.
 <p>
 The vocal attendees at the meeting wish to achieve the third level,
 and we will attempt to do so.
-Whether or not that is achieved, however,
-a second-level specification must be part of the ABI.
-
-<i>
-&lt;To be specified.>
+<font color=red>
+What follows is a subset of the required information;
+See the HP exception handling specification for elaboration at this time.
+</font>
 
 
 
@@ -2031,9 +2008,10 @@ a second-level specification must be part of the ABI.
 <a name=imp-data></a>
 <h4> 3.2  Data Structures </h4>
 
-<p>
-
 <font color=red>
+<p>
+&lt;To Be Supplied>
+
 
 <p>
 <a name=imp-init></a>
@@ -2045,10 +2023,7 @@ a second-level specification must be part of the ABI.
 
 <i>
 <p>
-<font color=red>
-It is suggested that
-</font>
-the C++ runtime library allocate a static emergency buffer of at
+The C++ runtime library shall allocate a static emergency buffer of at
 least 4K bytes per potential task, up to 64KB.
 This buffer shall be used only in cases where dynamic allocation of
 exception objects fails.
@@ -2061,10 +2036,7 @@ emergency buffer storage.
 
 <p>
 The interface to the emergency buffer is implementation-defined,
-and used only by the
-<font color=red>
-exception library.
-</font>
+and used only by the exception library.
 </i>
 
 
@@ -2136,12 +2108,14 @@ The unwind table is described in [SWCONV].
 
 <p>
 <li>
-Call the personality routine that will determine if an appropriate
+Call the personality routine
+(see <a href=#cxx-personality>Section 2.5.2</a>).
+that will determine if an appropriate
 handler is found at that level of the stack (in pass 1),
 and that will determine which particular handler to invoke from
 the landing pad (in pass 2),
 as well as the arguments to pass to the landing pad
-(see <a href=#cxx-personality>Section 2.5.2</a>).
+(see <a href=#imp-personality>Section 3.5.2</a>).
 The personality routine passes this information back to the unwind
 library.
 
@@ -2149,7 +2123,7 @@ library.
 <li>
 In the second phase,
 the unwind library jumps to the landing pad corresponding to the call
-(see <a href=#cxx-personality>Section 2.5.2</a>)
+(see <a href=#imp-personality>Section 3.5.2</a>)
 for each level of the stack being unwound.
 Landing pad parameters are set as indicated by the personality routine.
 The landing pad executes compensation code
@@ -2171,7 +2145,9 @@ The exception handler may select and execute user-defined code
 corresponding to C++ catch clauses and other handlers.
 The generated code may be similar to a switch statement,
 where the switch value is determined by the runtime based on
-the exception type (see <a href=#cxx-handler>Section 2.5.3</a>),
+the exception type
+(see <a href=#cxx-handler>Section 2.5.3</a> and
+<a href=#imp-handler>Section 3.5.3</a>),
 and passed in a landing pad argument.
 
 <p>
@@ -2194,7 +2170,6 @@ and goes to additional <a href=#cxx-cleanup>cleanup code</a>,
 which will call all destructors that need
 to be called for the current stack frame.
 For instance,
-<font color=red>
 an automatic variable local to the outer block of the function
 would be destroyed here.
 <i>
@@ -2202,7 +2177,6 @@ This means that the handler must loop through any try blocks
 enclosing the original one in the process of cleaning up the frame,
 trying the switch value in each one.
 </i>
-</font>
 
 <p>
 <li>
@@ -2298,11 +2272,30 @@ in <a href=#cxx-catch>Section 2.5</a> above (ABI requirements),
 and below.
 </i>
 
+<p>
+<a name=imp-personality></a>
+<h5> 3.5.2  The Personality Routine </h5>
+
+<p>
+
+<p>
+<a name=imp-handler></a>
+<h5> 3.5.3  Exception Handlers </h5>
+
+<p>
+
 </font>
 
 
 <p><a name=revisions></a> <hr> <p>
 <h3> Appendix R:  Revisions </h3>
+
+<p>
+<font color=blue>[001010]</font>
+Correct phase2 error behavior of _Unwind_RaiseException and
+_Unwind_ForcedUnwind (1.3).
+Define __cxa_throw_type_info correctly (2.2.1).
+Todo: fix cross-references in moved material in Level III.
 
 <p>
 <font color=blue>[000911]</font>
