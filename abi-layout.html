@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 11 April 2000</i>
+<i>Revised 18 April 2000</i>
 
 </center>
 
@@ -93,6 +93,16 @@ clarified:
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000417]</font>
+Updates from 17 April meeting.
+Clarify order of vcall offsets.
+More elaboration of construction vtable.
+Specification of COMDAT RTTI name.
+Reorganization of pointer RTTI.
+Modify mangling grammar to clarify substitution in compound names.
+Clarify Vague Linkage section.
 
 <p>
 <font color=blue>[000407]</font>
@@ -209,11 +219,9 @@ and then C and its subobjects.)
 </ul>
 
 <p>
-<font color=red>
 Note that the traversal may be preorder or postorder.
 Unless otherwise specified,
-preorder (parents before children) is intended.
-</font>
+preorder (derived classes before their bases) is intended.
 
 <p>
 <a name=q3></a>
@@ -257,7 +265,6 @@ falling through to an immediately following target function,
 or it may be a full function with its own stack frame that does
 a full call to the target function.
 
-<font color=red>
 <p>
 <dt> <i>vague linkage</i> </dt>
 <dd>
@@ -267,7 +274,6 @@ with external linkage that can be
 defined in multiple translation units,
 while the ODR requires that the program
 behave as if there were only a single definition.
-</font>
 
 <p>
 <dt> <i>virtual table</i> (or <i>vtable</i>) </dt>
@@ -461,9 +467,7 @@ Layout (of type C) is done using the following procedure.
 	   It is the first (in direct base class order)
 	   non-virtual dynamic base class, if one exists.
 	   Otherwise, it is a nearly empty virtual base class,
-	   the first one in
-	   <font color=red>(preorder)</font>
-	   inheritance graph order which
+	   the first one in (preorder) inheritance graph order which
 	   is not an indirect primary base class if any exist,
 	   or just the first one if they are all indirect primaries.
 
@@ -829,10 +833,8 @@ and conversion between their return types does not require an adjustment.
 the primary base and the derived class share the vtable,
 and can share the virtual function entry because no adjustments are
 necessary.)
-<font color=red>
-If a class has an undeclared virtual destructor,
+If a class has an implicitly-defined virtual destructor,
 its entries come after the declared virtual function pointers.
-</font>
 
 <p>
 When a derived class and its primary base share a vtable,
@@ -1016,8 +1018,55 @@ base class vtables according to the same rules as in Category 2,
 except that the vtable for a virtual base A also includes a vcall
 offset entry for each virtual function represented in A's primary
 vtable and the secondary vtables from A's non-virtual bases.
-The vcall offset entries are allocated from the inside out,
-in the same order as the functions appear in A's vtables.
+
+<font color=red>
+The vcall offsets in the secondary vtable for a virtual base A are
+ordered as described next.
+We describe the ordering from the entry closest to the vtable address
+point to that furthest.
+Since the vcall offsets precede the vtable address point,
+this means that the memory address order is the reverse of that
+described.
+<ul>
+<p>
+<li>
+If virtual base A has a primary base class P sharing its virtual table,
+P's vcall offsets come first,
+in the same order they would appear if P itself were the virtual base.
+
+<p>
+<li>
+Next (after any intervening vbase offsets for virtual bases of A
+but not of P)
+come vcall offsets for each virtual function declared in A,
+in declaration order.
+
+<p>
+<li>
+Finally come vbase offsets for virtual functions declared in
+non-virtual bases of A other than P.
+These bases are considered in inheritance graph preorder,
+and the vcall offsets for multiple functions declared in one of them
+are in declaration order.
+</ul>
+
+<p>
+If the above listing of vcall offsets includes more than one
+for a particular virtual function signature,
+only the first one (closest to the vtable address point) is allocated.
+That is, an offset from primary base P (and its non-virtual bases)
+eliminates any from A or its other bases,
+an offset from A eliminates any from the non-primary bases,
+and an offset from a non-primary base B of A eliminates any from the
+bases of B.
+
+<p>
+<i>
+Note that there are no vcall offsets for virtual functions declared in
+a virtual base class V of A and never overridden within A.
+Calls to such functions will use the vcall offset in V's virtual table.
+</i>
+</font>
 
 <p>
 The class also has a vtable that is not copied from the virtual base
@@ -1439,23 +1488,23 @@ non-virtual subobjects encountered in each of the base classes.
 <p>
 <li>
 <i>Secondary virtual pointers</i>:
-For each subobject X with either virtual bases
-<font color=red>
-or virtual function declarations overridden along a virtual path
+For each subobject X with either (a) virtual bases
+or (b) virtual function declarations overridden along a virtual path
 between the declaration and D,
-</font>
 the address of the secondary vtable for X-in-D.
 These include virtual and non-virtual, direct and indirect subobjects,
-in inheritance graph preorder.
+in inheritance graph postorder.
 <font color=red>
 (When constructing a sub-VTT for a subclass B of D in part 2 above,
-the relevant condition is the existence of a virtual function
-declaration overridden along a virtual path between the declaration and B.)
+the relevant condition (b) for the inclusion of a secondary virtual
+pointer in the sub-VTT for B is the existence of a virtual function
+declaration overridden along a virtual path between the declaration and B,
+since otherwise the complete object virtual table for B is used.)
 </font>
-
+The order of the virtual pointers is
+depth-first search postorder.
 <font color=red>
-The order of the virtual pointers
-depth-first search postorder,
+(Ed. shouldn't this be preorder?)
 </font>
 
 <p>
@@ -1471,9 +1520,10 @@ but is overridden in D (along a virtual path).
 <p>
 <li>
 <i>Virtual VTTs</i>:
-The sub-VTTs for each virtual subobject in initialization
+The sub-VTTs for each virtual subobject in
 <font color=red>
-depth-first search postorder,
+initialization order (as specified by the C++ Standard,
+i.e. depth-first search postorder),
 </font>
 i.e. the sub-VTT for virtual base W of virtual base V of D
 comes before the sub-VTT for V.
@@ -1492,7 +1542,6 @@ not of the first vcall offset.
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-<font color=red>
 It is intended that the VTT for a complete class D be identical in
 structure to the sub-VTT for the same class D as a subclass of another
 class E derived from it.
@@ -1500,13 +1549,14 @@ Therefore, the various components of its VTT are present based on the
 rules given, even if they point to the D complete object vtable or its
 secondary vtables.
 That is, secondary VTTs are present for all bases with virtual bases
-(including themselves),
+<font color=red>
+(including the virtual bases themselves in the virtual VTT section),
+</font>
 and secondary virtual pointers are present for all bases with either
 virtual bases or virtual function declarations overridden along a
 virtual path.
 The only exception is that a primary non-virtual base class does not
 require a secondary virtual pointer.
-</font>
 </i>
 
 <p>
@@ -1527,28 +1577,26 @@ For example, suppose we have the following hierarchy:
 </pre></code>
 
 <font color=red>
-(Ed. note:  I am not yet sure of this example, but it's getting better.)
-
 Then the VTT for D would appear in the following order,
 where indenting indicates the sub-VTT structure,
 and asterisks (*) indicate that construction vtables instead of
 complete object vtables are required.
 <code><pre>
   // 1. Primary virtual pointer:
-  D has virtual bases (complete object vptr)
+  [0] D has virtual bases (complete object vptr)
 
   // 2. Secondary VTTs:
-    C1 * (has virtual base)
+  [1]  C1 * (has virtual base)
 
-    C2 * (has virtual bases)
-      V1-in-C2 in D (secondary vptr)
-      V2-in-C2 in D (secondary vptr)
+  [2]  C2 * (has virtual bases)
+  [3]    V1-in-C2 in D (secondary vptr)
+  [4]    V2-in-C2 in D (secondary vptr)
 
   // 3. Secondary virtual pointers:
     // (no C1-in-D -- primary base)
-    C2-in-D (has virtual bases)
-      V1-in-D (A2::f overridden in D)
-      V2-in-D (V2::f overridden in D, has virtual base)
+  [5]    V1-in-D (A2::f overridden in D)
+  [6]    V2-in-D (V2::f overridden in D, has virtual base)
+  [7]  C2-in-D (postorder; has virtual bases)
     // (For complete object D VTT, these can all point to the
     // secondary vtables in the D vtable.  In the sub-VTT for
     // D in a class derived from D, some might be construction
@@ -1556,11 +1604,16 @@ complete object vtables are required.
 
   // 4. Virtual VTTs:
     // (V1 primary, can use complete object constructor).
-    V2 * (V2::f overridden in D, has virtual base)
-      V1-in-V2 in D * (secondary vptr, A2::f overridden in D)
-	A2-in-V1 in D * (secondary vptr, A2::f overridden in D)
+  [8]  V2 * (V2::f overridden in D, has virtual base)
+  [9]    V1-in-V2 in D * (secondary vptr, A2::f overridden in D)
+	   (A2 is primary base of V1)
 
 </pre></code>
+
+<p>
+If A2 is a virtual base of V1,
+the VTT will contain 14 elements
+(exercise left to the astute reader).
 </font>
 
 <p>
@@ -2016,7 +2069,7 @@ e.g., that of std::bad_alloc.)
 
 <p>
 The typeid operator produces a reference to a std::type_info structure
-with the following public interface:
+with the following public interface (18.5.1):
 
 <pre><code>
   struct std::type_info {
@@ -2031,7 +2084,8 @@ with the following public interface:
 <p>
 After linking and loading,
 only one std::type_info structure is accessible via the external name
-defined by this ABI for any particular complete type symbol.
+defined by this ABI for any particular complete type symbol
+(see <a href=#vague-rtti>Vague Linkage</a>).
 Therefore,
 except for direct or indirect pointers to incomplete types,
 the equality and inequality operators can be
@@ -2044,35 +2098,23 @@ directly or indirectly pointing to incomplete class types,
 a more complex comparison is required,
 described below with the RTTI layout of pointer types.
 
+<font color=red>
+<p>
+The <code>name()</code> member function returns the address of an NTBS,
+unique to the type,
+containing the <a href=mangling-type>mangled name</a> of the type.
+It has a <a href=mangling-special>mangled name</a> defined by the ABI
+to allow consistent reference to it,
+and the <a href=#vague-rtti>Vague Linkage</a> section specifies how to
+produce a unique copy.
+
 <p>
 In a flat address space
 (such as that of the IA-64 architecture),
-the before() member is also easily written in terms of an address comparison,
-when neither type_info object is a direct or indirect pointer to an
-incomplete class type.
-The only additional piece of information that is required is the
-NTBS that encodes the name.
-The type_info structure itself can hold a pointer into a read-only segment
-that contains the text bytes.
-
-
-<p>
-<h5>Matching throw expressions with handlers</h5>
-
-<p>
-When an object is thrown a copy is made of it and the type of that copy
-is TT.
-A handler that catches type HT will match that throw if:
-<ul>
-  <li> HT is equal to TT except that HT may be a reference and that HT
-	may have top-level cv qualifiers
-	(i.e., HT can be "TT cv", "TT&" or "TT cv&"); or
-  <li> HT is a reference to a public and unambiguous base type of TT; or
-  <li> HT has a pointer type to which TT can be converted by a standard
-	pointer conversion (though only public,
-	unambiguous derived-to-base conversions are permitted)
-	and/or a qualification conversion.
-</ul>
+the <code>operator==</code>, <code>operator!=</code>, and <code>before()</code>
+members are easily implemented in terms of
+an address comparison of the name NTBS.
+</font>
 
 <p>
 This implies that the type information must keep a description of the public,
@@ -2148,89 +2190,28 @@ std::type_info contains just two pointers:
 The possible derived types are:
 <ul>
   <li> abi::__fundamental_type_info
-  <li> abi::__pointer_type_info
   <li> abi::__array_type_info
   <li> abi::__function_type_info
   <li> abi::__enum_type_info
   <li> abi::__class_type_info
   <li> abi::__si_class_type_info
   <li> abi::__vmi_class_type_info
+  <li> abi::__pbase_type_info
+  <li> abi::__pointer_type_info
   <li> abi::__pointer_to_member_type_info
 </ul>
 
 <p>
 <li>
-abi::__fundamental_type_info adds no fields to std::type_info;
+abi::__fundamental_type_info adds no data members to std::type_info;
 
 <p>
 <li>
-abi::__pointer_type_info adds two fields (in this order):
-<ul>
-  <p>
-  <li> a flag word describing the cv-qualification
-      and other attributes of the type pointed to
-      (e.g., "int volatile*" should have the
-      "volatile" bit set in that word);
-      and
-  <p>
-  <li> a pointer to the std::type_info derivation for the unqualified type
-    being pointed to.
-</ul>
-
-<p>
-Note that the flag bits should not be folded into the pointer to
-allow future definition of additional flags.
-It contains:
-<ul>
-<li> 0x1: const qualifier
-<li> 0x2: volatile qualifier
-<li> 0x4: restrict qualifier
-<li> 0x8: incomplete target type
-<font color=red>
-<li> 0x10: incomplete class type (in pointer to member)
-</font>
-</ul>
-
-<p>
-When the abi::__pointer_type_info is for a direct or indirect pointer
-to an incomplete class type,
-the incomplete target type flag is set.
-<font color=red>
-When it is for a direct or indirect pointer to a member of
-an incomplete class type,
-the incomplete class type flag is set.
-</font>
-In addition, it and all of the intermediate abi::__pointer_type_info
-structs in the chain down to the abi::__class_type_info for the
-incomplete class type must be prevented from resolving to the
-corresponding type_info structs for the complete class type,
-possibly by making them local static objects.
-Finally, a dummy class RTTI is generated for the incomplete type
-that will not resolve to the final complete class RTTI
-(because the latter need not exist),
-possibly by making it a local static object.
-
-<p>
-Two abi::__pointer_type_info objects are compared for equality
-(i.e. of the types represented)
-by checking for equal
-<font color=red>
-target or class
-</font>
-type RTTI pointers unless either or both
-have the incomplete flag set,
-in which case the
-<font color=red>
-NTBS fields in the base std::type_info structures must be checked for equality.
-</font>
-
-<p>
-<li>
-abi::__array_type_info and abi::__function_type_info do not add fields
-to std::type_info
+abi::__array_type_info and abi::__function_type_info do not add data
+members to std::type_info
 (these types are only produced by the typeid operator;
 they decay in other contexts).
-abi::__enum_type_info does not add fields either.
+abi::__enum_type_info does not add data members either.
 
 <p>
 <li>
@@ -2249,7 +2230,9 @@ in which case it must be prevented from preempting
 the RTTI for the complete class type,
 for instance by emitting it as a static object (without external linkage).
 
+<font color=red>
 <p>
+<strike>
 Two abi::__class_type_info objects are normally compared for equality
 (i.e. of the types represented)
 by comparison of their addresses.
@@ -2257,6 +2240,17 @@ However, incomplete class RTTI objects,
 which can only be accessed via abi::__pointer_type_info objects,
 must be compared for equality
 by comparison of the name NTBS in their std::type_info bases.
+</strike>
+
+<p>
+Two abi::__class_type_info objects can always be compared,
+for equality (i.e. of the types represented) or ordering,
+by comparison of their name NTBS addresses.
+In addition, complete class RTTI objects
+may also be compared for equality
+by comparison of their type_info addresses.
+
+</font>
 
 <p>
 <li>
@@ -2273,7 +2267,7 @@ declared "<code>__class_type_info const *type</code>".
 For classes with bases that do not satisfy the
 __si_class_type_info constraints,
 abi::__vmi_class_type_info is used.
-It is derived from abi::__class_type_info, and adds fields:
+It is derived from abi::__class_type_info, and adds data members:
   <ul>
   <p>
   <li> vmi_flags: a word with flags describing details
@@ -2339,22 +2333,84 @@ descriptions.
 <font color=red>
 <p>
 <li>
-Proposed change (issue A-29) by Nathan:
-<strike>
-<p>
-The abi::__pointer_to_member_type_info type adds two fields to std::type_info:
+abi::__pbase_type_info is a base for both pointer types and
+pointer-to-member types.
+It adds two data members (in this order):
 <ul>
-<li> a pointer to a abi::__class_type_info (e.g., the "A" in "int A::*")
-<li> a pointer to a std::type_info corresponding to the member type
-    (e.g., the "int" in "int A::*")
-<li> a word describing the cv-qualification of what is pointed to
-    (see abi::__pointer_type_info)
+  <p>
+  <li> a flag word describing the cv-qualification
+      and other attributes of the type pointed to
+      (e.g., "int volatile*" should have the
+      "volatile" bit set in that word);
+      and
+  <p>
+  <li> a pointer to the std::type_info derivation
+      for the unqualified type being pointed to.
 </ul>
+
+<p>
+Note that the flag bits should not be folded into the pointer to
+allow future definition of additional flags.
+It contains:
+<ul>
+<li> 0x1: const qualifier
+<li> 0x2: volatile qualifier
+<li> 0x4: restrict qualifier
+<li> 0x8: incomplete target type
+<li> 0x10: incomplete class type (in pointer to member)
+</ul>
+
+<p>
+When the abi::__pbase_type_info is for a direct or indirect pointer
+to an incomplete class type,
+the incomplete target type flag is set.
+When it is for a direct or indirect pointer to a member of
+an incomplete class type,
+the incomplete class type flag is set.
+In addition, it and all of the intermediate abi::__pointer_type_info
+structs in the chain down to the abi::__class_type_info for the
+incomplete class type must be prevented from resolving to the
+corresponding type_info structs for the complete class type,
+possibly by making them local static objects.
+Finally, a dummy class RTTI is generated for the incomplete type
+that will not resolve to the final complete class RTTI
+(because the latter need not exist),
+possibly by making it a local static object.
+
+<font color=red>
+<p>
+<strike>
+Two abi::__pbase_type_info objects are compared for equality
+(i.e. of the types represented)
+by checking for equal target or class
+type RTTI pointers unless either or both
+have either of the incomplete flags set,
+in which case the
+NTBS data members in the base std::type_info structures
+must be checked for equality.
 </strike>
 
 <p>
+Two abi::__pbase_type_info objects can always be compared
+for equality (i.e. of the types represented) or ordering
+by comparison of their name NTBS addresses.
+In addition,
+unless either or both have either of the incomplete flags set,
+equality can be tested by comparing the type_info addresses.
+
+</font>
+
+<p>
+<li>
+abi::__pointer_type_info is derived from abi::__pbase_type_info
+with no additional data members.
+</font>
+
+<font color=red>
+<p>
+<li>
 The abi::__pointer_to_member_type_info type adds one field
-to abi::__pointer_type_info:
+to abi::__pbase_type_info:
 <ul>
 <li> a pointer to an abi::__class_type_info corresponding to the class type
     (e.g., the "A" in "int A::*")
@@ -2382,7 +2438,7 @@ it is a good candidate for this role.
 <h5>std::type_info::name()</h5>
 <p>
 The null-terminated byte string returned by this routine is
-the mangled name of the type.
+the <a href=#mangling>mangled name</a> of the type.
 
 
 <p>
@@ -2532,10 +2588,6 @@ or <code>Type?</code> for an unknown data type.
 <ul>
 <li> Mangling of special entities: helper variables for thread protection, ...
 <li> Encode return type of all functions?   (Issue F-10)
-<font color=red>
-<li> Substitution of intermediate CV-qualified types?
-<li> Substitution of template name without instantiation parameters?
-</font>
 <li> Proof of nonambiguity
 <li> ILP-32 conventions?
 </ul>
@@ -2567,9 +2619,6 @@ when nested (see below).
 
 Names of objects nested in namespaces or classes are identified as a
 delimited sequence of names identifying the enclosing scopes.
-For compression purposes
-(discussed <a href=#mangling-compression>below</a>),
-only a prefix of this nesting can be substituted.
 In addition, when naming a class member function,
 CV-qualifiers may be prefixed to the compound name,
 encoding the <code>this</code> attributes.
@@ -2577,30 +2626,47 @@ Note that if member function CV-qualifiers are required,
 the delimited form must be used even if the remainder of the name is
 a single substitution.
 
-<pre><font color=blue><code>
-    &lt;nested-name> ::= N &lt;qualified-name> E
-    &lt;qualified-name> ::= &lt;CV-qualifiers> &lt;qualified-name>
-		     ::= &lt;compound-name>
-		     ::= &lt;substitution>
-    &lt;compound-name> ::= &lt;nesting-prefix> &lt;unqualified-name>
-		   ::= &lt;unqualified-name>
-		   ::= &lt;substitution>
-    &lt;nesting-prefix> ::= &lt;nesting-prefix> &lt;nesting-qualifier>
-		     ::= &lt;nesting-qualifier>
-		     ::= &lt;substitution>
-    &lt;nesting-qualifier> ::= &lt;<i>namespace</i> source-name>
-			::= &lt;class-enum-name>
-<font color=red>
-    &lt;unqualified-name> ::= &lt;source-name>
+<pre><font color=red><code>
+    &lt;nested-name> ::= N [&lt;CV-qualifiers>] &lt;compound-name> E
+    &lt;compound-name> ::= &lt;compound-prefix> &lt;compound-name>
+		    ::= &lt;unqualified-name>
+    &lt;compound-prefix> ::= &lt;path-component> [&lt;template-args>]
+    &lt;path-component> ::= &lt;<i>namespace</i> source-name>
+		     ::= &lt;<i>class-enum</i> source-name>
+    &lt;unqualified-name> ::= &lt;source-name>  # types, functions
 		       ::= &lt;source-name> &lt;template-args>
-</font>
 		       ::= &lt;operator-name>
 		       ::= &lt;operator-name> &lt;template-args>
 		       ::= &lt;special-name> # ctors, vtables, ...
+		       ::= &lt;special-name> &lt;template-args>
 
     &lt;source-name> ::= &lt;<i>length</i> number> &lt;identifier>
     &lt;number> ::= &lt;<i>decimal integer</i>>
     &lt;identifier> ::= &lt;<i>unqualified source code identifier</i>>
+
+</pre></font></code>
+
+<font color=red>
+The above grammar fragment describes the form of nested names.
+However, for compression purposes
+(discussed <a href=#mangling-compression>below</a>),
+only a prefix of this nesting can be substituted,
+corresponding to likely symbol table entries for namespaces,
+types, objects, templates, and instantiated templates.
+The following substitute grammar fragment for &lt;compound-name>,
+though it permits many nonsensical constructs,
+indicates which prefixes of valid names may be substituted:
+</font>
+
+<pre><font color=red><code>
+    &lt;compound-name> ::= &lt;compound-name> &lt;compound-component>
+		    ::= &lt;compound-component>
+		    ::= &lt;substitution>
+    &lt;compound-component> ::= &lt;source-name>
+			 ::= &lt;operator-name>
+			 ::= &lt;special-name> # ctors, vtables, ...
+			 ::= &lt;template-args>
+
 </pre></font></code>
 
 <p>
@@ -2618,11 +2684,9 @@ with a given complete class type.
 &lt;type> is omitted for variables and static data members.
 
 <p>
-<font color=red>
 Note that &lt;source-name> in the productions for &lt;unqualified-name>
 may be either a function or data object name when derived from &lt;name>,
 or a class or enum name when derived from &lt;type>.
-</font>
 
 <p>
 <a name=mangling-operator>
@@ -2701,7 +2765,7 @@ shall encode them as a 'vx' prefix followed by the name in &lt;length,ID> form.
 <p>
 Associated with a virtual table are several entities with mangled
 external names: the vtable itself, the VTT for construction,
-and the typeinfo structure.
+the typeinfo structure, and the name it references.
 All have an encoding where the &lt;name> is a simple two-character code,
 appearing as the last component of a &lt;nested-name>,
 where the prefix is the name of the class with which they are associated.
@@ -2710,7 +2774,9 @@ where the prefix is the name of the class with which they are associated.
   &lt;special-name> ::= TV	# virtual table
 		 ::= TT	# VTT structure (construction vtable index)
 		 ::= TI	# typeinfo structure
-
+<font color=blue>
+		 ::= TS	# typeinfo name (null-terminated byte string)
+</font>
 </pre></font></code>
 
 <p>
@@ -2803,9 +2869,9 @@ cv-qualifiers and/or pointer, reference, complex, or imaginary types:
 	 ::= C &lt;type>	# complex pair (C 2000)
 	 ::= G &lt;type>	# imaginary (C 2000)
 	 ::= U &lt;source-name> &lt;type>	# vendor extended type qualifier
-<font color=red>
+
   &lt;CV-qualifiers> ::= [r] [V] [K] 	# restrict (C99), volatile, const
-</font>
+
 </pre></font></code>
 
 <p>
@@ -2831,7 +2897,6 @@ They are encouraged to resolve questionable cases as being
 order-insensitive to maximize consistency in mangling.
 </i>
 
-<font color=red>
 <p>
 <i>
 For purposes of substitution,
@@ -2844,7 +2909,6 @@ That is, given a type <code>const volatile foo</code>,
 the fully qualified type or foo may be substituted,
 but not <code>const foo</code>.
 </i>
-</font>
 
 <a name=mangling-builtin>
 <p>
@@ -2938,20 +3002,18 @@ since extern "C" function objects have unmangled names.
 </pre></font></code>
 
 <p>
-Simple class and enum types are encoded with the length of their source
-code identifier, followed by the identifier.
-Class names can optionally be followed by the encoding of a template
-argument list.
-Nested class names are preceded by the nesting qualifiers
-(namespace or class names), all enclosed in N/E brackets.
-Thus, the class type encoding is the same as function name encoding,
+<font color=red>
+A class or enum type is simply a name,
+It may be a simple &lt;unqualified-name>,
+with or without a template argument list,
+or a more complex &lt;nested-name>.
+Thus, it is encoded like a function name,
 except that no CV-qualifiers are present in a nested name specification.
+</font>
 
-<pre><font color=blue><code>
+<pre><font color=red><code>
   &lt;class-enum-type> ::= &lt;nested-name>
-		    ::= &lt;class-enum-name>
-  &lt;class-enum-name> ::= &lt;<i>class-enum</i> source-name>
-		    ::= &lt;<i>class-enum</i> source-name>  &lt;template-args>
+		    ::= &lt;unqualified-name>
 </pre></font></code>
 
 <p>
@@ -3031,7 +3093,6 @@ For example:
 
 </pre></code>
 
-<font color=red>
 <p>
 The &lt;encoding> of an extern "C" function is treated like
 global-scope data,
@@ -3043,7 +3104,6 @@ For example:
           // CB&lt;IsEmpty> is mangled as "2CBIL_Z7IsEmptyEE"
 
 </pre></code>
-</font>
 
 <p>
 An expression, e.g., "B&lt;(J+1)/2>",
@@ -3053,6 +3113,14 @@ The operators are encoded using their two letter mangled names.
 For example, "B&lt;(J+1)/2>", if J is template parameter 1,
 becomes "1BI Xdv pl T1_ Li1E Li2E E E"
 (the blanks are present only to visualize the decomposition).
+<font color=red>
+Note that the expression is mangled without constant folding or other
+simplification,
+and without parentheses, which are implicit in the postfix representation.
+Except for the parentheses, therefore,
+it represents the source token stream.
+(C++ Standard reference 14.5.5.1 p. 5.)
+</font>
 
 <pre><font color=blue><code>
   &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
@@ -3063,6 +3131,14 @@ becomes "1BI Xdv pl T1_ Li1E Li2E E E"
 		 ::= L &lt;mangled-name> E		# external name
 
 </pre></font></code>
+
+<font color=red>
+<p>
+The encoding for a literal of an enumerated type is the encoding of the
+type name followed by the encoding of the numeric value of the literal
+in its base integral type
+(which deals with values that don't have names declared in the type).
+</font>
 
 
 <p>
@@ -3087,32 +3163,59 @@ multiple translation units to require access to that entity).
 The encoding for such entities is as follows:
 <code><pre>
   &lt;local-name> := Z &lt;<i>function</i> encoding> E &lt;<i>entity</i> name> [&lt;discriminator>]
-               := Z &lt;<i>function</i> encoding> E s &lt;hashed-literal>
+<font color=red>
+               := Z &lt;<i>function</i> encoding> E s [&lt;discriminator>]
+               := Z &lt;<i>function</i> encoding> E c
+</font>
 
   &lt;discriminator> := _ &lt;number> 
 </pre></code>
 
+<font color=red>
 <p>
-In the first production,
-the discriminator will be present only for the
+The first production is used for named local static objects,
+which are identified by their declared names.
+The discriminator is used only for the
 second and later occurrences of the same name within a single function.
 In this case &lt;number> is n - 2,
 if this is the nth occurrence, in lexical order, of the given name.
+
+<p>
+The second production is used for string literals.
+The discriminator is used only if there is more than one,
+for the second and subsequent ones.
+In this case &lt;number> is n - 2,
+if this is the nth distinct string literal, in lexical order,
+appearing in the function.
+Multiple references to the same string literal produce one string
+object with one name in the sequence.
+</font>
 <i>
+Note that this assumes that the same string literal occurring twice
+in a given function in fact represents a single entity,
+i.e. has a unique address.
+</i>
+
+<i>
+<p>
+<font color=red>
+For both named objects and string literals,
+the numbering order is strictly lexical order based on the original
+token sequence.
+All objects occurring in that sequence are to be numbered,
+even if subsequent optimization makes some of them unnecessary.
+</font>
 It is expected that this will be the 'natural' order in most compilers.
 In any case, conflicts would arise only if different compilation units
 including the same code were compiled by different compilers,
 and multiple entities requiring mangling had the same name.
 </i>
 
+<font color=red>
 <p>
-The second production is used for string literals,
-which are hashed using some yet-to-be-determined function.
-<i>
-Note that this assumes that the same string literal occurring twice
-in a given function in fact represents a single entity,
-i.e. has a unique address.
-</i>
+The third production is used only to produce the name used for the
+COMDAT group containing the local objects.
+</font>
 
 <p>
 Example:
@@ -3201,9 +3304,12 @@ so the numbered entities are the second preceding one as "S0_",
 the third as "S1_", the twelfth as "SA_", the thirty-eighth as "S10_",
 etc.
 All substitutable components are so numbered,
-except those that have been substituted already,
+except those that have already been numbered for substitution,
 but the substitution occurs only if "S&lt;seq-id>_" (or "S_")
-is strictly shorter than the unsubstituted encoding.
+is strictly shorter than the unsubstituted encoding,
+<font color=red>
+i.e. the encoding obtained if no substitution of its parts were done.
+</font>
 A component is less recent than the structure of which it is a part.
 For example:
 
@@ -3314,14 +3420,14 @@ they are not part of the actual mangled name, and should be ignored.
 <br> (Note: the return type is always explicitly encoded for template
 functions taking parameters.)</td></tr>
 
-<tr class=small><td><font color=red> _Z5firstI3DuoEvS1_ </font></td>
+<tr class=small><td> _Z5firstI3DuoEvS1_ </td>
 <td> void first&lt;Duo>(/*nondependent*/Duo);
 <br>(Note: "S_" would refer to the "void" return type.) </td></tr>
 
 <tr class=small><td> _Z5firstI3DuoEvT1_ </td>
 <td> void first&lt;Duo>(/*T1=*/Duo); </td></tr>
 
-<tr class=small><td> _Z3fooIiPFidEiEv </td>
+<tr class=small><td> _Z3fooIiPFidEiEvv </td>
 <td> void foo&lt;int,int(*)(double),int>();
 <br>(Note: return type encoded for template function.)</td></tr>
 
@@ -3365,7 +3471,6 @@ functions taking parameters.)</td></tr>
 <h3> Vague Linkage </h3>
 
 <p>
-<font color=red>
 Many objects in C++ are not clearly part of a single object file,
 but are required by the ODR to have a single definition.
 This section identifies, for such objects,
@@ -3383,29 +3488,48 @@ and specify the symbol to be used to identify duplicates in the
 <code>SHT_GROUP</code> section.
 
 <p>
+<a name=vague-inline></a>
 <b>Out-of-line Functions</b>
 
 <p>
 It may sometimes be necessary or desirable to reference an out-of-line
-copy of a function declared inline.
+copy of a function declared inline,
+<font color=red>
+i.e. to reference a global symbol naming the function.
+This may occur because the implementation cannot, or chooses not to,
+inline the function, or because it needs an address rather than a call.
 In such a case,
-the function is to be emitted in each object where it is referenced,
-a COMDAT group is used to eliminate duplicates,
-with the mangled name of the function as the identifying symbol,
-and any static data or strings referenced are kept common with inline
-copies by using the local symbol mangling defined above.
+the function is to be emitted in each object where its name is referenced.
+</font>
+A COMDAT group is used to eliminate duplicates,
+with the mangled name of the function as the identifying symbol.
+
+<font color=red>
+<p>
+Inline functions, whether or not declared as such,
+and whether they are inline or out-of-line copies,
+may reference static data or character string literals,
+that must be kept in common among all copies
+by using the local symbol mangling defined above.
+These objects are named according to the rules for local names in the
+<a href=#scope-encoding> Scope Encoding </a> section above,
+and their definitions are emitted in a single COMDAT group,
+the identifier of which is specified in the
+<a href=#scope-encoding> Scope Encoding </a> section above.
+This COMDAT group must be emitted in each object with references to the
+symbols for objects it contains, either inline or out-of-line.
 
 <p>
-Issue:  Who owns the local objects?
-Two possibilities:
-<ul>
-<li> Owned by the out-of-line copy, in the same COMDAT group.
-    This requires having one, a complication.
-<li> Put them in their own COMDAT group(s),
-    emitting it everywhere.
-</ul>
+Issue:  Different instances may require different subsets of the local
+objects defined, e.g. due to different optimization levels.
+In particular, the inlined copies might eliminate large parts of the code.
+So we must either require that each COMDAT contain all declared local objects,
+put them in different COMDATs,
+or otherwise guarantee that everything required is present.
+</font>
 
 <p>
+<a name=vague-vtable></a>
 <b>Virtual Tables</b>
 
 <p>
@@ -3419,34 +3543,67 @@ any new construction virtual tables required for subobjects,
 and the VTT for the class.
 They are emitted in a COMDAT group,
 with the virtual table mangled name as the identifying symbol.
+<font color=red>
+<i>
+Note that if the key function is not declared inline in the class definition,
+but its definition later is always declared inline,
+it will be emitted in every object containing the definition.
+</i>
+</font>
 
 <p>
-Issue:  Put default constructors/destructors in the same COMDAT group?
+<a name=vague-rtti></a>
+<b>Typeinfo</b>
+
+<font color=red>
+<p>
+The RTTI std::type_info structure for a complete class type is
+emitted in the same object as its virtual table if dynamic,
+or everywhere referenced if not.
+The RTTI std::type_info structure for an incomplete class type is
+emitted wherever referenced.
+The RTTI std::type_info structures for various basic types as
+specified by the <a href=#rtti>Run-Time Type Information</a> section
+are provided by the runtime library.
+The RTTI name NTBS objects are emitted with each referencing
+std::type_info object.
 
 <p>
+The RTTI std::type_info structures for complete class types and basic
+types are emitted in COMDAT groups identified by their mangled names.
+The RTTI std::type_info structures for incomplete class types
+are emitted with other than the ABI-defined complete type mangled names;
+an implementation may choose to emit them as local static objects,
+or in COMDAT groups with implementation-defined names and COMDAT identifiers.
+The RTTI name NTBS objects are emitted in separate COMDAT groups
+identified by the NTBS mangled names.
+</font>
+
+<p>
+<a name=vague-ctor></a>
 <b>Constructors and Destructors</b>
 
+<font color=red>
 <p>
-The default constructors and destructors for a class, if any,
-are emitted in the same object(s) as the virtual table.
-All variants required (in-charge/not-in-charge)
-are emitted in the same COMDAT group,
-identified by the mangled name of the in-charge version.
-Note that not-in-charge variants are not required for classes without
-virtual bases.
-
-<p>
-For user-defined constructors or destructors,
-unless the function was declared inline, or has internal linkage,
-all variants must be emitted where the definition occurs,
-in a COMDAT group identified by the mangled name of the in-charge version.
-If the function has internal linkage,
-only those forms referenced must be emitted.
-If the function was declared inline,
-the variants are emitted where referenced out-of-line,
-following the rules above for emission of out-of-line inline functions.
-
+Constructors and destructors for a class,
+whether implicitly-defined or user-defined,
+are emitted under the same rules as other functions.
+That is, user-defined constructors or destructors,
+unless the function is declared inline, or has internal linkage,
+are emitted where defined,
+with all variants required (in-charge/not-in-charge).
+A user-defined constructor or destructor with non-inline,
+internal linkage is emitted where defined,
+with only the variants actually referenced.
+Implicitly-defined or inline user-defined constructors and destructors
+are emitted where referenced,
+each in its own COMDAT group identified by the constructor or
+destructor name.
 </font>
+
+<p>
+<a name=vague-itemplate></a>
+<b>Instantiated Templates</b>
 
 
 <p>
