@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 19 October 1999</i>
+<i>Revised 27 October 1999</i>
 
 </center>
 
@@ -1260,7 +1260,7 @@ ambiguous base classes) and (b) dynamic_cast to void*?
 <tr> <td colspan=7>
 <b> Resolution </b>:
 The vtable will contain an offset to the beginning of the complete object,
-and an offset to the typeinfo object.
+and a pointer to the typeinfo object.
 </td> </tr>
 
 </table>
@@ -1285,6 +1285,29 @@ the complete object, and a pointer or offset to the typeinfo object.
 We choose to have an offset to the typeinfo object instead of a pointer,
 which effectively means that the typeinfo object is part of the vtable.
 We will put it at the very beginning, at a negative offset from the vptr.
+
+<p>
+<font color=blue>[991027 SGI -- Matt]</font>
+At the October 14 meeting we decided to include RTTI information as
+part of the vtable block, and to include an offset to RTTI information
+in the vtable rather than a pointer to RTTI information.  (We decided
+on this change so that we would have fewer symbols to resolve at link
+time.)
+
+<p>
+Jim came up with a serious objection at the October 21 meeting:
+during construction we need different RTTI information at different
+points.  A few of us talked about this at Kona, and my impression is
+that Jim's objection is fatal.  We could imagine having base class
+typeinfo objects in every vtable block, but (1) this would kill any
+performance advantage we'd get by using an offset rather than a
+pointer; and (2) we'd lose the ability to use simple pointer identity
+as a way of telling whether two typeinfos represent the same type.
+
+<p>
+I propose that we abandon that decision, and go back to using pointers.
+Does everyone agree?
+
 
 
 <p> <hr> <p>
