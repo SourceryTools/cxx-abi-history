@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 5 November 1999</i>
+<i>Revised 29 November 1999</i>
 
 </center>
 
@@ -1263,6 +1263,865 @@ but the result can't be built in C.
 I know that we at least will also have to rewrite parts of our
 C++ runtime that hand-build vtables.
 Neither of these are critical for IBM but may be for others.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=B5></a> <td> B-5 </td>
+<td> Where are vtables emitted? </td>
+<td> data </td>
+<td> closed </td>
+<td> HP </td>
+<td> 990603 </td>
+<td> 991118 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+In C++, there are various things with external linkage that can be
+defined in multiple translation units,
+while the ODR requires that the program
+behave as if there were only a single definition.
+From the user's standpoint, this applies to inlines and templates.
+From the implementation's perspective,
+it also applies to things like vtables and RTTI info.
+(We call this <i>vague linkage</i>.)
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Vtables will be emitted with the key function (first virtual function
+that is not inline at the point of class definition), if any.
+If no key function, emit everywhere used (i.e. referred to by name).
+Place in a comdat group in all cases.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990624 Cygnus -- Jason]</font>
+There are several ways of dealing with vague linkage items:
+<ol>
+<li> Emit them everywhere and only use one.
+<li> Use some heuristic to decide where to emit them.
+<li> Use a database to decide where to emit them.
+<li> Generate them at link time.
+</ol>
+
+<p>
+#3 and #4 are feasible for templates,
+but I consider them too heavyweight to be used for other things.
+
+<p>
+The typical heuristic for #2 is "with the first non-inline,
+non-abstract virtual function in the class".
+This works pretty well,
+but fails for classes that have no such virtual function,
+and for non-member inlines.
+Worse, the heuristic may produce different results in different
+translation units,
+as a method could be defined inline after being declared non-inline
+in the class body.
+So we have to handle multiple copies in some cases anyway.
+
+<p>
+The way to handle this in standard ELF is weak symbols.
+If all definitions are marked weak,
+the linker will choose one
+and the others will just sit there taking up space.
+
+<p>
+Christophe mentioned the other day that the HP compiler used the
+typical heuristic above,
+and handled the case of different results by encoding the
+key function in the vtable name.
+But this seems unnecessary when we can just choose one of multiple defns.
+
+<p>
+A better solution than weak symbols alone would be to set things up so
+that the linker will discard the extra copies.
+Various existing implementations of this are:
+
+<ol>
+<p>
+<li>
+The Microsoft PE/COFF defn includes support for COMDAT sections,
+which key off of the first symbol defined.
+One copy is chosen, others are discarded.
+You can specify conditions to the linker
+(must have same contents, must have same size).
+
+<p>
+<li>
+The IBM XCOFF platform includes a garbage-collecting linker;
+sections that are not referenced in a sweep from main are discarded.
+In xlC, template instantiations are emitted in separate sections,
+with encoded names;
+at link time, one copy is renamed to the real mangled name,
+and the others are discarded by garbage collection.
+</ol>
+
+<p>
+The GNU ELF toolchain does a variant of #1 here;
+any sections with names beginning with ".gnu.linkonce."
+are treated as COMDAT sections.
+It seems more sensible to me to key off of the section name
+than the first symbol name as in PE.
+
+<p>
+The GNU linker recently added support for garbage collection,
+and I've been thinking about changing our handling of vague
+linkage to make use of it, but haven't.
+
+<p>
+I propose that the ia64 base ABI be extended to
+provide for either COMDAT sections or garbage collection,
+and that we use that support for vague linkage.
+
+<p>
+I further propose that we not use heuristics to
+cut down the number of copies ahead of time;
+they usually work fine, but can cause problems in some situations,
+such as when not all of the class's members are in the same symbol space.
+Does the ia64 ABI provide for controlling which symbols
+are exported from a shared library?
+
+<p>
+A side issue: What do we want to do with
+dynamically-initialized variables?
+The same thing, or use COMMON?
+I propose COMMON.
+
+<p>
+See also G-3, for vague linkage of inlined routines and their static variables.
+
+<p>
+<font color=blue><hr><p>[990624 SGI summarizing others]</font>
+HP uses COMDAT for many cases, keying from the symbol names.
+HP also uses some heuristics.
+HP observes that IA-64 objects will already be large.
+From the base ABI discussions,
+any use of WEAK or COMMON symbols will need to take care not to depend
+on vendor-specific treatment.
+
+<p>
+Defining a COMDAT mechanism doesn't preclude using heuristics to avoid
+some copies up front.
+A COMDAT mechanism should also specify how to get rid of associated
+sections like debugging info, unless the identical mechanism works.
+
+<p>
+<font color=blue><hr><p>[990629 HP -- Christophe]</font>
+First, the "usual" heuristic
+(which is usual because it dates back to Cfront)
+is to emit vtables in the translation unit that contains  
+the definition of the first non inline, non pure virtual function.  
+That is, for:
+<pre><code>
+        struct X {
+                void a();
+                virtual void f() { return; }
+                virtual void g() = 0;
+                virtual void h();
+                virtual void i();
+        };
+</code></pre>
+the vtable is emitted only in the TU that contains the definition of h().
+
+<p>
+This breaks and becomes non-portable if:
+<ul>
+<li>There is no such thing. In that case,
+    you generally emit duplicate versions of vtables
+<li>There is a "change of mind",
+    such as having the above class followed by:
+    <code><p>
+    <dd>inline void X::h() { f(); }
+    </code>
+</ul>
+
+<p>
+Now, the COMDAT issue is as follows:
+a COMDAT section is, in some cases, slightly more difficult to handle
+(at least, that's the impression Jason gave me).
+For statics with runtime initialization,  
+what you can do is reserve COMMON space ('easier'),
+then initialize that space at runtime.
+As I said, the problem is if two compilers disagree on whether this
+is a runtime or a compile time initialization, such as in :
+<pre><code>
+	int f() { return 1; }
+	int x = f();	// Static (COMDAT) or Dynamic (COMMON) initialization?
+</code></pre>
+
+<p>
+So I personally recommend that we put everything in COMDAT.
+
+<p>
+<font color=blue>[990715 All]</font>
+Consensus so far: use a heuristic for vtable and typeinfo emission,
+based on the definition of the key function.
+(The first virtual function that is not
+declared inline in the class definition.)
+The vtable must be emitted where the key function is defined,
+it may also be emitted in other translation units as well.
+If there is no key function then the vtable must be emitted in any
+translation unit that refers to the vtable in any way.
+
+<p>
+Implication: the linker must be prepared to discard duplicate vtables.
+We want to use COMDAT sections for this
+(and for other entities with vague linkage.)
+
+<p>
+Open issue: the elf format allows only 16 bits for section identifiers,
+and typically two of those bits are already taken up for other things.
+So we've only got 16k sections available,
+which is unacceptable if we're creating lots of small sections.
+
+<p>
+Jason - COMDATs disappear into text and data at link time,
+so the issue is really only serious if we've got more than 16k vtables
+(or template instantiations, etc.)
+in a single translation unit.
+
+<p>
+Daveed - HP has gotten around this problem by hacking their ELF files
+to steal another 8 bits from somewhere else.
+
+<p>
+Jack - a new kind of section table could be a viable solution.
+However, it would break everything if we did it for ia32.
+Is a solution that only works on ia64 acceptable?
+Note also that the elf section table has its own string table,
+which we wouldn't be able to share with the new kind of section table.
+Index and link fields often point into section table,
+we would have to figure out how to deal with this.
+(Jack is not opposed to the idea of an alternate section table,
+he is just pointing out some of the issues we will have to resolve.)
+
+
+<p>
+<font color=blue><hr><p>[990805 All]</font>
+We need a specific proposed representation for COMDAT.
+IBM's version is restricted to one symbol per section.
+Jim will look for Microsoft's PECOFF definition.
+Anyone else with a usable definition should send it.
+
+<p>
+<font color=blue><hr><p>[revised 991012 SGI]</font>
+<h2> C++ ABI:  COMDAT Proposal </h2>
+
+<p>
+<h3> Revisions </h3>
+
+<p>
+<font color=blue>[991007]</font>
+Change default to simply group; COMDAT semantics is option.
+Don't support removal based on duplication of non-COMDAT sections.
+Just remove symbols defined relative to removed sections.
+
+<p>
+<h3> Introduction </h3>
+
+<p>
+C++ has many situations where the compiler may need to emit code or data,
+but may not be able to identify a unique compilation unit
+where it should be emitted.
+The approach chosen by the C++ ABI group to deal with this problem,
+is to allow the compiler to emit the required information in multiple
+compilation units,
+in a form which allows the linker to remove all but one copy.
+This is essentially the idea called COMDAT in several existing
+implementations.
+
+<p>
+Various other implementations (notably Windows NT) and proposals obtain
+more generality by varying the duplicate removal semantics.
+The most obviously useful variant supports grouping of sections for
+removal purposes, but treats duplication as an error,
+using it to support link-time removal of unreferenced sections.
+The proposal below treats this simple grouping as the default semantics,
+and provides duplicate removal as an option.
+
+<p>
+Our objectives include:
+
+<ul>
+
+<p>
+<li>
+Use existing structures as far as possible,
+to minimize impact on existing tools.
+
+<p>
+<li>
+Minimize impact on the linker by defining the unit of duplication
+as a section.
+
+<p>
+<li>
+Maximize generality.
+The C++ needs are rather varied,
+and similar needs from other languages should also be handled.
+
+<p>
+<li>
+In general, duplicated code or data sections are accompanied by
+additional duplicated sections, e.g. containing debug information.
+We want to define a mechanism which can deal with arbitrary such
+associations, without predicting them in advance.
+
+</ul>
+
+<p>
+<h3> Proposal </h3>
+
+<p>
+The proposal below is based on the HP definition,
+with minor modifications and more precise definitions.
+
+<p>
+<h4> SHF_GROUP: Group Member Sections </h4>
+
+A section which is part of a group,
+and is to be retained or discarded with the group as a whole,
+is identified by a new section header attribute:
+
+<dl>
+<dt> SHF_GROUP
+<dd> This section is a member (perhaps the only one) of a group of sections,
+    and the linker should retain or discard all or none of the members.
+    This section must be referenced in a SHT_GROUP section (see below).
+</dl>
+
+<p>
+This attribute flag may be set in any section header,
+and no other modification or indication is made in the grouped sections.
+All additional information is contained in the associated
+SHT_GROUP section (see below).
+
+<p>
+<h4> SHT_GROUP: Section Group Definition </h4>
+
+<p>
+Some sections occur in interrelated groups.
+For instance, an out-of-line definition of an inline function might require,
+in addition to its .text section,
+a read-only data section containing literals referenced,
+one or more debug information sections,
+and/or other informational sections.
+Furthermore, there may be internal references among these sections that
+would not make sense if one of them were removed or
+replaced by a duplicate from another object.
+Therefore, we assume that such groups are to be included or omitted
+from the linked object as a unit.
+(Except for the GRP_COMDAT flag described below,
+this definition does not specify the circumstances under which the
+members of a group might be discarded from the linked object.)
+
+<p>
+To facilitate this, we define a SHT_GROUP section:
+
+<p>
+The section header attributes of a Group Section are:
+
+<p>
+<TABLE align=center BORDER=2 CELLSPACING=2 CELLPADDING=2>
+
+<TR>
+<TD><b> name </b></TD>
+<TD> unspecified </TD>
+</TR>
+
+<TR>
+<TD><code> sh_type </code></TD>
+<TD><code> SHT_GROUP </code></TD>
+</TR>
+
+<TR>
+<TD><code> sh_link </code></TD>
+<TD><code> .symtab </code> section index </TD>
+</TR>
+
+<TR>
+<TD><code> sh_info </code></TD>
+<TD> symbol index </TD>
+</TR>
+
+<TR>
+<TD><code> sh_flags </code></TD>
+<TD> none </TD>
+</TR>
+
+<TR>
+<TD><code> sh_entsize </code></TD>
+<TD> size of section indices (<code>4</code>) </TD>
+</TR>
+
+<TR>
+<TD> requirements </TD>
+<TD> may not be stripped </TD>
+</TR>
+
+</TABLE>
+
+<p>
+The section group's <code> sh_link </code> field identifies a symbol
+table section, and its <code> sh_info </code> field the index of a
+symbol in that section.
+The name of that symbol is treated as the identifier of the section group.
+
+<p>
+The section data of a SHT_GROUP section is a flag word
+followed by a sequence of section indices.
+The flag word may contain the following flags:
+
+<dl>
+<dt> GRP_COMDAT (0x1)
+<dd>
+This is a COMDAT group.
+It may duplicate another COMDAT group in another object file,
+where duplication is defined as having the same identifying symbol name.
+In such cases, only one of the duplicate groups should be retained by
+the linker, and the remaining groups should be discarded.
+</dd>
+</dl>
+
+<p>
+The section indices in the SHT_GROUP section identify
+the sections which make up the group.
+
+<p>
+The <code>sh_size</code> value is <code>sh_entsize</code> times
+one plus the number of sections in the group.
+
+<p>
+The linker may choose to discard a section in a group,
+i.e. not include its data in the linked object,
+based on COMDAT duplicate semantics (above),
+or for other implementation-defined reasons
+(e.g. removing unreferenced code).
+If it does so, the group semantics requires that all of the group
+members be removed as a unit.
+
+<p>
+<i>
+(Note, however, that this is not intended to imply that special-case
+behavior like removing debug information requires removing the sections
+to which it refers, even if they are in a group.
+We could clarify this issue by tying the removal semantics to the
+section which contains the identifying symbol,
+but this seems overly restrictive and unnecessary.
+</i>
+
+<p>
+<h4> Requirements </h4>
+
+<ul>
+<p>
+<li>
+References to the sections comprising a group,
+from sections outside the group,
+must be made via global UNDEF symbols,
+referencing global symbols defined as addresses in the group sections.
+They may not reference local symbols for addresses in the group's
+sections, including section symbols.
+
+<p>
+<li>
+There may not be non-symbol references to the sections comprising a
+COMDAT group from sections outside the group, e.g. in sh_link fields.
+For example, relocations of one of the group's sections must be in a
+relocation section which is also part of the group.
+
+<p>
+The above rules allow a group to be removed without leaving
+dangling references, with only minimal processing of the symbol table.
+
+<p>
+<li>
+An entry in a symbol table section not in the group,
+with a definition that is relative to one of the group's sections,
+should be removed if the group is discarded.
+
+<p>
+<li>
+The SHT_GROUP section must precede the sections in the group
+(in the section table).
+
+</ul>
+
+<p>
+<h4> Questions </h4>
+<i>
+
+<ul>
+
+<p>
+<li>
+Do we want flags to specify checking prior to removal of duplicates,
+e.g. for identical sections, same defined global symbols, etc.?
+If so, should there be one flags word per section index,
+instead of per group?
+<dd>
+Answer:  No flags besides GRP_COMDAT.  Only one flags word needed.
+</dd>
+
+<p>
+<li>
+Do we want more control over when global symbols are removed vs. being
+converted to UNDEF?
+Alternatively, should we simply require that all symbols defined as
+addresses in the group be removed,
+and that references to them from outside do so via distinct UNDEF
+global symbols?
+<dd>
+Answer:  Just remove symbols defined relative to removed sections.
+</dd>
+
+<p>
+<li>
+Do we want to replace the symbol rule by simply requiring that any
+symbols defined as addresses in the group be defined in a .symtab
+section that is itself in the group?
+<dd>
+Answer:  No.  Removing symbols is not hard, and is already done in
+other circumstances in many implementations.
+</dd>
+
+<p>
+<li>
+Why use a symbol to identify a (COMDAT) group instead of the group
+section name?
+<dd>
+Answer:  These will be very common in C++,
+and the typical names in C++ can be extremely long
+(for template instantiations often multiple kilobytes in current
+implementations, and probably 100+ characters on average even if better
+mangling is adopted).
+Virtually all such sections must already define a real global symbol,
+and duplicating such long names in the section name string table is
+undesirable space overhead.
+</dd>
+
+<p>
+<li>
+What is the name of a group section?
+<dd>
+Answer:
+It is unspecified, because it has no significance to the linker.
+It is recommended that it be something like .group,
+possibly with a short suffix to distinguish multiple groups in an
+object if necessary,
+but we place no requirement on the name.
+</dd>
+
+</ul>
+</i>
+
+<p>
+<font color=blue><hr><p>[revised 991012 SGI]</font>
+<h2> gABI:  Section Indices </h2>
+
+<p>
+<h3> Revisions and Status </h3>
+
+<p>
+[991007]
+Change section/flag names, move ELF header extension to section header 0.
+
+<p>
+<h3> Background </h3>
+
+<p>
+SGI has long been concerned about the 64K limitation on the number of
+sections in an object file.
+Although this need not normally be a problem,
+there are purposes for which we would like to place distinct functions,
+and sometimes data items,
+in distinct sections.
+When one takes into account associated sections,
+e.g. relocation, debug information, etc.,
+this leads to a limitation on the order of 16K units,
+and threatens to be a problem for some large compilation units such as
+machine-generated simulators.
+
+<p>
+C++ ABI efforts raise the same issue from another source.
+Various C++ structures are emitted under circumstances
+where the compiler cannot reliably identify a single compilation unit
+in which to emit them.
+Examples include common cases like class virtual tables,
+out-of-line copies of inline functions,
+and template instantiations.
+The favored solution is COMDAT sections,
+i.e. putting the potentially duplicated items in their own sections,
+and allowing the linker to remove the duplicates.
+Once again, though, this threatens to be a problem for very large
+compilation units.
+
+<p>
+The following proposal attempts to remove this limitation.
+Obviously, even if the problem is real,
+it will actually arise in very few compilation units.
+Therefore, the elements of the proposed solution are defined so as to
+leave unchanged object files which do not encounter the problem.
+We consider this compatibility objective as primary --
+much more important than performance or
+clean definitions for the problematic object files --
+particularly as it should allow vendors to merge the solution into
+existing tool chains at convenient times without disrupting existing
+programs.
+
+<p>
+Proposed ABI wording is in normal font; commentary is in italics.
+Section numbers are from the Intel IA-64 psABI.
+
+<p>
+<hr>
+
+<p>
+<h3> Proposed gABI Changes </h3>
+
+<p>
+<h4> General Approach </h4>
+<i>
+
+<p>
+The range of section indices from 0xff00 (SHN_LORESERVE) to
+0xffff (SHN_HIRESERVE) is reserved for special purposes,
+and the gABI already forbids real sections with these indices.
+Our approach is to deal with situations where section indices cannot
+be compatibly expanded to a full 32 bits
+by using one of these indices as an escape value indicating that the
+actual index will be found elsewhere.
+
+</i>
+
+<p>
+<h4> 4.1 Elf Header </h4>
+<i>
+
+<p>
+The ELF header has two relevant 16-bit fields:
+e_shnum contains the section count,
+and e_shtrndx the index of a string section.
+We modify their descriptions to include an overflow indicator,
+and put the actual values in the reserved section header at index 0
+if necessary, as follows:
+</i>
+
+<dl>
+<p>
+<dt> <code>ElfXX_Half e_shnum;</code>
+<dd>
+This member holds the number of entries in the section header table.
+Thus the product of <code>e_shentsize</code> and <code>e_shnum</code>
+gives the section header table's size in bytes.
+If a file has no section header table,
+<code>e_shnum</code> holds the value zero.
+<p>
+If the number of sections is greater than
+<code>SHN_LORESERVE</code> (<code>0xff00</code>),
+this member has the value <code>SHN_XINDEX</code> (<code>0xffff</code>),
+and the actual number of section header table entries is in the member
+<code>sh_size</code> of the section header at index 0.
+</dd>
+
+
+<p>
+<dt> <code>ElfXX_Half e_shstrndx;</code>
+<dd>
+This member holds the section header table index of the entry
+associated with the section name string table.
+If the file has no section name string table,
+this member holds the value <code>SHN_UNDEF</code>.
+See ``Sections'' and ``String Table'' below for more information.
+<p>
+If the section name string table index is greater than
+<code>SHN_LORESERVE</code> (<code>0xff00</code>),
+this member has the value <code>SHN_XINDEX</code> (<code>0xffff</code>),
+and the actual index of the section name string table is in the member
+<code>sh_link</code> of the section header at index 0.
+</dd>
+
+</dl>
+
+<p>
+<h4> 4.2 Sections </h4>
+<i>
+
+<p>
+We define a new special section index as an escape value for
+large section indices, as referenced above:
+</i>
+
+<dl>
+<p>
+<dt> <code>SHN_XINDEX (0xffff)</code>
+<dd>
+This special section index means, conventionally,
+that the actual section index is too large to fit in the field
+where it appears,
+and is to be found in another location
+(specific to the structure where it appears).
+</dd>
+
+</dl>
+
+<p>
+<i>
+We note here that the section header contains two fields commonly used
+to hold section indices, <code>sh_link</code> and <code>sh_info</code>,
+but they are already defined as ElfXX_Word, and require no change.
+</i>
+
+<p>
+<i>
+A new section type is defined:
+</i>
+
+<dl>
+<p>
+<dt> <code>SHT_SYMTAB_SHNDX (17)</code>
+<dd>
+A section of this type is paired with an SHT_SYMTAB section,
+if any of the symbols in that section reference a section index
+larger than 16 bits.
+It contains a table of 32-bit section indices,
+one for each symbol in the symbol table section,
+in the same order.
+<p>
+The <code>sh_link</code> field of this section contains the index of the
+associated <code>SHT_SYMTAB</code> section.
+</dd>
+
+</dl>
+
+<p>
+<i>
+A new special section name is defined:
+</i>
+
+<dl>
+<p>
+<dt> <code>.symtab_shndx</code>
+<dd>
+This section holds a section header index table for an associated
+<code>.symtab</code> section.
+The section's attributes will include the <code>SHF_ALLOC</code> bit
+if the associated <code>.symtab</code> section does;
+otherwise, that bit will be off.
+</dd>
+
+</dl>
+
+<p>
+<i>
+There is no available field to point from the <code>.symtab</code> section
+to its associated <code>.symtab_shndx</code> section,
+so we use the <code>sh_link</code> field in the latter to point back.
+It is recommended (but not required) that implementations place each
+<code>.symtab_shndx</code> section immediately after its associated
+<code>.symtab</code> section (in the section header table)
+to make it easy for the linker to find.
+</i>
+
+<p>
+<h4> 4.x Symbol Table </h4>
+<i>
+
+<p>
+The symbol table is the most problematic.
+It has no convenient location for an expanded section index.
+Therefore, we propose that the escape value imply redirection to a
+separate, parallel table containing full-size section indices.
+
+<p>
+Modify the definition of <code>st_shndx</code> as follows:
+</i>
+
+<dl>
+<p>
+<dt> <code>st_shndx</code>
+<dd>
+Every symbol table entry is defined in relation to some section.
+This member holds the relevant section header table index.
+<p>
+As the <code>sh_link</code> and <code>sh_info</code> interpretation
+table and the related text describe,
+section indexes in the range 0xff00 to 0xffff indicate special meanings.
+In particular, <code>SHN_XINDEX (0xffff)</code> indicates that the
+real index is too large to fit in this field,
+and must be found in the associated SHT_SYMTAB_SHNDX table (above).
+</dd>
+
+</dl>
+
+<p>
+If any of the <code>st_shndx</code> fields in a symbol table section
+contain the value <code>SHN_XINDEX (0xffff)</code>,
+there must be an associated <code>SHT_SYMTAB_SHNDX</code> section,
+with a <code>sh_link</code> field containing the index of this
+<code>SHT_SYMTAB</code> section.
+That section contains an array of 32-bit section indices,
+matching the symbol table entries 1-1 in the same order.
+Entries corresponding to <code>SHN_XINDEX (0xffff)</code> values of
+<code>st_shndx</code> in the symbol table must contain the actual
+section header index to be used.
+Others should contain either the correct section header index
+(i.e. duplicating the value in <code>st_shndx</code>), or zero.
+
+<p>
+<i>
+The .dynsym section in a linked object is completely analogous to a
+.symtab section in a relocatable object,
+and could be handled in the same way with the addition of a dynamic tag
+to locate it.
+We have not specified handling here because we expect the linking process
+to remove most of the section duplication process which causes the problem,
+e.g. leaving only a small number of .text sections.
+
+</i>
+
+
+<p>
+<h4> Compatibility </h4>
+
+<p>
+<i>
+There should be no compatibility impact on existing environments,
+since only very large section counts require object file changes.
+Individual vendors can postpone implementation until convenient,
+with no impact on typical programs.
+
+<p>
+Note, however, that any ELF consumer applications that are currently
+storing section indices as 16-bit values must change.
+
+</i>
+
+<p>
+<font color=blue><hr><p>[991014 All]</font>
+Jim Dehnert will push these proposals to the base ABI committee.
+
+<p>
+<font color=blue><hr><p>[991118 All]</font>
+A class vtable will be emitted with the key function
+(the first virtual function that is not inline
+at the point of class definition),
+if any.
+If there is no key function,
+it will be emitted in every compilation where used
+(i.e. referred to by name).
+It will be placed in a comdat group in all cases.
+</td> </tr>
 
 
 <p>
