@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 30 March 2000</i>
+<i>Revised 19 April 2000</i>
 
 </center>
 
@@ -7658,6 +7658,221 @@ to facilitate demangling distinction from data objects.
 Use object name for named entities, hash for strings,
 in mangling local names,
 to minimize implementation mistakes.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F8></a> <td> F-8 </td>
+<td> Identifiers with unicode letters </td>
+<td> call </td>
+<td> closed </td>
+<td> HU-Berlin </td>
+<td> 000323 </td>
+<td> 000413 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should we mangle names containing unicode letters?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F8> Resolution</a></b>:
+Follow the underlying C ABI.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000323 HU-Berlin -- Martin]</font>
+2.2, [lex.charset]/2, allows usage of universal-character-names in
+C++ programs, especially in identifiers and strings.
+How do we mangle the variable pi below?
+
+<code><pre>
+   namespace newmath {
+      const long double \u03A0 = 3.14159265358979;
+   }
+
+</pre></code>
+
+<p>
+This is also an issue for C99, so it may be that the base ABI has a
+specification; we'd have to follow that at least for extern "C" names.
+If not, I propose that such names are encoded in UTF-8.
+
+<p>
+<font color=blue>[000405 Cygnus -- Jason]</font>
+UTF-8 is inappropriate for mangled names,
+as it uses values > 127 to encode non-ASCII characters.
+
+<p>
+GNU Java encodes names in UTF-8 internally.
+For the mangled name, if there are non-ASCII characters,
+it adds a 'U' to the beginning and encodes each
+such UCS-2 character as _%04x.
+See gcc/java/mangle.c.
+
+<p>
+This assumes that all interesting characters fall within the Basic
+Multilingual Plane (the low 16 bits);
+that is a valid assumption for us, since all the extended characters
+valid for use in C++ identifiers are part of the BMP.
+
+<p>
+<font color=blue>[000411 HU-Berlin -- Martin]</font>
+Why is [UTF-8] not appropriate?
+AFAICT, the gABI has no restriction in that respect.
+ch4.strtab.html says 
+<blockquote>
+String table sections hold null-terminated character sequences,
+commonly called strings.
+</blockquote>
+
+<p>
+I can see there are a number of alternatives. I think it is important
+that there is agreement on the rules, in a way that is also
+interoperable with C99 implementations. What those rules are is not
+that important.
+
+<blockquote>
+GNU Java encodes names in UTF-8 internally.
+For the mangled name, if there are non-ASCII characters,
+it adds a 'U' to the beginning and encodes each
+such UCS-2 character as _%04x.  See gcc/java/mangle.c.
+</blockquote>
+
+<p>
+In the C++ ABI, the natural adaptation of that approach would be to
+mangle non-ASCII-containing identifiers as _U instead of _Z, right?
+Unfortunately, that does not give a solution for C names. I believe
+the GNU Java approach also cannot be extended to C99.
+
+<p>
+<font color=blue>[000413 All]</font>
+We need to follow the underlying C ABI.
+Names containing unicode letters after mangling according to our normal
+mangling rules will be encoded as required for external names by the C ABI.
+
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F9></a> <td> F-9 </td>
+<td> Strings with unicode letters </td>
+<td> call </td>
+<td> closed </td>
+<td> HU-Berlin </td>
+<td> 000323 </td>
+<td> 000413 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should we handle the object file representation of narrow and wide
+string literals containing unicode letters?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F9> Resolution</a></b>:
+Follow the underlying C ABI.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000323 HU-Berlin -- Martin]</font>
+2.2, [lex.charset]/2, allows usage of universal-character-names in
+C++ programs, especially in identifiers and strings.
+Consider the example:
+
+<code><pre>
+    wchar_t MvL[]=L"Martin von L\u00F6wis";
+</pre></code>
+
+<p>
+First, what is sizeof(wchar_t) in the base ABI? I'll assume 4 for
+the moment. Then, the question comes down to: What is the execution
+character set, and the wide execution character set? 2.2/3 says
+they are implementation-defined, so I guess we must define
+them. Typically, people expect this to be a run-time setting (which
+is a reasonable assumption), but it kind-of breaks for string
+literals.
+
+<p>
+Proposal: The wide execution character set is UCS-4.
+The execution-character-set is "as-is",
+i.e. bytes from the source character set are
+copied unmodified to the object file.
+Universal-character-names appearing in narrow (ie. char)
+strings are not portable in this ABI
+(the other alternatives would be to say they are Latin-1,
+or encoded as UTF-8, I guess).
+
+<p>
+<font color=blue>[000405 Cygnus -- Jason]</font>
+I have been told that it is inappropriate to assume that wchar_t is
+always UCS-4;
+a suggestion was to convert from UCS-4 to the host locale character
+set using iconv(),
+and then if we're in a wide string,
+convert to wchar_t with mbtowc().
+This makes sense to me,
+though of course it requires iconv to know about UCS-4.
+
+<p>
+<font color=blue>[000413 All]</font>
+We need to follow the underlying C ABI.
+Strings containing unicode letters
+will be encoded as required by the C ABI.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=F10></a> <td> F-10 </td>
+<td> Mangling function return types </td>
+<td> call </td>
+<td> closed </td>
+<td> all </td>
+<td> 000330 </td>
+<td> 000413 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we always mangle the return type of a function?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F10> Resolution</a></b>:
+No.  It is mangled only for template instantiations/specializations.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000413 All]</font>
+No.
+It requires more space,
+it can be done external to the mangling,
+and the group is uncomfortable with the potential breakage.
 
 <p> <hr> <p>
 <h3> G.  Miscellaneous Issues </h3>
