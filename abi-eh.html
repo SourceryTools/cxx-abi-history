@@ -1817,6 +1817,20 @@ then it shall do any required cleanup for the current frame before
 calling <code>_Unwind_Resume</code> to resume unwinding.
 
 
+<p>A handler for an arbitrary exception, including a
+<code>terminate_handler</code> or <code>unwind_handler</code>, has no way
+in standard C++ of determining the type of the exception without resorting
+to a complete enumeration, which is impractical at best.  Since we use
+<code>type_info</code> for EH type matching, a user can access this
+information by calling:
+<code><pre>
+	std::type_info *__cxa_current_exception_type ();
+</pre></code>
+which returns the type of the first caught exception, or null if there are
+no caught exceptions.  This routine is optional; a conforming ABI 
+implementation need not provide it.  However, if it is provided, it shall
+have the behavior specified here.
+
 <p>
 <a name=cxx-rethrow></a>
 <h5> 2.5.4  Rethrowing Exceptions </h5>
