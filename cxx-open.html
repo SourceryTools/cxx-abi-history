@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 30 March 2000</i>
+<i>Revised 11 April 2000</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000407]</font>
+New issue <a href=#A28>A-28</a>, <a href=#A29>A-29</a>.
+Additions to <a href=#D12>D-12</a>,
+<a href=#F3>F-3</a>, <a href=#F6>F-6</a>,
+<a href=#F8>F-8</a>, <a href=#F9>F-9</a>, <a href=#F11>F-11</a>.
 
 <p>
 <font color=blue>[000330]</font>
@@ -45,23 +52,6 @@ Additions to <a href=#F1>F-1</a>, <a href=#F6>F-6</a>.
 New issues <a href=#C13>C-13</a>, <a href=#C14>C-14</a>.
 Closed <a href=#C11>C-11</a>, <a href=#C12>C-12</a>.
 Additions to <a href=#A24>A-24</a>, <a href=#C4>C-4</a>, <a href=#F1>F-1</a>.
-
-<p>
-<font color=blue>[000308]</font>
-Closed <a href=#A26>A-26</a>, <a href=#A27>A-27</a>,
-<a href=#B9>B-9</a>.
-Add Limits section to ABI layout document.
-
-<p>
-<font color=blue>[000302]</font>
-Additions to closed <a href=cxx-closed.html#A20>A-20</a>,
-<a href=cxx-closed.html#A21>A-21</a>.
-Additions to <a href=#C11>C-11</a>,
-
-<p>
-<font color=blue>[000228]</font>
-New issues <a href=#A26>A-26</a>, <a href=#A27>A-27</a>,
-<a href=#F7>F-7</a>.
 
 <p>
 <a href=#ancient>Ancient revision history</a>.
@@ -1014,6 +1004,456 @@ A NULL pointer is represented by the value -1.
 </td> </tr>
 
 </table> 
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A28></a> <td> A-28 </td>
+<td> RTTI equality testing </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000406 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Can we get back the ability to do a simple test for RTTI equality?
+</td> </tr>
+
+<!--tr> <td colspan=7>
+<b><a href=cxx-closed.html#A28> Resolution</a></b>:
+</td> </tr -->
+
+</table> 
+
+<p>
+<font color=blue>[000406 CodeSourcery -- Nathan]</font>
+The current RTTI proposal loses the property that all type_info objects
+can be compared for equality and orderability by address comparison.
+Instead, type_info::operator== must involve a virtual function call
+or unconditionaly strcmp.
+(An alternative of testing the typeid of the
+polymorphic type_info objects results in infinite recursion!)
+
+<p>
+Here are two proposals which reinstate the address equality property.
+The first is rather different to the current scheme, but when I was
+done documenting it, I realised there was a minor modification to the
+current scheme, which partially reinstates the address equality. I
+present both for consideration. Feel free to shot them down ...
+
+<p>
+<h4>Proposal A</h4>
+
+<p>
+<ol>
+<p>
+<li>
+The typeid operator produces a std::type_info object for all types.
+No subclassing of std::type_info is done.
+The object has comdat linkage,
+and hence after linking and loading,
+only one object of that name is active.
+For typeid(X) it does not matter whether X is incomplete,
+or direct or indirect pointer to incomplete.
+The functionality required of typeid is to produce objects which can
+test for type equality and (implementation defined) type orderability.
+No information about the internal structure of the type is required.
+
+<p>
+<li>
+Dynamic_cast and catch matching require more information.
+Primarily the heirarchy of a class type,
+and the target of pointer types.
+To do this, a separate class heirarchy is used.
+These objects are also emitted with comdat linkage,
+and with a different name to the std::type_info
+objects produced by typeid.
+(It is not _necessary_ for these to have comdat linkage,
+but that will reduce overall program size.)
+
+<p>
+The base class of these is:
+
+<code><pre>
+class abi::__type_info
+{
+  std::type_info const *type; // pointer to typeid(foo) object.
+  virtual ~__type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+This contains a pointer to the type_info object
+produced by the typeid operator,
+for whatever type this is describing.
+That will be a unique object.
+
+<p>
+There are a number of necessary derivations of this type,
+which can be taken largely unaltered from the current proposal. 
+
+<p>
+It is necessary to distinguish function types, so that catch matching
+can distinguish a data pointer object from a function pointer object.
+Other types (fundamental, enum, array) need not be distinguished,
+and can be represented by an abi::__type_info object.
+(Or we could keep the current proposal of having separate derivations
+for these.)
+
+<code><pre>
+class abi::__function_type_info
+  : public abi::__type_info
+{
+  virtual ~__function_type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+Pointers are as they currently are,
+other than the base class change.
+We still need the incomplete target flag.
+
+<code><pre>
+class abi::__pointer_type_info
+  : public abi::__type_info 
+{
+  abi::__type_info const *target;   // target type of the pointer
+  unsigned flags;                   // flags, as currently specified
+  virtual ~__pointer_type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+Pointers to member could be a sibling class of non member pointers.
+However, they do share common functionality,
+and IMO it makes sense to derive from __pointer_type_info.
+
+<code><pre>
+class abi::__pointer_to_member_type_info
+  : public abi::__pointer_type_info
+{
+  abi::__class_type_info const *klass;  // class of the member
+  virtual ~__pointer_to_member_type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+The __class_type_info, __si_class_type_info and __vmi_class_type_info
+are unchanged, other than the change to __class_type_info's base.
+
+<code><pre>
+class abi::__class_type_info
+  : public abi::__type_info
+{
+  ... as currently defined
+}
+
+</pre></code>
+
+</ol>
+
+<p>
+The vtable slot -1,
+(which currently holds a pointer to the std::type_info object for a class),
+points to the abi::__class_type_info object.
+To implement typeid(X),
+where X is polymorphic,
+involves an additional indirection through the
+abi::__type_info base to return the `type' member.
+
+<p>
+dynamic_cast uses the abi::__class_type_info object pointed to in the vtable.
+throwing and catch matching use the abi::__type_info object
+for the type being thrown or caught.
+
+<p>
+As with the current proposal,
+an incomplete type is represented by an abi::__class_type_info object.
+Note that its abi::__type_info base
+will point to the unique std::type_info object for that type,
+regardless of whether a DSO completes the type.
+This incomplete type is prevented
+from preempting the complete type information.
+
+<p>
+Also direct or indirect pointers to incomplete have their incomplete
+flag set,
+and are also prevented from preempting the equivalent pointer to
+complete object.
+
+<p>
+During catch matching,
+comparison of pointers can compare the abi::__pointer_type_info addresses,
+unless either has the incomplete flag set,
+in which case the std::type_info objects pointed to must be compared.
+(The std::type_info objects could be compared even when the incomplete
+flags are clear.)
+
+<p>
+There are two or three naming schemes with this proposal:
+<ol>
+<li>The naming of the std::type_info object produced by typeid.
+<li>The naming of the abi::__type_info object required for dynamic cast
+    and catch matching
+<li>Optionally, the naming of the incomplete abi::__class_type_info
+    and direct or indirect pointers to it.
+    If that mangling is specified,
+    we can emit those as comdat objects too,
+    rather than forcing them to be statics.
+</ol>
+
+<p>
+Advantages of this proposal are:
+<ul>
+<li>Address equivalence of std::type_info objects
+    is maintained in all cases.
+<li>Generating the std::type_info of a pointer type does not force the
+    emission of the std::type_info objects for the pointer chain.
+<li>Generating the std::type_info of a type is always 16 bytes,
+    additional information is only produced when necessary.
+<li>When address equivalence of abi::__type_info objects is not possible,
+    the type's std::type_info object is available for that purpose.
+    There is no requirement to compare the NTBS's of the types.
+<li>We do not have to expose any implementation hooks in the
+    <typeinfo> header file.
+</ul>
+
+<p>
+The cost of this proposal is
+<ul>
+<li>Producing the std::type_info for a polymorphic type involves an
+additional indirection.
+<li>The std::type_info and abi::__type_info derivative for a particular
+type occupies an additional 16bytes (The size of std::type_info).
+</ul>
+
+
+<p>
+<h4>Proposal B</h4>
+
+<p>
+The first proposal is essentially
+using the std::type_info objects as unique objects,
+via which incomplete types can be compared.
+We already have such a unique object candidate --
+the NTBS name member of std::type_info.
+Currently we've not said anything about that.
+If, however, we give that NTBS comdat linkage, a unique name,
+and prevent it being commonized with other strings, we have a proxy.
+These features can be obtained by treating it as a
+`const char []' rather than a string constant.
+type_info equality and orderability can now use the address of this array,
+rather than the type_info objects themselves.
+We can do this in all cases,
+even though it is only necessary for the pointer to incomplete case,
+as that avoids a virtual function call.
+Here is an implementaion of type_info::operator==
+
+<code><pre>
+bool type_info::operator== (type_info const &other) throw ()
+{
+  return name == other.name;
+}
+
+</pre></code>
+
+<p>
+We need to specify the naming scheme for the NTBS.
+
+<p>
+The advantages of this are
+<ul>
+<li>Minimal change from the current scheme.
+<li>type_info orderability is a pointer comparison
+</ul>
+
+<p>
+The costs over proposal A are
+<ul>
+<li>type_info orderability involves indirecting on the type_infos.
+</ul>
+
+<p>
+<font color=blue><hr><p>[000411 CodeSourcery -- Nathan]</font>
+
+<p>
+<b>Issue 2</b>
+
+<p>
+The algorithm for collation order of type_infos,
+cannot simply compare addresses for non-pointer types,
+and complete pointer types.
+Using string collation only works
+when one of the types is a pointer with the incomplete_mask set.
+There are two difficulties.
+Firstly, we might be
+comparing a non-pointer type_info with a pointer type_info. We need to
+determine this and DTRT WRT the incomplete flag of the pointer
+type_info. to do that will require dynamic_cast or typeid'ing the
+type_infos. Secondly, assume we are just comparing pointer type_info's.
+We have two pointers to complete, Aptr and Bptr, and a third pointer to
+incomplete, Cptr.
+
+<p>
+<ol>
+<li>Aptr.before (Bptr) can just compare addresses.
+<li>Bptr.before (Cptr) will compare names.
+<li>Cptr.before (Aptr) will compare names.
+</ol>
+
+<p>
+There is nothing maintaining the consistency of the results of these
+three tests -- result 1 is uncorrelated with results 2 & 3.
+
+<p>
+Therefore type_info::before must be implemented as string compare on
+the type's names. We lose any advantage of commonizing the type_infos.
+
+<p>
+<b>Issue 3</b>
+
+<p>
+17.4.4.4 prevents an implementation adding member functions to one
+of the std classes, except in particular circumstance. About the only
+leeway given is whether a particular non-virtual function is inline or
+not. So I presume we're not permitted to add virtual member functions
+to std::type_info (18.5.1). The rules given in 17.4.4.4 specifying what
+member functions can be added look like applications of the as-if rule,
+but there must be something deeper going on, as if that was all, it
+wouldn't be mentioned. I'm not sure how a conforming program could tell
+whether additional functions had been added.
+
+<p>
+The abi requires us to add virtual functions to type_info. 
+For instance the implementation of operator== will require it to
+deal with pointers to incomplete. G++ needs several for catch matching.
+
+<p>
+<b>Issue 4</b>
+
+<p>
+5.2.8 talks about typeid returning something derived from type_info,
+but the footnote mentioning extended_type_info implies to me that
+typeid always returns objects of the same type.
+Again, I'm not sure how a conforming program could tell.
+
+<p>
+The two proposals above resolve these issues.
+Proposal A resolves issues 2,3 &4,
+whilst proposal B resolves issue 2 only,
+and will leave us (slightly) non-conformant.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+
+<tr class=small> <a name=A29></a> <td> A-29 </td>
+<td> RTTI pointer-to-member </td>
+<td> data </td>
+<td> open </td>
+<td> CodeSourcery </td>
+<td> 000407 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Derive __pointer_to_member_type_info from __pointer_type_info.
+</td> </tr>
+
+<!--tr> <td colspan=7>
+<b><a href=cxx-closed.html#A29> Resolution</a></b>:
+</td> </tr -->
+
+</table> 
+
+<p>
+<font color=blue>[000407 CodeSourcery -- Nathan]</font>
+__pointer_to_member_type_info is derived from type_info.
+I strongly recommend it be derived from __pointer_type_info,
+as it requires much of the same functionality,
+and has the same meanings of its flags.
+By subclassing __pointer_type_info, much code could be reused.
+
+<p>
+Thus point 8 of the rtti classes would become
+<blockquote>
+The abi::__pointer_to_member_type_info type adds one field to
+abi::__pointer_type_info:
+<ul>
+<li>
+              a pointer to a abi::__class_type_info
+                (e.g., the "A" in "int A::*") 
+</ul>
+</blockquote>
+
+<p>
+<font color=blue><hr><p>[000411 CodeSourcery -- Nathan]</font>
+It is permissible in a pointer to member of X,
+for X to be an incomplete type [8.3.3]/2.
+This means that we need more that a single incomplete flag.
+The presence of such a ptr to member,
+will mean that it and all pointers to it will have their incomplete flag set,
+but its target might not be an incomplete chain.
+In implementing G++'s rtti runtime I
+found the following three flags useful,
+(this is with __pointer_to_member_type_info derived from __pointer_type_info):
+
+<code><pre>
+incomplete_mask       = 0x8
+incomplete_chain_mask = 0x10
+incomplete_klass_mask = 0x20
+
+</code></pre>
+
+<p>
+incomplete_mask is an inclusive or of the other two flags.
+incomplete_klass_mask is only used by __pointer_to_member_type_info,
+and __pointer_type_info knows nothing about it (it simply examines the
+other two).
+
+<p>
+A __pointer_type_info or __pointer_to_member_type_info sets the
+incomplete_mask and incomplete_chain_mask, if the target is an
+incomplete
+type, or has its incomplete_mask set.
+
+<p>
+A __pointer_to_member_type_info sets the incomplete_mask and the
+incomplete_klass_mask, if the class of the member is incomplete.
+
+<p>
+<font color=blue><hr><p>[000411 Ed.]</font>
+I've tentatively incorporated both of these into the layout document,
+except that I just defined a second flag (in __pointer_type_info flags)
+for direct or indirect incomplete class type (in member pointers).
+Any pointer type inspections can check for both flags,
+even though only member pointers can cause one of them to be set up the
+chain.
 
 
 
@@ -3689,6 +4129,163 @@ we worked through the EH structures looking at references:
 
 </ol>
 
+<p>
+<font color=blue><hr><p>[000323 Inprise -- Eli]</font>
+I'd like it if we could avoid imposing data structures on the language
+implementations where possible.
+I'd particularly like to avoid this in the area of exception handling,
+as this is a place where different languages need to
+cohabitate in the process space.
+That's partly why I was happy to see the functional interface in the
+C++ exception handling doc that you folks did.
+My problems with the existing gcc mechanism revolve around the total
+commitment requirement to the gcc data format,
+which prevents me from even throwing exceptions past gcc frames without
+dying unless I fully conform to their data format.
+
+<p>
+The updated proposal seems to handle most of my concerns,
+but I'd still like to see the PC map hidden,
+so that language implementors can do as they see fit with this.
+To that end, I'd like to toss out the following additions.
+Note that these are tentative,
+based on my fiddling with it just a bit for the past day or so.
+I'm going to do a prototype to see how it holds together.
+
+<p>
+I would like to see the unwind tables registered with the _Unwind library,
+and referenced only through callbacks,
+like this:
+
+<code><pre>
+typedef __personality_routine
+	(*_Unwind_IPLookupFn) (uint64 IP, void **pImplementationData);
+
+int _Unwind_RegisterIPLookup
+	(_Unwind_IPLookupFn LookupFn, uint64 StartAddr, uint64 EndAddr);
+
+void _Unwind_UnregisterIPLookup (_Unwind_IPLookupFn LookupFn);
+
+</pre></code>
+
+<p>
+The first function takes the address of a lookup function which returns
+a personality and pointer to implementation specific data based on an IP.
+Start and end addresses are made available so that the _Unwind library
+can optimize calls to these routines.
+When an exception is raised, the _Unwind
+library looks up the current IP by calling these registered procedures.
+The need for something like this was implied in the Intel Software
+Conventions and Runtime Architecture Guide,
+Chap 11 (SCRAG is what I'll call it).
+Section 11.1.2 says that the dynamic loader needs to provide an API
+for finding the unwind table.
+I've just changed the 'ownership' of the data a bit.
+
+<p>
+The second function lets you uninstall a lookup function.
+That's for when you're unloading,
+and you don't want to leave bad fn pointers floating.
+Yes, the RTL for the language does have to cooperate,
+or things can go south a considerable time after a module unloads.
+
+<p>
+The personality routine as it is stated in the C++ ABI doesn't have the
+implementation specific data passed to it.
+I'd like to add that:
+
+<code><pre>
+typedef _Unwind_Reason_Code(*__personality_routine)
+	( int version,
+	  _Unwind_Action actions,
+	  uint64 exceptionClass,
+	  _Unwind_Exception *exceptionObject,
+	  _Unwind_Context *context,
+	  void *ImplementationData );
+
+</pre></code>
+
+<p>
+The ImplementationData parameter is the item that is returned by the
+lookup function that resolves the personality for a given IP.
+
+<p>
+Given these changes,
+the format of most of the unwind data in chapter 11 of
+the SCRAG becomes mostly advisory
+(the frame info was already made so by the current document).
+Chapter 11 could essentially become an appendix implementation that
+could be used by implementors if they chose,
+but not forced on them.
+The other thing that I like about the lookup registering
+is that it allows implementors to innovate with respect to fast lookup
+schemes within a loadable module.
+The current scheme allows for no innovation whatever.
+I'd prefer that the implementors be left with the option to build as
+fancy or as simple a scheme for lookups and frame decomposition as possible,
+depending on the needs of the language.
+
+<p>
+<font color=blue><hr><p>[000406 All]</font>
+There was some discussion of Eli's suggestion,
+centered on the observation that registration might be useful for
+situations like Java run-time compilation,
+where the unwind tables (nor the text referenced)
+do not exist at startup time.
+We agreed to go off and consider how we intended to deal with that
+situation.
+
+<p>
+Cary Coutant mentioned in a private conversation that he expects this
+to be handled by having the Java compiler (for example)
+register additional unwind tables with the dynamic linker.
+Since the HP implementation gets the table locations from the dynamic
+linker, this makes the additions transparent to the unwind library.
+
+<p>
+<font color=blue><hr><p>[000406 HP -- Christophe]</font>
+An interesting observation was raised at todays C++ ABI meeting.
+Can we dynamically generate unwind tables for instance from a JIT?
+We are back to the question of whether the IP->UnwindInfo translation
+can be done just by looking up tables,
+or whether we need an API to do it.
+
+<p>
+I had a discussion with Laurent Morichetti a few minutes ago.
+It is unclear at that point whether their unwinding would be based
+on the unwind library at all
+(there are alternatives, such as encoding unwind information themselves).
+But assuming they want to leverage all the code that deals
+with the RSE and all that magic,
+they need to have a way to be compatible with the unwind library.
+
+<p>
+Today, the unwind library uses dlmodinfo to find the start of the code
+segment for the current IP
+(and a predefined symbol in the case of archive-bound executables).
+From there, it can find the start of the unwind table,
+and from there do a binary search on the IP to find the unwind info block.
+
+<p>
+The JVM could be compatible with this black magic by having a way to
+tell dld what to return for the newly created code segment.
+I don't think there is a public dld interface to do that,
+and it creates a rather obscure and difficult
+to document dependency between the JVM,
+the unwind library and dld.
+
+<p>
+Alternatively,
+we could have a couple of APIs to do IP->UnwindInfo translation,
+and to register a new range of text and provide the corresponding
+unwind info pointer.
+In that scheme,
+the actual location of the unwind table would become irrelevant.
+
+<p>
+Also note that in addition to Java support,
+an implementation of Dynamo for IA64 would probably have a similar problem.
+
 
 
 <p>
@@ -4180,7 +4777,7 @@ could be left unhashed.
 <td> Consistency checks
 </td>
 <td> call g </td>
-<td> open </td>
+<td> tabled </td>
 <td> SGI </td>
 <td> 990520 </td>
 <td> </td>
@@ -4209,7 +4806,7 @@ but could provide a better diagnostic with more information.
 <p>
 Several examples are:
 
-<ul>
+<ol>
 <p>
 <li>
 A template instantiation may conflict with a full specialization
@@ -4217,7 +4814,7 @@ A template instantiation may conflict with a full specialization
 
 <p>
 <li>
-Functions may be declared with different exceptions specifications.
+Functions may be declared with different throw specifications.
 
 <p>
 <li>
@@ -4228,7 +4825,19 @@ Functions may be declared with different return types.
 Template formal parameter names would help improve instantiation error
 messages.
 
-</ul>
+</ol>
+
+<p>
+<font color=blue>[000406 all]</font>
+<ol>
+<li> Instantiation vs. specialization is tabled pending a specific proposal.
+<li> Function throw specifications are issue F-4.
+<li> Function return types are issue F-10.
+<li> There is resistance to doing something with formal parameter names.
+    Someone will hunt up John Spicer's commentary on the idea.
+</ol>
+This issue is reduced to the first example,
+and tabled until and unless someone produces a specific proposal.
 
 
 <p>
@@ -4449,6 +5058,146 @@ private:
 };
 </pre></code>
 
+<p>
+<font color=blue>[000406 all]</font>
+There was some discussion of the desirability of making the demangler a
+class member.
+Christophe believes it would thereby become easier to derive from it,
+e.g. to tailor output.
+Others believe it would add unnecessary complication;
+one particular concern is that it be callable from C.
+Christophe and Matt will send specific proposals.
+
+<p>
+It was observed that Martin's suggestion of two functions is unnecessary.
+A name beginning with "_Z" is a &lt;mangled-name>;
+otherwise it is a type name (if valid).
+
+<p>
+<font color=blue><hr><p>[000406 SGI -- Matt]</font>
+We need to return multiple return values:
+a status code, and a buffer pointer.
+We can use an extra level of indirection on one, both, or neither.
+If neither, we need to return a pair or the moral equivalent.
+
+<p>
+<b>ALTERNATIVE A</b>
+
+<code><pre>
+namespace abi {
+    extern "C" 
+    char* __cxa_demangle ( const char* mangled_name,
+			   char* buf, size_t n,
+			   int* status );
+}
+
+</code></pre>
+
+<p>
+mangled_name is a null-terminated string with the mangled name.
+buf is a pointer to a user-provided buffer of at least n characters.
+If buf is a null pointer then n is ignored,
+and demangle allocates its own buffer with malloc.
+The user is responsible for freeing it.
+
+<p>
+If the return value is non-null,
+it points to a null-terminated string with the demangled name.
+If the return value is null, an error has occurred.
+*status == 0 means the demangling failed because the buffer
+wasn't long enough (or because malloc failed).
+*status == -1 means the demangling failed because mangled_name is invalid.
+
+<p>
+Users may pass a null pointer as the last argument to __cxa_demangle.
+All that means is that, if the demangling fails, they won't be able
+to find out why.
+
+<p>
+<b>ALTERNATIVE B</b>
+
+<code><pre>
+namespace abi {
+    struct dm {
+      char* name;
+      enum { buffer_too_small, invalid_name } status;
+    };
+    dm demangle(const char* mangled_name, char* buf, size_t n);
+}
+
+</code></pre>
+
+<p>
+mangled_name is a null-terminated string with the mangled name.
+buf is a pointer to a user-provided buffer of at least n characters.
+If buf is a null pointer then n is ignored,
+and demangle allocates its own buffer with malloc.
+The user is responsible for freeing it.
+
+<p>
+If result.name is non-null,
+it points to a null-terminated string with the demangled name.
+If result.name is null,
+demangling has failed and result.status gives the type of failure.
+
+<p>
+<b>DISCUSSION</b>
+
+<p>
+I prefer alternative A,
+even though the error indication is clumsier,
+because it's callable from C.
+Having a C-callable demangling interface could come in handy,
+e.g. for linkers.
+If we decide that's unimportant, we should go with alternative B.  
+
+<p>
+<font color=blue><hr><p>[000406 HP -- Christophe]</font>
+
+<p>
+<b>ALTERNATIVE C</b>
+
+<p>
+Interface:
+
+<code><pre>
+namespace abi
+{
+
+struct demangler
+{
+        // Provide name to demangle
+        void demangle(char *);
+protected:
+        // Output demangled characters
+        // I don't know whether it is better to output
+        // on char or a string... It seems there are
+        // many cases where the demangler can put
+        // multiple chars at the same time, but they
+        // are not zero-terminated (we know the length)
+        virtual void output(char c);
+};
+
+}
+
+</code></pre>
+
+<p>
+Implementation:
+
+<code><pre>
+#include &lt;cxxabi.h>
+#include &lt;iostream>
+
+using namespace std;
+
+void abi::demangler::output(char c)
+{
+        cout << c;
+}
+
+</code></pre>
+
 
 <p>
 <table border=on cellpadding=3>
@@ -4518,6 +5267,55 @@ This is also an issue for C99, so it may be that the base ABI has a
 specification; we'd have to follow that at least for extern "C" names.
 If not, I propose that such names are encoded in UTF-8.
 
+<p>
+<font color=blue>[000405 Cygnus -- Jason]</font>
+UTF-8 is inappropriate for mangled names,
+as it uses values > 127 to encode non-ASCII characters.
+
+<p>
+GNU Java encodes names in UTF-8 internally.
+For the mangled name, if there are non-ASCII characters,
+it adds a 'U' to the beginning and encodes each
+such UCS-2 character as _%04x.
+See gcc/java/mangle.c.
+
+<p>
+This assumes that all interesting characters fall within the Basic
+Multilingual Plane (the low 16 bits);
+that is a valid assumption for us, since all the extended characters
+valid for use in C++ identifiers are part of the BMP.
+
+<p>
+<font color=blue>[000411 HU-Berlin -- Martin]</font>
+Why is [UTF-8] not appropriate?
+AFAICT, the gABI has no restriction in that respect.
+ch4.strtab.html says 
+<blockquote>
+String table sections hold null-terminated character sequences,
+commonly called strings.
+</blockquote>
+
+<p>
+I can see there are a number of alternatives. I think it is important
+that there is agreement on the rules, in a way that is also
+interoperable with C99 implementations. What those rules are is not
+that important.
+
+<blockquote>
+GNU Java encodes names in UTF-8 internally.
+For the mangled name, if there are non-ASCII characters,
+it adds a 'U' to the beginning and encodes each
+such UCS-2 character as _%04x.  See gcc/java/mangle.c.
+</blockquote>
+
+<p>
+In the C++ ABI, the natural adaptation of that approach would be to
+mangle non-ASCII-containing identifiers as _U instead of _Z, right?
+Unfortunately, that does not give a solution for C names. I believe
+the GNU Java approach also cannot be extended to C99.
+
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -4572,6 +5370,105 @@ Universal-character-names appearing in narrow (ie. char)
 strings are not portable in this ABI
 (the other alternatives would be to say they are Latin-1,
 or encoded as UTF-8, I guess).
+
+<p>
+<font color=blue>[000405 Cygnus -- Jason]</font>
+I have been told that it is inappropriate to assume that wchar_t is
+always UCS-4;
+a suggestion was to convert from UCS-4 to the host locale character
+set using iconv(),
+and then if we're in a wide string,
+convert to wchar_t with mbtowc().
+This makes sense to me,
+though of course it requires iconv to know about UCS-4.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=F10></a> <td> F-10 </td>
+<td> Mangling function return types </td>
+<td> call </td>
+<td> open </td>
+<td> all </td>
+<td> 000330 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we always mangle the return type of a function?
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=F11></a> <td> F-11 </td>
+<td> Hash for local strings </td>
+<td> call </td>
+<td> open </td>
+<td> all </td>
+<td> 000330 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should we hash strings for local name mangling?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000406 All]</font>
+One suggestion is to go back to the collision-resistant hash suggested
+by Mark in November in another context.
+The relevant source code is attached as
+<a href=fingerprint.h>fingerprint.h</a> and
+<a href=fingerprint.c>fingerprint.c</a> .
+
+<p>
+<font color=blue>[991119 CodeSourcery -- Mark]</font>
+I was asked to provide a little more information on collision-free
+hashing algorithms.
+I've appended our source to do this in our C++-to-C translator.
+The hash function here was originally used in Modula-3;
+it is provably collision-resistant.
+This version uses 64 bits;
+the algorithm can be extended to any bit length, however.
+
+<p>
+Even for 64 bits, the probabilistic guarantee (details at
+<a href=http://www.research.digital.com/SRC/m3sources/html/fingerprint/src/Fingerprint.i3.html>Compaq research</a>)
+ensures that (for example),
+the chance of getting a collision with a thousand mangled names
+of length a thousand is less than one in a billion.
+
+<p>
+At CenterLine, we used this algorithm to compute type fingerprints to
+detect ODR mismatches at link-time.  The same trick could be used to
+see whether all definitions of an inline function are really the same.
+It's better to use a collision-resistant hash (like this one) than an
+ad-hoc hash because the math actually guarantees nice properties.
+
+<p>
+Other examples of collision-free hashses are "secure hashes", i.e.,
+those designed to resist an adversaries ability to create a text with
+a given hash, or to find collisions.  Well-known examples include SHA
+and MD5.
 
 
 
@@ -5189,6 +6086,23 @@ and their prototypes.
 
 <p> <hr> <p>
 <h3><a name=ancient> Ancient Revision History </a> </h3>
+
+<p>
+<font color=blue>[000308]</font>
+Closed <a href=#A26>A-26</a>, <a href=#A27>A-27</a>,
+<a href=#B9>B-9</a>.
+Add Limits section to ABI layout document.
+
+<p>
+<font color=blue>[000302]</font>
+Additions to closed <a href=cxx-closed.html#A20>A-20</a>,
+<a href=cxx-closed.html#A21>A-21</a>.
+Additions to <a href=#C11>C-11</a>,
+
+<p>
+<font color=blue>[000228]</font>
+New issues <a href=#A26>A-26</a>, <a href=#A27>A-27</a>,
+<a href=#F7>F-7</a>.
 
 <p>
 <font color=blue>[000214]</font>
