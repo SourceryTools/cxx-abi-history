@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 5 August 1999</i>
+<i>Revised 17 August 1999</i>
 
 </center>
 
@@ -593,6 +593,84 @@ class parameters will be passed using the underlying C struct protocol.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <a name=A11></a> <td> A-11 </td>
+<td> Pointers to member functions </td>
+<td> data </td>
+<td> closed </td>
+<td> Cygnus </td>
+<td> 990603 </td>
+<td> 990812 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should pointers to member functions be represented?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+As a pair of values, described below.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990729 All]</font>
+Jason described the g++ implementation, which is a three-member struct:
+<ol>
+<li> The adjustment to <i>this</i>.
+<li> The Vtable index plus one of the function, or -1.
+     (Zero is a NULL pointer.)
+<li> If (2) is an index, the offset from the full object to the member
+     function's Vtable.  If -1, a pointer to the function (non-virtual).
+</ol>
+
+<p>
+A concern about covariant returns was raised.
+It was observed that, given our decision to use distinct Vtable entries
+for distinct return types, no further concern is required here.
+Others will describe their representations.
+IBM has an alternative, but it is believed to be patented by Microsoft.
+
+<p>
+<font color=blue>[990805 All]</font>
+It is agreed that a two-element struct will be used for a pointer to a
+member function, with elements as follows:
+
+<dl>
+<p>
+<dt> <code>ptr</code>:
+<dd> For a non-virtual function, this field is a simple function pointer.
+     (Under current base IA-64 psABI conventions,
+     this is a pointer to a GP/function address pair.)
+     For a virtual function,
+     it is 1 plus twice the Vtable offset of the function.
+     The value zero is a NULL pointer.
+
+<p>
+<dt> <code>adj</code>:
+<dd> The required adjustment to <i>this</i>.
+</dl>
+
+<p>
+Although we agreed to close this, SGI suggests a minor modification.
+Since the Vtable offset of a virtual function will always be even,
+we suggest that it not be doubled before adding 1.
+This is because shifts are more restricted on many processors than
+other integer ALU operations (shifters are large structures),
+so an XOR or NAND will often be cheaper than a right shift.
+
+<p>
+<font color=blue>[990812 All]</font>
+Close this issue with the suggested modification.
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <td> A-12 </td>
 <td> Merging secondary vtables </td>
 <td> data </td>
@@ -916,7 +994,7 @@ Can we all agree when caching is allowed?
 </td> </tr>
 <tr> <td colspan=7>
 <b> Resolution </b>:
-Caching is allowed within a member function.
+Caching is allowed.
 </td> </tr>
 
 </table>
@@ -933,6 +1011,14 @@ within a call to a member function of the class,
 the class Vtable may not be modified.
 Between such calls, no assumption may be made.
 With this observation, the issue is closed.
+
+<p>
+<font color=blue>[990812 All]</font>
+The rule is even simpler.
+Once a program changes the type of a pointer's target,
+the pointer is invalidated, and its value may not be reused.
+Therefore, a code sequence which repeatedly refers to the same pointer
+value is invalid if the pointee's vtable has been changed.
 
 
 <p>
