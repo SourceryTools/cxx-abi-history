@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 4 February 2000</i>
+<i>Revised 8 February 2000</i>
 
 </center>
 
@@ -72,12 +72,6 @@ it is present everywhere it belongs (and not elsewhere)?
 <li> <a href=#array-new>
 Should a cookie be allocated even if there is no destructor for the
 array element type? (A-20).
-</a>
-
-<p>
-<li> <a href=#array-new>
-What is the value of the new array cookie -- byte size or number of
-elements? (A-20).
 </a>
 
 <p>
@@ -177,12 +171,14 @@ the constraint that &X modulo A == 0.
 When the direct base classes of a class are viewed as an ordered set,
 the order assumed is the order declared, left-to-right.
 
+<font color=red>
 <p>
 <dt> <i>diamond-shaped inheritance</i> </dt>
 <dd>
 A class has diamond-shaped inheritance iff it has a virtual base class
 that can be reached by distinct inheritance graph paths through
 more than one direct base.
+</font>
 
 <p>
 <dt> <i>dynamic class</i> </dt>
@@ -199,14 +195,12 @@ no virtual functions, no virtual base classes,
 and no non-empty non-virtual base classes.
 
 <p>
-<font color=red>
 <dt> <i>inheritance graph order</i> </dt>
 <dd>
 When all base classes of a class, direct and indirect,
 are viewed as an ordered set,
 the order assumed that obtained by a depth-first, left-to-right
 walk of the inheritance graph.
-</font>
 
 <p>
 <a name=q3></a>
@@ -230,7 +224,6 @@ For a dynamic class,
 the unique base class (if any) with which it shares the virtual pointer
 at offset 0.
 
-<font color=red>
 <p>
 <dt> <i>secondary vtable</i> </dt>
 <dd>
@@ -244,7 +237,6 @@ A dynamic class has an associated table
 (often several instances, but not one per object)
 which contains information about its dynamic attributes,
 e.g. virtual function pointers, virtual base class offsets, etc.
-</font>
 
 </dl>
 
@@ -365,12 +357,10 @@ Layout (of type C) is done using the following procedure.
 	   attempt to choose a primary base class B.
 	   It is the first (in direct base class order)
 	   non-virtual dynamic base class, if one exists.
-	   <font color=blue>
 	   Otherwise, it is a nearly empty virtual base class,
 	   the first one in inheritance graph order which
 	   is not an indirect primary base class if any exist,
 	   or just the first one if they are all indirect primaries.
-	   </font>
 
 	   <p>
 	   Allocate the chosen primary base at offset zero, and set
@@ -822,13 +812,11 @@ direct or indirect.
 The entries are in the reverse of the inheritance graph order.
 That is, the entry for the leftmost virtual
 base is closest to the address point of the vtable.
-<font color=red>
 If there is a primary base class,
 its virtual base and vcall offsets come first
 (i.e. closest to the vtable address point)
 so that they are in their previously defined locations for the base,
 followed by the additional entries required by the full derived class.
-</font>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -867,20 +855,15 @@ inherited via a direct virtual base class.
 may be accessed via the the offset stored in the base's vtable.)
 If an indirect virtual base class is inherited via both virtual and
 non-virtual direct base classes,
-<font color=red>
 no virtual base offset entry is included for it.
-</font>
 The entries are in the reverse of the inheritance graph order.
 That is, the entry for the leftmost virtual
 base is closest to the address point of the vtable.
-<font color=red>
 If there is a primary base class,
 its virtual base and vcall offsets come first
 (i.e. closest to the vtable address point)
 so that they are in their previously defined locations for the base,
 followed by the additional entries required by the full derived class.
-</font>
-
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -1057,6 +1040,7 @@ destructors.
 <p>
 When operator <code>new</code> is used to create a new dynamic-length array,
 a cookie must be stored to remember the allocated length
+(number of array elements)
 so that it can be deallocated correctly.
 
 <p>
@@ -1326,6 +1310,7 @@ std::__enum_type_info does not add fields either.
 <p>
 <li>
 Three different types are used to represent type information:
+<font color=red>
 
 <ol type=a>
 <p>
@@ -1407,6 +1392,7 @@ It is derived from std::__class_type_info, and adds fields:
 Note that the resulting structure is variable-length,
 with the actual size depending on the number of trailing base class
 descriptions.
+</font>
 
 </ol>
 
