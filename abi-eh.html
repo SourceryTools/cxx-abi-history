@@ -15,49 +15,15 @@ C++ ABI for IA-64: Exception Handling
 
 <font size=-1>
 <p>
-<i>Revised 26 January 2000</i>
+<i>Revised 31 January 2000.
+<a href=#revisions>Revision history</a> at end of document.
+</i>
 
 </center>
 
 </HEAD>
 
 <BODY>
-
-<p> <hr> <p>
-<h3> Revisions </h3>
-
-<p>
-<font color=blue>[000118]</font>
-Integrate comments from 20 January meeting.
-
-<p>
-<font color=blue>[000118]</font>
-Integrate comments from 13 January meeting.
-
-<p>
-<font color=blue>[000112]</font>
-Integrate comments from 6 January meeting.
-See in particular <a href=#forced><code>_Unwind_ForcedUnwind</code></a>.
-
-<p>
-<font color=blue>[991230]</font>
-Integrate HP specification, Chapter 8.
-
-<p>
-<font color=blue>[990909]</font>
-Original version.
-
-
-<!--
-<p> <hr> <p>
-<h3> Outstanding Questions </h3>
-
-<font color=red>
-<ul>
-<li> 
-</ul>
-</font>
--->
 
 
 <p> <hr> <p>
@@ -101,6 +67,8 @@ In Section II below, we will specify the API of the C++ exception
 handling facilities, specifically for raising and catching exceptions.
 These APIs should be implemented by any C++ system compliant with the
 IA-64 C++ ABI.
+<i>Note that the level II and level III specifications are not
+completed at this time.</i>
 
 
 <p> <hr> <p>
@@ -211,7 +179,7 @@ For instance, this can be the <code>longjmp</code> routine.
 This external agent, not each personality routine,
 knows when to stop unwinding.
 The fact that a personality routine is not given a choice about
-whether unwinding will proceed is indicated by the UA_FORCE_UNWIND flag.
+whether unwinding will proceed is indicated by the _UA_FORCE_UNWIND flag.
 
 </ul>
 
@@ -254,7 +222,7 @@ The runtime framework then starts a two-phase process:
 <li>
 In the <i>search</i> phase,
 the framework repeatedly calls the personality routine,
-with the <code>UA_SEARCH_PHASE</code> flag as described below,
+with the <code>_UA_SEARCH_PHASE</code> flag as described below,
 first for the current PC and register state,
 and then unwinding a frame to a new PC at each step,
 until the personality routine reports either success
@@ -271,7 +239,7 @@ it will call <code>terminate()</code> rather than commence phase 2.
 If the search phase reports success,
 the framework restarts in the <i>cleanup</i> phase.
 Again, it repeatedly calls the personality routine,
-with the <code>UA_CLEANUP_PHASE</code> flag as described below,
+with the <code>_UA_CLEANUP_PHASE</code> flag as described below,
 first for the current PC and register state,
 and then unwinding a frame to a new PC at each step,
 until it gets to the frame with an identified handler.
@@ -336,20 +304,18 @@ described in the following sections.
 <p>
 The unwind interface uses reason codes in several contexts to identify
 the reasons for failures or other actions, defined as follows:
-<font color=red>
 <code><pre>
-    typedef enum _Unwind_Reason_Code {
-	URC_NO_REASON = 0,
-	URC_FOREIGN_EXCEPTION_CAUGHT = 1,
-	URC_FATAL_PHASE2_ERROR = 2,
-	URC_FATAL_PHASE1_ERROR = 3,
-	URC_NORMAL_STOP = 4,
-	URC_END_OF_STACK = 5,
-	URC_HANDLER_FOUND = 6,
-	URC_INSTALL_CONTEXT = 7
-    }
+    typedef enum {
+	_URC_NO_REASON = 0,
+	_URC_FOREIGN_EXCEPTION_CAUGHT = 1,
+	_URC_FATAL_PHASE2_ERROR = 2,
+	_URC_FATAL_PHASE1_ERROR = 3,
+	_URC_NORMAL_STOP = 4,
+	_URC_END_OF_STACK = 5,
+	_URC_HANDLER_FOUND = 6,
+	_URC_INSTALL_CONTEXT = 7
+    } _Unwind_Reason_Code;
 </pre></code>
-</font>
 The interpretations of these codes is described below.
 
 <p>
@@ -395,17 +361,17 @@ In such a case, a reason code (see above) indicates why the
 exception object needs to be deleted:
 <ul>
 <p>
-<li> <code>URC_FOREIGN_EXCEPTION_CAUGHT</code> = 1:
+<li> <code>_URC_FOREIGN_EXCEPTION_CAUGHT</code> = 1:
     This indicates that a different runtime caught this exception.
     Nested foreign exceptions,
     or rethrowing a foreign exception,
     result in undefined behaviour.
 <p>
-<li> <code>URC_FATAL_PHASE1_ERROR</code> = 3:
+<li> <code>_URC_FATAL_PHASE1_ERROR</code> = 3:
     The personality routine encountered an error during phase 1,
     other than the specific error codes defined.
 <p>
-<li> <code>URC_FATAL_PHASE2_ERROR</code> = 2:
+<li> <code>_URC_FATAL_PHASE2_ERROR</code> = 2:
     The personality routine encountered an error during phase 2,
     for instance a stack corruption.
     <p>
@@ -480,14 +446,14 @@ In such a case, an <code>_Unwind_Reason_Code</code> value is returned.
 Possibilities are:
 <ul>
 <p>
-<li> <code>URC_END_OF_STACK</code>:
+<li> <code>_URC_END_OF_STACK</code>:
     The unwinder encountered the end of the stack during phase 1,
     without finding a handler.
     The unwind runtime will not have modified the stack.
     The C++ runtime will normally call <code>uncaught_exception()</code>
     in this case.
 <p>
-<li> <code>URC_FATAL_PHASE1_ERROR</code>:
+<li> <code>_URC_FATAL_PHASE1_ERROR</code>:
     The unwinder encountered an unexpected error during phase 1,
     e.g. stack corruption.
     The unwind runtime will not have modified the stack.
@@ -495,7 +461,6 @@ Possibilities are:
 </ul>
 
 <p>
-<font color=red>
 If the unwinder encounters an unexpected error during phase 2,
 the unwind runtime may have modified the stack,
 e.g. popped frames from it,
@@ -507,7 +472,6 @@ Rather than attempt to return, therefore,
 the unwind library should use the <code>exception_cleanup</code>
 entry in the exception,
 and then call <code>abort()</code>.
-</font>
 
 <p>
 <a name=forced></a>
@@ -557,16 +521,16 @@ If not, it should return
 an <code>_Unwind_Reason_Code</code> value as follows:
 <ul>
 <p>
-<li> <code>URC_NO_REASON</code>:
+<li> <code>_URC_NO_REASON</code>:
     This is not the destination frame.
     The unwind runtime will call
     the frame's personality routine with the
-    <code>UA_FORCE_UNWIND</code> and <code>UA_CLEANUP_PHASE</code> flags
+    <code>_UA_FORCE_UNWIND</code> and <code>_UA_CLEANUP_PHASE</code> flags
     set in <code>actions</code>,
     and then unwind to the next frame
     and call the <code>stop</code> function again.
 <p>
-<li> <code>URC_END_OF_STACK</code>:
+<li> <code>_URC_END_OF_STACK</code>:
     In order to allow  <code>_Unwind_ForcedUnwind </code> to perform
     special processing when it reaches the end of the stack,
     the unwind runtime will call it after the last frame is rejected,
@@ -575,20 +539,18 @@ an <code>_Unwind_Reason_Code</code> value as follows:
     (i.e. by noticing the NULL stack pointer).
     It may return this reason code if it cannot handle end-of-stack.
 <p>
-<li> <code>URC_FATAL_PHASE2_ERROR</code>:
+<li> <code>_URC_FATAL_PHASE2_ERROR</code>:
     The <code>stop</code> function may return this code for other fatal
     conditions, e.g. stack corruption.
 </ul>
 If the <code>stop</code> function returns any reason code other than
-<code>URC_NO_REASON</code>,
-<font color=red>
+<code>_URC_NO_REASON</code>,
 the stack state is indeterminate from the point of view of the caller
 of <code>_Unwind_ForcedUnwind</code>.
 Rather than attempt to return, therefore,
 the unwind library should use the <code>exception_cleanup</code>
 entry in the exception,
 and then call <code>abort()</code>.
-</font>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -602,8 +564,8 @@ The <code>longjmp_unwind()</code> routine will call
 that compares the frame pointer in the context record with the saved
 frame pointer.
 If equal, it will restore the <code>setjmp()</code> state as customary,
-and otherwise it will return <code>URC_NO_REASON</code> or
-<code>URC_END_OF_STACK</code>.
+and otherwise it will return <code>_URC_NO_REASON</code> or
+<code>_URC_END_OF_STACK</code>.
 </i>
 
 <p>
@@ -717,7 +679,7 @@ The NAT bit of the given register is reset.
 The behaviour is guaranteed only if the function is called
 during phase 2 of unwinding,
 and applied to an unwind context representing a handler frame,
-for which the personality routine will return <code>URC_INSTALL_CONTEXT</code>.
+for which the personality routine will return <code>_URC_INSTALL_CONTEXT</code>.
 In that case, only registers GR15, GR16, GR17, GR18 should be used.
 These scratch registers are reserved for passing arguments between
 the personality routine and the landing pads.
@@ -757,7 +719,7 @@ for the routine identified by the unwind context.
 <p>
 The behaviour is guaranteed only when this function is called for an
 unwind context representing a handler frame,
-for which the personality routine will return <code>URC_INSTALL_CONTEXT</code>.
+for which the personality routine will return <code>_URC_INSTALL_CONTEXT</code>.
 In this case, control will be transferred to the given address,
 which should be the address of a landing pad.
 
@@ -887,40 +849,38 @@ See the following section.
 <p>
 The <code>actions</code> argument to the personality routine is
 a bitwise <code>OR</code> of one or more of the following constants:
-<font color=red>
 <code><pre>
     typedef int _Unwind_Action;
-    const _Unwind_Action UA_SEARCH_PHASE = 1;
-    const _Unwind_Action UA_CLEANUP_PHASE = 2;
-    const _Unwind_Action UA_HANDLER_FRAME = 4;
-    const _Unwind_Action UA_FORCE_UNWIND = 8;
+    const _Unwind_Action _UA_SEARCH_PHASE = 1;
+    const _Unwind_Action _UA_CLEANUP_PHASE = 2;
+    const _Unwind_Action _UA_HANDLER_FRAME = 4;
+    const _Unwind_Action _UA_FORCE_UNWIND = 8;
 </pre></code>
-</font>
 
 <dl>
 
 <p>
-<dt><code> <font color=red>UA_SEARCH_PHASE</font> </code>
+<dt><code> _UA_SEARCH_PHASE </code>
 <dd> Indicates that the personality routine should
 check if the current frame contains a handler,
-and if so return <code>URC_HANDLER_FOUND</code>,
-or otherwise return <code>UA_CONTINUE_UNWIND</code>.
-<code>UA_SEARCH_PHASE</code> cannot be set
-at the same time as <code>UA_CLEANUP_PHASE</code>.
+and if so return <code>_URC_HANDLER_FOUND</code>,
+or otherwise return <code>_UA_CONTINUE_UNWIND</code>.
+<code>_UA_SEARCH_PHASE</code> cannot be set
+at the same time as <code>_UA_CLEANUP_PHASE</code>.
 
 <p>
-<dt><code> <font color=red>UA_CLEANUP_PHASE</font> </code>
+<dt><code> _UA_CLEANUP_PHASE </code>
 <dd> Indicates that the personality routine should
 perform cleanup for the current frame.
 The personality routine can perform this cleanup itself,
 by calling nested procedures,
-and return <code>URC_CONTINUE_UNWIND</code>.
+and return <code>_URC_CONTINUE_UNWIND</code>.
 Alternatively, it can setup the registers (including the IP)
 for transferring control to a "landing pad",
-and return <code>URC_INSTALL_CONTEXT</code>.
+and return <code>_URC_INSTALL_CONTEXT</code>.
 
 <p>
-<dt><code> <font color=red>UA_HANDLER_FRAME</font> </code>
+<dt><code> _UA_HANDLER_FRAME </code>
 <dd> During phase 2,
 indicates to the personality routine that the current frame is
 the one which was flagged as the handler frame during phase 1.
@@ -929,7 +889,7 @@ between phase 1 and phase 2,
 i.e. it must handle the exception in this frame in phase 2.
 
 <p>
-<dt><code> <font color=red>UA_FORCE_UNWIND</font> </code>
+<dt><code> _UA_FORCE_UNWIND </code>
 <dd> During phase 2,
 indicates that no language is allowed to "catch" the exception.
 This flag is set while unwinding the stack
@@ -951,8 +911,7 @@ it may set up registers (including IP) with suitable values
 for entering the landing pad
 (e.g. with landing pad parameters),
 by calling the context management routines above.
-<font color=red>
-It then returns <code>URC_INSTALL_CONTEXT</code>.
+It then returns <code>_URC_INSTALL_CONTEXT</code>.
 
 <p>
 Prior to executing code in the landing pad,
@@ -960,7 +919,6 @@ the unwind library restores registers not altered by the personality routine,
 using the context record,
 to their state in that frame before the call that threw the exception,
 as follows.
-</font>
 All registers specified as callee-saved by the base ABI are restored,
 as well as scratch registers GR15, GR16, GR17 and GR18 (see below).
 Except for those exceptions,
@@ -1032,7 +990,7 @@ This is true even if it understands the exception object format
 
 <p>
 A runtime is not allowed to catch an
-exception if the <code>UA_FORCE_UNWIND</code> flag was passed to 
+exception if the <code>_UA_FORCE_UNWIND</code> flag was passed to 
 the personality routine.
 
 <p>
@@ -1200,6 +1158,36 @@ a second-level specification must be part of the ABI.
 
 <i>
 &lt;To be specified.>
+
+
+<p><a name=revisions></a> <hr> <p>
+<h3> Revisions </h3>
+
+<p>
+<font color=blue>[000131]</font>
+Integrate comments from 27 January meeting.
+Put literal names in reserved name space.
+
+<p>
+<font color=blue>[000126]</font>
+Integrate comments from 20 January meeting.
+
+<p>
+<font color=blue>[000118]</font>
+Integrate comments from 13 January meeting.
+
+<p>
+<font color=blue>[000112]</font>
+Integrate comments from 6 January meeting.
+See in particular <a href=#forced><code>_Unwind_ForcedUnwind</code></a>.
+
+<p>
+<font color=blue>[991230]</font>
+Integrate HP specification, Chapter 8.
+
+<p>
+<font color=blue>[990909]</font>
+Original version.
 
 <p>
 <hr>
