@@ -1,0 +1,133 @@
+<HTML>
+
+<HEAD>
+<title>C++ ABI for IA-64: Mangling</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+<link rel=stylesheet href=code.css type="text/css">
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ ABI for IA-64: Mangling
+</b></i></font>
+
+<font size=-1>
+<p>
+<i>Revised 8 March 2000</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+<p><hr><p>
+
+<table border=on>
+<tr> <th colspan=2> ID </th> <th align=left> Meaning </th> </tr>
+<td> a </td> <td></td> <td> builtin type signed char </td> </tr>
+<td> a </td> <td> a </td> <td> Operator && </td> </tr>
+<td> a </td> <td> d </td> <td> Operator & (unary) </td> </tr>
+<td> a </td> <td> n </td> <td> Operator & </td> </tr>
+<td> a </td> <td> N </td> <td> Operator &= </td> </tr>
+<td> a </td> <td> S </td> <td> Operator = </td> </tr>
+<td> A </td> <td></td> <td> array type </td> </tr>
+<td> b </td> <td></td> <td> builtin type bool </td> </tr>
+<td> c </td> <td></td> <td> builtin type char </td> </tr>
+<td> c </td> <td> l </td> <td> Operator () </td> </tr>
+<td> c </td> <td> m </td> <td> Operator , </td> </tr>
+<td> c </td> <td> o </td> <td> Operator ~ </td> </tr>
+<td> c </td> <td> v </td> <td> Operator (cast) </td> </tr>
+<td> C </td> <td> 1 </td> <td>Complete object (in-charge) constructor</td> </tr>
+<td> C </td> <td> 2 </td> <td>Base object (not-in-charge) constructor</td> </tr>
+<td> d </td> <td></td> <td> builtin type double </td> </tr>
+<td> d </td> <td> a </td> <td> Operator delete[] </td> </tr>
+<td> d </td> <td> e </td> <td> Operator * (unary) </td> </tr>
+<td> d </td> <td> l </td> <td> Operator delete </td> </tr>
+<td> d </td> <td> v </td> <td> Operator / </td> </tr>
+<td> d </td> <td> V </td> <td> Operator /= </td> </tr>
+<td> D </td> <td> 0 </td> <td> Deleting destructor</td> </tr>
+<td> D </td> <td> 1 </td> <td> Complete object (in-charge) destructor</td> </tr>
+<td> D </td> <td> 2 </td> <td> Base object (not-in-charge) destructor</td> </tr>
+<td> e </td> <td> o </td> <td> Operator ^ </td> </tr>
+<td> e </td> <td> O </td> <td> Operator ^= </td> </tr>
+<td> e </td> <td> q </td> <td> Operator == </td> </tr>
+<td> e </td> <td></td> <td> builtin type long double </td> </tr>
+<td> E </td> <td></td> <td> End of argument list </td> </tr>
+<td> f </td> <td></td> <td> builtin type float </td> </tr>
+<td> F </td> <td></td> <td> function </td> </tr>
+<td> g </td> <td> e </td> <td> Operator >= </td> </tr>
+<td> g </td> <td> t </td> <td> Operator > </td> </tr>
+<td> h </td> <td></td> <td> builtin type unsigned char </td> </tr>
+<td> i </td> <td></td> <td> builtin type int </td> </tr>
+<td> i </td> <td> x </td> <td> Operator [] </td> </tr>
+<td> I </td> <td></td> <td> Template argument list </td> </tr>
+<td> j </td> <td></td> <td> builtin type unsigned int </td> </tr>
+<td> K </td> <td></td> <td> const qualifier </td> </tr>
+<td> l </td> <td></td> <td> builtin type long </td> </tr>
+<td> l </td> <td> e </td> <td> Operator <= </td> </tr>
+<td> l </td> <td> s </td> <td> Operator << </td> </tr>
+<td> l </td> <td> S </td> <td> Operator <<= </td> </tr>
+<td> l </td> <td> t </td> <td> Operator < </td> </tr>
+<td> L </td> <td></td> <td> literal, external name prefix </td> </tr>
+<td> m </td> <td></td> <td> builtin type unsigned long </td> </tr>
+<td> m </td> <td> i </td> <td> Operator - </td> </tr>
+<td> m </td> <td> I </td> <td> Operator -= </td> </tr>
+<td> m </td> <td> l </td> <td> Operator * </td> </tr>
+<td> m </td> <td> L </td> <td> Operator *= </td> </tr>
+<td> m </td> <td> m </td> <td> Operator -- </td> </tr>
+<td> M </td> <td></td> <td> pointer to member type </td> </tr>
+<td> n </td> <td> a </td> <td> Operator new[] </td> </tr>
+<td> n </td> <td> e </td> <td> Operator != </td> </tr>
+<td> n </td> <td> g </td> <td> Operator - (unary) </td> </tr>
+<td> n </td> <td> t </td> <td> Operator ! </td> </tr>
+<td> n </td> <td> w </td> <td> Operator new </td> </tr>
+<td> N </td> <td></td> <td> dependent/qualifier name list </td> </tr>
+<td> o </td> <td> o </td> <td> Operator || </td> </tr>
+<td> o </td> <td> r </td> <td> Operator | </td> </tr>
+<td> o </td> <td> R </td> <td> Operator |= </td> </tr>
+<td> p </td> <td> l </td> <td> Operator + </td> </tr>
+<td> p </td> <td> L </td> <td> Operator += </td> </tr>
+<td> p </td> <td> m </td> <td> Operator ->* </td> </tr>
+<td> p </td> <td> p </td> <td> Operator ++ </td> </tr>
+<td> p </td> <td> t </td> <td> Operator -> </td> </tr>
+<td> P </td> <td></td> <td> pointer type </td> </tr>
+<td> q </td> <td> u </td> <td> Operator ? </td> </tr>
+<td> r </td> <td></td> <td> restrict qualifier </td> </tr>
+<td> r </td> <td> m </td> <td> Operator % </td> </tr>
+<td> r </td> <td> M </td> <td> Operator %= </td> </tr>
+<td> r </td> <td> s </td> <td> Operator >> </td> </tr>
+<td> r </td> <td> S </td> <td> Operator >>= </td> </tr>
+<td> r </td> <td> z </td> <td> Operator sizeof </td> </tr>
+<td> R </td> <td></td> <td> reference type </td> </tr>
+<td> s </td> <td></td> <td> builtin type short </td> </tr>
+<td> S </td> <td> &lt;digit></td> <td> previous name </td> </tr>
+<td> S </td> <td> b </td> <td> abbreviation ::std::basic_string </td> </tr>
+<td> S </td> <td> s </td>
+<td> abbreviation ::std::basic_string&lt;char, ::std::char_traits&lt;char>,
+			    ::std::allocator&lt;char> ></td> </tr>
+<td> S </td> <td> t </td> <td> abbreviation ::std:: </td> </tr>
+<td> t </td> <td></td> <td> builtin type unsigned short </td> </tr>
+<td> T </td> <td> &lt;digit></td> <td> template parameter </td> </tr>
+<td> T </td> <td> I </td> <td> typeinfo structure </td> </tr>
+<td> T </td> <td> V </td> <td> virtual table </td> </tr>
+<td> v </td> <td></td> <td> builtin type void </td> </tr>
+<td> V </td> <td></td> <td> volatile qualifier </td> </tr>
+<td> w </td> <td></td> <td> builtin type wchar_t </td> </tr>
+<td> x </td> <td></td> <td> builtin type long long </td> </tr>
+<td> X </td> <td></td> <td> expression prefix </td> </tr>
+<td> y </td> <td></td> <td> builtin type unsigned long long </td> </tr>
+<td> z </td> <td></td> <td> ellipsis </td> </tr>
+<td> Z </td> <td></td> <td> local name prefix </td> </tr>
+<td> &lt;digit></td> <td></td> <td> name (length followed by name) </td> </tr>
+
+</table>
+</ol>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+</BODY>
+</HTML>
