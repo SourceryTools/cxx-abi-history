@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 28 February 2000</i>
+<i>Revised 8 March 2000</i>
 
 </center>
 
@@ -27,29 +27,21 @@ C++ ABI Open Issues
 <h3> Revisions </h3>
 
 <p>
+<font color=blue>[000308]</font>
+Closed <a href=#A26>A-26</a>, <a href=#A27>A-27</a>,
+<a href=#B9>B-9</a>.
+Add Limits section to ABI layout document.
+
+<p>
+<font color=blue>[000302]</font>
+Additions to closed <a href=cxx-closed.html#A20>A-20</a>,
+<a href=cxx-closed.html#A21>A-21</a>.
+Additions to <a href=#C11>C-11</a>,
+
+<p>
 <font color=blue>[000228]</font>
 New issues <a href=#A26>A-26</a>, <a href=#A27>A-27</a>,
 <a href=#F7>F-7</a>.
-
-<p>
-<font color=blue>[000214]</font>
-Closed <a href=#A21>A-21</a>, <a href=#A25>A-25</a>.
-Additions to <a href=#A23>A-23</a>, <a href=#C4>C-4</a>,
-<a href=#F1>F-1</a>, <a href=#F5>F-5</a>.
-New issue <a href=#B9>B-9</a>.
-
-<p>
-<font color=blue>[000214]</font>
-Additions to <a href=#A21>A-21</a>, <a href=#A23>A-23</a>,
-<a href=#A24>A-24</a>, <a href=#F1>F-1</a>.
-New issue <a href=#F5>F-5</a>.
-
-<p>
-<font color=blue>[000204]</font>
-Closed <a href=#A22>A-22</a>, <a href=#D11>D-11</a>.
-Additions to <a href=#A23>A-23</a>, <a href=#A24>A-24</a>,
-<a href=#D12>D-12</a>.
-New issue <a href=#A25>A-25</a>.
 
 <p>
 <a href=#ancient>Ancient revision history</a>.
@@ -859,297 +851,21 @@ Remove it.
 <tr class=small> <a name=A23></a> <td> A-23 </td>
 <td> RTTI class descriptors </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 000124 </td>
-<td>  </td>
+<td> 000302 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Resolve several questions about the RTTI representation of class types.
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A23> Resolution</a></b>:
+See the <a href=abi-layout.html>ABI layout</a> document.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000124 CodeSourcery -- Nathan]</font>
-<code>si_class_type_info</code>
-is for a single nonvirtual inheritance heirarchy.
-Presumably this single non-virtual inheritance is between the derrived
-and the base (the base may or may not have multiple or virtual bases).
-An additional constraint is that, if the derrived class is polymorphic,
-the base class is too. Rationale: if the derrived class adds
-polymorphism, the base will be at a non-zero offset.
-
-<p>
-<font color=blue>[000126 CodeSourcery -- Nathan]</font>
-More useful for dynamic cast (and possibly catch matching)
-{than the current set of flags -- editor}
-would be the following flags:
-
-<ul>
-<li> Contains non-diamond shaped multiple base object
-<li> Is diamond shaped
-<li> has virtual base
-<li> has non-virtual base
-<li> has public base
-<li> has non-public base
-</ul>
-
-<p>
-Note that the virtual/non-virtual and public/non-public are not
-mutually exclusive.
-Also note that I have not actually implemented anything with these flags,
-so I could be wrong.
-
-<p>
-[class.mi] (clause 10.1) provides good examples of "diamond shaped."
-Paragraph 4 gives a non-diamond shaped graph with multiple base object.
-At least one of the multiply inherited base objects must be non-virtual.
-<code> <pre>
-        struct L {};
-        struct A : L {};
-        struct B : L {};
-        struct C : A, B {};
-</pre> </code>
-
-<p>
-There are two distinct L base objects in C.
-C would have the non-diamond shaped multiple inheritance flag set.
-A, B and C would have the non-virtual base flag and public base flag set.
-
-<p>
-Paragraph 5 gives a diamond shaped graph.
-Such a multiply inherited base object must be virtual.
-<code> <pre>
-        struct V {};
-        struct A : virtual V {};
-        struct B : virtual V {};
-        struct C : A, B {};
-</pre> </code>
-
-<p>
-This time C would have the diamond shaped flag set.
-A, B & C would have the virtual base flag set and the public base flag set.
-C would also have the non-virtual base flag set.
-
-<p>
-Paragraph 6 gives a graph which contains both features.
-Here there is one non-virtual base and one virtual base.
-<code> <pre>
-        struct B {};
-        struct X : virtual B {};
-        struct Y : virtual B {};
-        struct Z : B {};
-        struct AA : X, Y, Z {};
-</pre> </code>
-
-<p>
-In that example, AA would have both diamond and non-diamond flags set.
-all would have the public base flag set, AA & Z would have the
-non-virtual
-base flag set, AA, X & Y would have the virtual base flag set.
-
-<p>
-The above is treating the non-virtual and virtual base flags differently,
-they should have the following meaning:
-<ul>
-<li> has non-virtual direct base
-<li> has virtual direct or indirect base
-</ul>
-
-Similarly the public and non-public flags mean:
-<ul>
-<li> has public direct base
-    (to have an indirect public base, there must be a direct public base)
-<li> has non-public direct or indirect base
-</ul>
-
-<p>
-My thinking is that for dynamic_cast,
-having such information will allow
-pruning parts of the inheritance graph walk.
-For instance, there can only be distinct multiple target base objects
-when the non-diamond shaped flag is set in the complete object.
-When we find them,
-the base sub-object started from can only be a common base for both of them,
-if the diamond shaped flag is set in the complete object.
-Alternatively,
-there can only be (at most) one instance of the target type when
-the non-diamond shaped flag is clear.
-When we find it via a non-public path,
-there could only be an alternative
-public path if the complete object has the diamond shaped flag set.
-Similar pruning should be possible for catch matching.
-Without such information,
-the graph walk has to be pessimistic,
-which I beleive will slow down the common case.
-
-<p>
-<font color=blue>[000126 CodeSourcery -- Nathan]</font>
-<code>__si_class_type_info</code> is documented for
-a single non-virtual hierarchy,
-and <code>__vmi_class_type_info</code> for a class containing
-(directly or indirectly)
-a multiple or virtual inheritance component.
-My mistake was to use <code>__si_class_type_info</code>
-for a class with a single base,
-regardless of the
-heirachy within the base (that is the current g++ behaviour).
-
-<p>
-<code>__si_class_type_info</code>
-is for both public and non-public inheritance
-(again, something I'd not noticed, thinking it was for public only).
-For this to work,
-the __class_type_info flag bit 0x8 'non-publicly inherited base'
-must mean `non-publicly inherited direct base'.
-Please can the wording about bases here explicitly say
-`direct base,' `indirect base,' or `direct or indirect base.'
-The description currently use `contains' and `has' which
-are open to interpretation.
-
-<p>
-In dynamic casting, access is important.
-In a cross cast from base A via complete type C to another base B,
-both B and A must be publicly accessible from C.
-It might be that dynamic_cast locates B,
-and, knowing that C does not have multiply inherited subobjects,
-determines it need look no further.
-However, it must determine access.
-If C has no non-public direct or indirect bases,
-access must be OK, without further inspection.
-However the hint flag 0x8 can't be indicating that,
-as it is only for direct bases.
-(This was the one case where I was able to take advantage of these flags,
-but alas it seems I can't.) 
-
-
-<p>
-<font color=blue>[000127 All]</font>
-We decided on Thursday that your "mistakes" are what we want.
-<code>__si_class_type_info</code> will be for any class with a
-single direct base at offset 0 which is public and non-virtual.
-
-<p>
-We also decided that the flags should move from
-<code>__class_type_info</code> into <code>__vmi_class_type_info</code>,
-and that the polymorphic flag should be removed.
-
-<p>
-<font color=blue>[000126 CodeSourcery -- Nathan]</font>
-I think this moving of the flags is a mistake.
-If I understood correctly,
-they indicated information about direct and indirect bases
-(whether there was virtuality anywhere in the heirarchy for instance).
-Such information can speed up dynamic cast.
-When walking the inheritance graph, we can take some early outs,
-if we know there are no multiple subobject types within the complete graph.
-With the flags in every class's type_info,
-it becomes easier to get hold of that info.
-With it only for vmi classes,
-we have to remember `unknown' when presented with a complete object
-of si type,
-and fill the information in when/if we find a vmi base.
-
-<p>
-Another case is in a potential cross-cast case,
-which I had in the previous email.
-Suppose we've found the target base,
-which we know is unique,
-but not found the source base (because we early outed, maybe).
-To be a valid cross-cast both the source and target base objects
-must be public in the complete object.
-If we know the complete heirarchy has no non-public bases,
-there's no need to search for the source base in this case.
-
-<p>
-<font color=blue><hr><p>[000129 Cygnus -- Jason]</font>
-So what you're saying is if we try to dynamic_cast from A* to B*,
-where B has a unique A subobject and the A* does not actually point
-to part of a B,
-if we know that B has no multiple subobjects we can check the passed offset,
-see that it doesn't match, and return failure.
-Without that information,
-we would have to recurse up the single-inheritance chain until
-we either reach the A or a class with multiple or virtual bases.
-
-<p>
-I think I'd rather pay that small performance hit than add a word to
-the type_info for each class.
-Matt, would this affect locales?
-
-<p>
-... cross-casts only come up in the context of classes with multiple bases,
-so it wouldn't make sense to look for this in single inheritance
-classes anyway.
-
-<p>
-<font color=blue><hr><p>[000127 All]</font>
-Note from the meeting:
-A proposed precise definition of a diamond-shaped object is one that
-has two different direct bases with the same virtual base,
-directly, indirectly, or vacuously (the direct base is the virtual base).
-
-<p>
-<font color=blue><hr><p>[000203 All]</font>
-Move the flags from __class_type_info to __vmi_class_type_info.
-Share them with one byte from the __base_class_info offset field.
-Replace Daveed's set with Nathan's, but the first one isn't needed.
-
-<p>
-<font color=blue><hr><p>[000203 SGI -- Jim]</font>
-The class type restructuring is a bit different than
-what I expected going in (could just be my confusion).
-
-<p>
-I moved the flags from __class_type_info to __vmi_class_type_info,
-discovering that they don't need to share space with the offset field
-in the __base_class_info records, but rather with the base class count.
-
-But, the __base_class_info has its own flags (virtual and public)
-which can reasonably share a doubleword, as we were discussing for the
-other flags this morning.  So I specified that.
-Note that I put the flags in the low byte rather than the high byte.
-That is because the offset is signed, and it is likely that
-implementations will sign-extend (signed doubleword>>8), but not
-(doubleword & 0x00ffffffffffffffll).
-
-<p>
-After an exchange with Nathan,
-I reinstated his first flag
-(contains non-diamond multiple inheritance).
-
-<p>
-<font color=blue><hr><p>[000210 All -- Matt]</font>
-Notes from the meeting:
-<p>
-Minor corrections to RTTI discussion in data layout document:
-In section 7c, which describes the vmi_flags, flag 0x01 is
-documented incorrectly.  It says "class has non-diamond multiple
-inheritance", which isn't quite right.  We're really talking
-more about repeated inheritance: having multiple subobjects of
-the same type.
-
-<p>
-Also in vmi_flags, Jason questions whether flags 0x04 and 0x08 are
-necessary.  What do we really need "has virtual base(s)" and "has
-non-virtual base(s)" for?  Jason has sent email to Nathan about
-this.
-
-<p>
-Naming issue: we decided to put all of our type_info subclasses
-in namespace abi, not namespace std.  This means, of course,
-that they can't go in any of the standard headers.  Rather than
-inventing multiple header names, we would like to put everything
-(unwinding longjmp, type_info subclasses, etc.) into one quasi-
-standard header.  We propose the name <ia64cxxabi>.  Everything
-in that header will be in namespace abi.
-
-<p>
-Issue A23 can almost be closed.  The only thing we need to
-resolve is whether to keep the two flags that Jason is unsure about.
-
 
 
 
@@ -1466,75 +1182,22 @@ for the actual data.
 <tr class=small> <a name=A26></a> <td> A-26 </td>
 <td> NULL pointers to member functions </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 000221 </td>
-<td> </td>
+<td> 000302 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How are NULL pointers to member functions represented?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A26> Resolution</a></b>:
+A NULL pointer is represented by a 0 value of <code>ptr</code>,
+and the value of <code>adj</code> is irrelevant.
+</td> </tr>
 
 </table> 
-
-<p>
-<font color=blue>[000221 CodeSourcery -- Mark]</font>
-The ABI document says that a NULL pointer-to-member function has 
-`ptr == 0'.  It does, not, however say whether or not a NULL
-pointer-to-member function also has `adj == 0'.
-
-<p>
-I believe that this should be specified as well so that code generated
-to do comparison of pointers to members (of the same type)
-looks like:
-<code><center>
-    p1->ptr == p2->ptr && p1->adj == p2->adj
-</code></center>
-
-and not:
-
-<code><center>
-    p1->ptr == p2->ptr && (!p1->ptr || (p1->adj == p2->adj))
-</code></center>
-
-<p>
-So, I would say:
-<dl><dd>
-    If the pointer-to-member is NULL, both fields are zero.  (Note:
-    there are no non-NULL pointers-to-members for which the `ptr'
-    field is non-zero.)
-</dd></dl>
-
-<p>
-It's occurred to me that this imposes some overhead on casting
-pointers-to-members around: now when you convert from a base pointer
-to member to a derived version (or vice versa), you can't just adjust
-the `adj' member willy-nilly; instead, you have to check first whether
-or not the pointer is NULL.
-
-<p>
-So, I'm not sure any more which scheme is preferable -- but we
-definitely need to say clearly which we want.
-
-<p>
-<font color=blue>[000222 CodeSourcery -- Mark]</font>
-So, it would be helpful if we were to add:
-<dl><dd>
-  (Note: the `adj' field is not necessarily zero even when the
-   pointer-to-member is NULL.  Therefore, casting a
-   pointer-to-derived-member to a pointer-to-base-member (or vice
-   versa) requires only an adjustment to the `adj' field.  However,
-   comparsion of two pointers-to-members requires more than
-   a bitwise comparision.  Code equivalent to:
-   <code><center>
-     p1.ptr == p2.ptr && (!p1.ptr || (p1.adj == p2.adj))
-   </code></center>
-   is required since in the case that p1.ptr and p2.ptr are both 
-   zero, there `adj' fields are irrelevant.)
-</dd></dl>
-to the ABI document.
-
 
 
 <p>
@@ -1549,85 +1212,21 @@ to the ABI document.
 <tr class=small> <a name=A27></a> <td> A-27 </td>
 <td> NULL pointers to data members </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> CodeSourcery </td>
 <td> 000222 </td>
-<td> </td>
+<td> 000302 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How are NULL pointers to member data represented?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A27> Resolution</a></b>:
+A NULL pointer is represented by the value -1.
+</td> </tr>
 
 </table> 
-
-<p>
-<font color=blue>[000222 CodeSourcery -- Mark]</font>
-We haven't specified a way to represent a NULL pointer to data member.
-G++ presently adds one to the offset,
-allowing zero to serve as the NULL pointer to member.
-
-<p>
-<font color=blue>[000223 CodeSourcery -- Mark]</font>
-What is the value for the NULL pointer to data member?
-I guess -1 would do,
-unless there are cases I can't think of where the pointer
-to member would legitimately have a negative value.
-Maybe 0x8000000000000000 is better...
-
-<ul>
-<p>
-<li>
-All pointer-to-member offsets start out non-negative.
-
-<p>
-<li>
-Only casts which would increase the `this' pointer could cause
-the pointer-to-member to go negative.
-
-<p>
-<li>
-A reinterpret_cast leaves the value unspecified, except that:
-<ul>
-<li> NULL is converted to NULL
-<li> If you convert back, you're OK.
-</ul>
-But, therefore, converting a non-NULL value to NULL is explicitly
-permitted by the standard.
-
-
-<p>
-<li>
-A pointer-to-base can be converted to a pointer-to-derived via
-an implicit conversion/static_cast.
-<p>
-It's illegal to do this if the base is virtual.  But, that's the
-only case in which the `this' pointer can increase.
-
-
-<p>
-<li>
-A pointer-to-derived can be converted to a pointer-to-base.
-This will normally increase the `this' pointer.
-The standard is a little unclear here,
-but I think it wants to say that this is illegal precisely in the
-cases where the offset would go negative:
-
-<dl>
-<p>
-<dt>
-      [expr.static.cast]
-<dd>
-      <i>
-      If class B contains the original member,
-      or is a base or derived class of the class
-      containing the original member,
-      the resulting pointer to member points to the original member.
-      Otherwise, the result of the cast is undefined.
-      </i>
-</dl>
-
-</ul>
 
 
 
@@ -1923,54 +1522,23 @@ and a pointer to the typeinfo object.
 <tr> <a name=B9></a> <td> B-9 </td>
 <td> Primary base vtable embedding </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> Cygnus </td>
 <td> 000217 </td>
-<td> </td>
+<td> 000302 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Resolve the embedding of the vtable for the primary base class
 in the derived class vtable.
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#B9> Resolution</a></b>:
+Any class with virtual bases shall contain vbase pointers
+for all of its virtual bases.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000217 All]</font>
-Jason noticed an issue today involving the layout of primary vtables.
-
-<p>
-Our chosen layout starts with the primary base class vtable layout
-(if any),
-and adds additional vbase/vcall offsets to the beginning,
-and additional vfunc pointers at the end.
-It is then followed by the secondary vtables, in inheritance graph order.
-
-<p>
-We have assumed, for instance in our decision
-not to propagate vbase offsets from non-virtual bases,
-that the secondary vtables were directly
-accessible at compile-time offsets from the primary vptr.
-However, this is not currently the case if we are dealing with
-a class that is the primary base of a derived class.
-The derived class's additional vfunc pointers will be added between the
-base class vtable and its secondary vtables for the base's base classes.
-Therefore, non-overridden base class member functions, at least,
-can't make assumptions about secondary vtable offsets.
-
-<p>
-One can, of course,
-get to the secondary vtable via the secondary vptr in the object,
-but that costs an additional load.
-
-<p>
-There is a "solution" that should work, but is a touch ugly.
-That would be to place the additional vfunc fields for the derived class
-not immediately after the primary base vtable,
-but after all of its non-virtual secondary vtables.
-If we don't think this is worthwhile,
-we should reconsider the decision about promoting vbase offsets.
 
 
 
@@ -5782,6 +5350,26 @@ and their prototypes.
 
 <p> <hr> <p>
 <h3><a name=ancient> Ancient Revision History </a> </h3>
+
+<p>
+<font color=blue>[000214]</font>
+Closed <a href=#A21>A-21</a>, <a href=#A25>A-25</a>.
+Additions to <a href=#A23>A-23</a>, <a href=#C4>C-4</a>,
+<a href=#F1>F-1</a>, <a href=#F5>F-5</a>.
+New issue <a href=#B9>B-9</a>.
+
+<p>
+<font color=blue>[000214]</font>
+Additions to <a href=#A21>A-21</a>, <a href=#A23>A-23</a>,
+<a href=#A24>A-24</a>, <a href=#F1>F-1</a>.
+New issue <a href=#F5>F-5</a>.
+
+<p>
+<font color=blue>[000204]</font>
+Closed <a href=#A22>A-22</a>, <a href=#D11>D-11</a>.
+Additions to <a href=#A23>A-23</a>, <a href=#A24>A-24</a>,
+<a href=#D12>D-12</a>.
+New issue <a href=#A25>A-25</a>.
 
 <p>
 <font color=blue>[000131]</font>
