@@ -1,7 +1,9 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+               "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 
 <HEAD>
-<title>C++ ABI for IA-64 (Draft) </title>
+<title>C++ ABI for Itanium (Draft) </title>
 
 <link rel=stylesheet href=small-table.css type="text/css">
 <link rel=stylesheet href=code.css type="text/css">
@@ -10,18 +12,39 @@
 
 <font size=6><i><b>
 <p>
-C++ ABI for IA-64 (Draft)
+C++ ABI for Itanium (Draft)
 </b></i></font>
 
 <font size=-1>
 <p>
-<i>Revised 17 November 2000</i>
+<i>Revised 20 March 2001</i>
 
 </center>
 
 </HEAD>
 
 <BODY>
+
+
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	   INSTRUCTIONS FOR MAKING REVISIONS TO THIS DOCUMENT
+
+  Recent revisions are marked with <div class="change"> or 
+  <span class="change"> elements.  Deleted text is placed in a
+  <strike> element.
+
+   1. Find previous recent revisions by searching for class="change".
+      Remove <div> and <span> tags, and entire <strike> elements.
+
+   2. Merge revisions.  Place new text in <div> and <span> elements. 
+      Place deleted text in <strike> elements rather than deleting
+      it outright.
+
+   3. Add a summary of the revision to the revision history at the
+      end of the document.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
 
 <p> <hr> <p>
@@ -85,10 +108,10 @@ and various object code conventions.
 <p>
 In general, this document is written as a generic specification,
 to be usable by C++ implementations on a variety of architectures.
-However, it does contain processor-specific material for the IA-64
+However, it does contain processor-specific material for the Itanium
 64-bit ABI, identified as such.
 Where structured data layout is described,
-we generally assume IA-64 psABI member sizes.
+we generally assume Itanium psABI member sizes.
 An implementation for a 32-bit ABI would typically just change the
 sizes of members as appropriate
 (i.e. pointers and long ints would become 32 bits),
@@ -319,7 +342,7 @@ secondary virtual tables for its proper base classes.
 <p>
 Various representations specified by this ABI impose limitations on
 conforming user programs.
-These include, for the 64-bit IA-64 ABI:
+These include, for the 64-bit Itanium ABI:
 
 <ul>
 <p>
@@ -384,7 +407,7 @@ There are two principal reasons for this:
 <ol type=I>
 <p>
 <li>
-We start from the IA-64 processor-specific ABI as the standard for the
+We start from the Itanium processor-specific ABI as the standard for the
 underlying C interfaces.
 At this time, however,
 the psABI does not attempt to specify the supported C library interfaces.
@@ -447,7 +470,7 @@ We can distinguish between:
 
 <p>
 An implementation shall place its standard support library in a DSO
-named <code>libcxa.so</code> on IA-64 systems,
+named <code>libcxa.so</code> on Itanium systems,
 or in auxiliary DSOs automatically loaded by it.
 It shall place implicit compiler support
 in a library separate from the standard support library,
@@ -496,28 +519,28 @@ Included by reference in this ABI.
 <p>
 <li> [psABI]
 The Intel <b>Unix System V Application Binary Interface,
-IA-64 Processor Supplement</b>.
-This document describes IA-64 processor-specific object file formats
+Itanium Processor Supplement</b>.
+This document describes Itanium processor-specific object file formats
 and binary software interfaces, primarily for C, under Unix.
-Available from the Intel IA-64 software developer website,
+Available from the Intel Itanium software developer website,
 <a href=http://developer.intel.com/design/ia-64/devinfo.htm>
 http://developer.intel.com/design/ia-64/devinfo.htm</a>.
 Included by reference in this ABI.
 
 <p>
 <li> [SWCONV]
-The Intel <b>IA-64 Software Conventions and Runtime Architecture Guide</b>.
-This document describes IA-64 processor-specific binary software interfaces,
+The Intel <b>Itanium Software Conventions and Runtime Architecture Guide</b>.
+This document describes Itanium processor-specific binary software interfaces,
 notably including register usage, subprogram calling conventions, and
 stack unwind facilities, under all systems.
-Available from the Intel IA-64 software developer website,
+Available from the Intel Itanium software developer website,
 <a href=http://developer.intel.com/design/ia-64/devinfo.htm>
 http://developer.intel.com/design/ia-64/devinfo.htm</a>.
 Included by reference in this ABI.
 
 <p>
 <li> [ABI-EH]
-The <a href=abi-eh.html><b>C++ ABI for IA-64: Exception Handling</b></a>.
+The <a href=abi-eh.html><b>C++ ABI for Itanium: Exception Handling</b></a>.
 Its Level II is considered an integral part of this document (Chapter 4).
 It also contains the base specification of unwind support for [psABI].
 
@@ -605,7 +628,7 @@ A pointer to member function is a pair <ptr, adj> as follows:
 <p>
 <dt> <code>ptr</code>:
 <dd> For a non-virtual function, this field is a simple function pointer.
-     (Under current base IA-64 psABI conventions,
+     (Under current base Itanium psABI conventions,
      that is a pointer to a GP/function address pair.)
      For a virtual function,
      it is 1 plus the virtual table offset (in bytes) of the function,
@@ -622,7 +645,7 @@ A pointer to member function is a pair <ptr, adj> as follows:
 <p>
 It has the size, data size, and alignment
 of a class containing those two members, in that order.
-(For 64-bit IA-64, that will be 16, 16, and 8 bytes respectively.)
+(For 64-bit Itanium, that will be 16, 16, and 8 bytes respectively.)
 
 
 
@@ -675,7 +698,7 @@ Layout (of type C) is done using the following procedure.
       <p>
       <li> Otherwise, allocate the virtual table pointer for C at offset zero,
 	   and set sizeof(C), align(C), and dsize(C) to the appropriate
-	   values for a pointer (all 8 bytes for IA-64 64-bit ABI).
+	   values for a pointer (all 8 bytes for Itanium 64-bit ABI).
       </ol>
   </ol>
 
@@ -765,7 +788,6 @@ allocate as follows:
 	If D is a base class, this step allocates only its non-virtual
 	part, i.e. excluding any direct or indirect virtual bases.
 
-<font color=red>
 	<p>
 	If D is a base class, update sizeof(C) to max (sizeof(C),
 	offset(D)+nvsize(D)).  Otherwise, if D is a data member, 
@@ -778,7 +800,7 @@ allocate as follows:
 	If D is a data member,
 	update dsize(C) to offset(D)+sizeof(D),
 	align(C) to max (align(C), align(D)).
-</font>
+        </p>
 
   <p>
   <li> If D is an empty proper base class,
@@ -803,7 +825,6 @@ allocate as follows:
 
   </ol>
 
-<font color=red>
   <p>
   After all such components have been allocated,
   set nvalign(C) = align(C),
@@ -811,7 +832,6 @@ allocate as follows:
   that is greater than or equal to dsize(C).
   The values of nvalign(C) and nvsize(C)
   will not change during virtual base allocation.
-</font>
 
 <p><a name=a17>
 <li> <h5> Virtual Base Allocation </h5>
@@ -1041,7 +1061,7 @@ adjustments before transferring control to a virtual function.
 <p>
 The form of a virtual function pointer is specified by the
 processor-specific C++ ABI for the implementation.
-In the specific case of 64-bit IA-64 shared library builds,
+In the specific case of 64-bit Itanium shared library builds,
 a virtual function pointer entry contains a pair of components
 (each 64 bits):
 the value of the target GP value and the actual function address.
@@ -1479,7 +1499,12 @@ the object assumes the type of each of its proper base classes,
 as each base class subobject is constructed.
 RTTI queries in the base class constructor will return  
 the type of the base class, and virtual calls will resolve to member  
-functions of the base class rather than the complete class.
+functions of the base class rather than the complete class.  
+<span class="change">RTTI queries,
+dynamic casts and virtual calls of the object under construction statically
+converted to bases of the base under construction will dynamically
+resolve to the type of the base under construction.</span>
+
 Normally,  this behavior is accomplished by setting,
 in the base class constructor,
 the object's virtual table pointers to the addresses of the
@@ -1516,6 +1541,29 @@ constructor a pointer to the appropriate place in the VTT where the
 proper base class constructor can find its set of virtual tables.
 Construction virtual tables are used in a similar way during the
 execution of proper base class destructors.
+
+<div class="change">
+<p>
+<img src="warning.gif" alt="NOTE">
+<i>
+When a complete object constructor is constructing a virtual base, it must 
+determine the base's location statically, rather than using vbase offsets
+in the virtual table, since the possibly shared virtual pointer may 
+point to a construction virtual table of an unrelated base class.
+
+For instance, in
+<pre><code>
+  struct S {};
+  struct T: virtual S {};
+  struct U {};
+  struct V: virtual T, virtual U {};
+</code></pre>
+the virtual pointers for T and V are in the same place.  When V's 
+constructor is about to construct U, that virtual pointer points to
+a virtual table for T, and therefore cannot be used to locate U.
+</i>
+</p>
+</div>
 
 <p>
 <h4> 2.6.2 VTT Order</h4>
@@ -1560,8 +1608,8 @@ non-virtual subobjects encountered in each of the base classes.
 <li>
 <i>Secondary virtual pointers</i>:
 For each subobject X with either (a) virtual bases
-or (b) virtual function declarations overridden along a virtual path
-between the declaration and D,
+or (b) <span class="change"><strike>virtual function declarations overridden 
+along a virtual path</strike> reachable along a virtual path from D</span>,
 the address of the secondary virtual table for X-in-D.
 These include virtual and non-virtual, direct and indirect subobjects,
 with the exception of primary non-virtual bases.
@@ -1572,24 +1620,48 @@ Though primary non-virtual bases do not get secondary virtual pointers,
 they do not otherwise affect the ordering.
 </i>
 
-<p>
+<div class="change">
+<p><strike>
 When constructing a sub-VTT for a subclass B of D in part 2 above,
 the relevant condition (b) for the inclusion of a secondary virtual
 pointer in the sub-VTT for B is the existence of a virtual function
 declaration overridden along a virtual path between the declaration and B,
 since otherwise the complete object virtual table for B is used
 to initialize the B subobject.
+</strike></p>
+</div>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
 "Along a virtual path" refers to the path in the inheritance graph
-between the class that declares the overridden virtual function
+<span class="change">
+<strike>between the class that declares the overridden virtual function
 and the class derived from it that declares the overriding virtual
-function.
+function</strike>
+between X and D.
+</span>
 This is considered a virtual path if one of the class derivations it
-represents is from a virtual base.
+represents is 
+<span class="change">
+<strike>from a virtual base.</strike>
+a virtual base of D.
+</span>
 </i>
+
+<div class="change">
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+Primary virtual bases require a secondary virtual pointer in the VTT,
+as their placement is determined by the most derived object. If a primary
+virtual base is the active instance of that base within the most derived
+object, the VTT entry for it will be D-in-most derived's primary virtual
+table pointer. Should that primary virtual base not be the active
+instance within the most derived object, the secondary virtual pointer
+will be different.
+</i>
+</div>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -1667,20 +1739,28 @@ particular construction virtual table exists.
 <p>
 For example, suppose we have the following hierarchy:
 </i>
+<div class="change">
 <code><pre>
   class A1 { int i; };
   class A2 { int i; virtual void f(); };
   class V1 : public A1, public A2 { int i; };
+	// A2 is primary base of V1, A1 is non-polymorphic
   class B1 { int i; };
   class B2 { int i; };
-  class V2 : public B1, public B2, public virtual V1 { int i; virtual void f(); };
+  class V2 : public B1, public B2, public virtual V1 { int i; };
+	// V2 has no primary base, V1 is secondary base
+  class V3 {virtual void g(); };
   class C1 : public virtual V1 { int i; };
-  class C2 : public virtual V2 { int i; };
+	// C1 has no primary base, V2 is secondary base
+  class C2 : public virtual V3, virtual V2 { int i; };
+	// C2 has V3 primary (nearly-empty virtual) base, V2 is secondary base
   class X1 { int i; };
   class C3 : public X1 { int i; };
-  class D : public C1, public C2, public C3 { int i; virtual void f(); };
+  class D : public C1, public C2, public C3 { int i;  };
+	// C1 is primary base, C2 is secondary base, C3 is non-polymorphic
 
 </pre></code>
+</div>
 
 <i>
 Then the VTT for D would appear in the following order,
@@ -1688,6 +1768,7 @@ where indenting indicates the sub-VTT structure,
 and asterisks (*) indicate that construction virtual tables instead of
 complete object virtual tables are required.
 </i>
+<div class="change">
 <code><pre>
   // 1. Primary virtual pointer:
   [0] D has virtual bases (complete object vptr)
@@ -1696,31 +1777,38 @@ complete object virtual tables are required.
   [1]  C1 * (has virtual base)
 
   [2]  C2 * (has virtual bases)
-  [3]    V2-in-C2 in D (secondary vptr)
-  [4]    V1-in-C2 in D (secondary vptr)
+  [3]    V3-in-C2 in D (primary vptr)
+  [4]    V2-in-C2 in D (secondary vptr)
+  [5]    V1-in-C2 in D (secondary vptr)
 
   // 3. Secondary virtual pointers:
     // (no C1-in-D -- primary base)
-  [5]    V1-in-D (A2::f overridden in D)
-  [6]  C2-in-D (preorder; has virtual bases)
-  [7]    V2-in-D (V2::f overridden in D, has virtual base)
-    // (For complete object D VTT, these can all point to the
-    // secondary vtables in the D vtable.  In the sub-VTT for
+  [6]    V1-in-D (V1 is virtual)
+  [7]  C2-in-D (preorder; has virtual bases)
+  [8]    V3-in-D (V3 is virtual)
+  [9]    V2-in-D (V2 is virtual)
+    // (For complete object D VTT, these all can point to the
+    // secondary vtables in the D vtable, the V3-in-D entry
+    // will be the same as the C2-in-D entry, as that is the active
+    // V3 virtual base in the complete object D.  In the sub-VTT for
     // D in a class derived from D, some might be construction
     // virtual tables.)
 
   // 4. Virtual VTTs:
     // (V1 has no virtual bases).
-  [8]  V2 * (V2::f overridden in D, has virtual base)
-  [9]    V1-in-V2 in D * (secondary vptr, A2::f overridden in D)
+  [10] V2 * (V2 has virtual bases)
+  [11]   V1-in-V2 in D * (secondary vptr, V1 is virtual)
 	   (A2 is primary base of V1)
+    // (V3 has no virtual bases)
 
 </pre></code>
+</div>
 
 <p>
 <i>
 If A2 is a virtual base of V1,
-the VTT will contain 14 elements
+the VTT will contain <span class="change"><strike>14</strike> more</span>
+more elements
 (exercise left to the astute reader).
 </i>
 
@@ -2031,7 +2119,7 @@ produce a unique copy.
 
 <p>
 In a flat address space
-(such as that of the IA-64 architecture),
+(such as that of the Itanium architecture),
 the <code>operator==</code>, <code>operator!=</code>, and <code>before()</code>
 members are easily implemented in terms of
 an address comparison of the name NTBS.
@@ -2230,13 +2318,13 @@ It is derived from <code>abi::__class_type_info</code>:
       These flags refer to both direct and indirect bases.
       The type of the <code>__flags</code> field is defined by each psABI,
       but must be at least 16 bits.
-      For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
+      For the 64-bit Itanium ABI, it will be unsigned int (32 bits).
 
   <p>
   <li> <code>__base_count</code> is a word with the number of
       direct proper base class descriptions that follow.
       The type of the <code>__base_count</code> field is defined by each psABI.
-      For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
+      For the 64-bit Itanium ABI, it will be unsigned int (32 bits).
 
   <p>
   <li> <code>__base_info[]</code> is an array of base class descriptions --
@@ -2570,9 +2658,7 @@ If there is no non-trivial copy constructor
 or destructor,
 it is in the normal parameter-passing space,
 i.e. in the parameter registers or on the stack,
-<font color=red>
 and the constructor is called if necessary.
-</font>
 Otherwise, it is allocated on the stack or heap.
 
 <p>
@@ -2615,11 +2701,13 @@ parameter.
 <p>
 <h4> 3.1.3 Empty Parameters </h4>
 
+<div class="change">
 <p>
-<font color=red>
+<strike>
 A parameter of an empty class type will normally occupy a position
 in the parameter sequence as though it were a single-byte integer.
 There is one exception:
+</p>
 <ul>
 
 <p>
@@ -2627,23 +2715,21 @@ There is one exception:
 If the type has a non-trivial copy constructor,
 it must be passed by reference as described in Section 3.1.1 above.
 
-<p>
-<li>
-<strike>
-if the function being called has a varargs parameter list,
-in the empty parameter is in the variable part of the list,
-it must be passed as a normal parameter with size one byte.
-However, the content of the passed parameter is undefined.
+</ul>
 </strike>
 
-</ul>
+<p>
+Empty classes will be passed no differently from ordinary classes.  If
+passed in registers the NaT bit must not be set on all registers that
+make up the class.
+</p>
+</div>
 
 <p>
 The contents of the single byte parameter slot are unspecified,
 and the callee may not depend on any particular value.
-On IA-64, the associated NaT bit must not be set
+On Itanium, the associated NaT bit must not be set
 if the parameter slot is associated with a register.
-</font>
 
 
 <p>
@@ -2659,18 +2745,16 @@ and passes a pointer to the temporary as an implicit
 first parameter
 preceding both the <code>this</code> parameter and user parameters.
 The callee constructs the return value into this temporary.
-On IA-64, the pointer is passed in <code>out0</code>,
+On Itanium, the pointer is passed in <code>out0</code>,
 different from other large class result buffer pointers,
 passed in <code>r8</code>.
 
 <p>
-<font color=red>
 A result of an empty class type will be returned as though it were
 a struct containing a single char,
 i.e. <code>struct S { char c; };</code>.
 The actual content of the return register is unspecified.
-On IA-64, the associated NaT bit must not be set.
-</font>
+On Itanium, the associated NaT bit must not be set.
 
 
 <p>
@@ -3123,7 +3207,6 @@ and return.
 </dd>
 
 
-<font color=red>
 <dt><code><pre>
 extern "C" void __cxa_guard_abort ( __int64_t *guard_object );
 </pre></code></dt>
@@ -3138,7 +3221,6 @@ This routine is intended for use when the initialization raises an
 exception, which requires that initialization be attempted again by the
 next pass through the object's scope.
 </dd>
-</font>
 
 </dl>
 
@@ -3158,7 +3240,7 @@ the first time the scope is entered.
 An implementation supporting thread-safety on multiprocessor systems
 must also guarantee that references to the initialized object do not
 occur before the load of the initialization flag.
-On IA-64, this can be done by using a <code>ld1.acq</code> operation to
+On Itanium, this can be done by using a <code>ld1.acq</code> operation to
 load the flag.
 
 <p>
@@ -3438,7 +3520,7 @@ will be executed in an unspecified order.
 Initialization priority is represented in the object file by elements
 of a target-specific section type,
 <code><b>SHT_IA_64_PRIORITY_INIT</b></code>,
-with section ID <code>0x79000000</code> on IA-64,
+with section ID <code>0x79000000</code> on Itanium,
 and section name <code>.priority_init</code>,
 and attributes allowing writing but not execution.
 The elements are structs:
@@ -3450,7 +3532,7 @@ The elements are structs:
 </pre></code>
 The field <code>pi_addr</code> is a function pointer,
 as defined by the base ABI
-(a pointer to a function descriptor on IA-64).
+(a pointer to a function descriptor on Itanium).
 The function takes a single <code>unsigned int</code> priority parameter,
 which performs some initialization at priority <code>pi_pri</code>.
 The priority value is obtained from the signed int in the source pragma
@@ -3561,7 +3643,7 @@ The runtime library shall maintain a list of termination functions
 with the following information about each:
 
 <ul>
-<li> A function pointer (a pointer to a function descriptor on IA-64).
+<li> A function pointer (a pointer to a function descriptor on Itanium).
 <li> A void* operand to be passed to the function.
 <li> A void* handle for the <i>home DSO</i> of the entry (below).
 </ul>
@@ -4109,12 +4191,10 @@ any type with a subset of those qualifiers is not.
 That is, given a type <code>const volatile foo</code>,
 the fully qualified type or foo may be substituted,
 but not <code>volatile foo</code> nor <code>const foo</code>.
-<font color=red>
 Also, note that the grammar above is written with the assumption that
 vendor extended type qualifiers will be in the order-sensitive (not CV)
 set.  An appropriate grammar modification would be necessitated by an
 order-insensitive vendor extended type qualifier like const or volatile.
-</font>
 </i>
 
 <p>
@@ -4312,9 +4392,9 @@ for example, "A&lt;-42L>" becomes "1AILln42EE".
 The bool value false is encoded as 0, true as 1.
 If floating-point arguments are accepted as an extension,
 their values should be encoded using a fixed-length lowercase hexadecimal
-string corresponding to the internal representation (IEEE on IA-64),
+string corresponding to the internal representation (IEEE on Itanium),
 high-order bytes first, without leading zeroes.
-For example: "Lf bf800000 E" is -1.0f on IA-64.
+For example: "Lf bf800000 E" is -1.0f on Itanium.
 
 <p>
 A reference to an entity with external linkage is encoded with
@@ -4451,19 +4531,17 @@ and multiple entities requiring mangling had the same name.
 </i>
 
 <p>
-<font color=red>
 For static objects in constructors and destructors,
 the mangling of the complete object constructor or destructor is used
 as the base function name, i.e. the C1 or D1 version.
 This yields mangled names that are consistent across the versions.
-</font>
 
 <p>
 Example:
 <code><pre>
    namespace N {
       inline char* f(int i) {
-         static char *p = "IA-64 C++ ABI";  // p = 1, "..." = 2
+         static char *p = "Itanium C++ ABI";  // p = 1, "..." = 2
          {  struct X {                      // X = 3
                void g() {}
             };   }
@@ -4476,7 +4554,7 @@ Example:
 <li> "<code>_ZZN1N1fEiE1p</code>":
     encoding of N::f::p (first local mangled entity)
 <li> "<code>_ZZN1N1fEiEs</code>":
-    encoding of N::f::"IA-64 C++ ABI" (no discriminator)
+    encoding of N::f::"Itanium C++ ABI" (no discriminator)
 <li> "<code>_ZNZN1N1fEiE1X1gE</code>":
     encoding of N::f::X::g()
     (third local mangled entity used as a class-qualifier)
@@ -4648,7 +4726,7 @@ We will refer to this simply as using a COMDAT group,
 and specify the symbol to be used to identify duplicates in the
 <code>SHT_GROUP</code> section.
 <i>
-COMDAT groups are a new gABI feature specified during the IA-64 ABI
+COMDAT groups are a new gABI feature specified during the Itanium ABI
 definition, and may not be implemented everywhere immediately.
 See the separate <a href=abi-examples.html#vague>ABI examples</a>
 document for a discussion of alternatives pending COMDAT implementation.
@@ -4869,12 +4947,12 @@ in a COMDAT group identified by the function name.
 <h3> 5.3 Unwind Table Location </h3>
 
 <p>
-As described in the IA-64 psABI,
-IA-64 implementations shall produce unwind table entries in a
+As described in the Itanium psABI,
+Itanium implementations shall produce unwind table entries in a
 <code>SHT_IA_64_UNWIND</code> section,
 and unwind information descriptors in a section that will be linked
 with the associated code.
-IA-64 linkers shall put the unwind table,
+Itanium linkers shall put the unwind table,
 the unwind information table,
 and the associated code in a single text segment,
 with a <code>PT_IA_64_UNWIND</code> program table entry identifying the
@@ -4888,6 +4966,15 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[010315]</font>
+Many outstanding updates.
+Emtpy classes passed as ordinary classes (3.1.3).
+Secondary virtual pointers for subobjects reachable via a virtual path 
+    (text of 2.6.1, text and example in 2.6.2).
+Note about locating virtual bases statically during construction (2.6.1).
+Rename IA-64 to Itanium throughout.
 
 <p>
 <font color=blue>[000817]</font>

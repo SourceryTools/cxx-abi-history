@@ -1,7 +1,7 @@
 <HTML>
 
 <HEAD>
-<title>C++ ABI for IA-64: Exception Handling</title>
+<title>C++ ABI for Itanium: Exception Handling</title>
 
 <link rel=stylesheet href=small-table.css type="text/css">
 <link rel=stylesheet href=code.css type="text/css">
@@ -10,12 +10,12 @@
 
 <font size=6><i><b>
 <p>
-C++ ABI for IA-64: Exception Handling
+C++ ABI for Itanium: Exception Handling
 </b></i></font>
 
 <font size=-1>
 <p>
-<i>Revised 10 November 2000.
+<i>Revised 20 March 2001.
 <a href=#revisions>Revision history</a> at end of document.
 </i>
 
@@ -24,6 +24,27 @@ C++ ABI for IA-64: Exception Handling
 </HEAD>
 
 <BODY>
+
+
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	   INSTRUCTIONS FOR MAKING REVISIONS TO THIS DOCUMENT
+
+  Recent revisions are marked with <div class="change"> or 
+  <span class="change"> elements.  Deleted text is placed in a
+  <strike> element.
+
+   1. Find previous recent revisions by searching for class="change".
+      Remove <div> and <span> tags, and entire <strike> elements.
+
+   2. Merge revisions.  Place new text in <div> and <span> elements. 
+      Place deleted text in <strike> elements rather than deleting
+      it outright.
+
+   3. Add a summary of the revision to the revision history at the
+      end of the document.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
 
 <p> <hr> <p>
@@ -85,7 +106,7 @@ at three levels:
 <p>
 This specification is based on the general model described roughly in the
 <a href=http://developer.intel.com/design/ia64/devinfo.htm>
-64 Bit Runtime Architecture and Software Conventions for IA-64</a>,
+64 Bit Runtime Architecture and Software Conventions for Itanium</a>,
 Intel document SC - 2791, Rev. No. 2.4E.
 However, the Level I (base ABI) specification here contradicts that
 document in some particulars,
@@ -102,14 +123,14 @@ In Section I below, we will elaborate missing details from this base
 document, largely in the form of specifying the APIs to be used in
 accessing the language-independent stack unwind facilities,
 namely the unwind descriptor tables and the personality routines.
-This specification should be implemented by any IA-64 psABI-compliant
+This specification should be implemented by any Itanium psABI-compliant
 system.
 
 <p>
 In Section II below, we will specify the API of the C++ exception
 handling facilities, specifically for raising and catching exceptions.
 These APIs should be implemented by any C++ system compliant with the
-IA-64 C++ ABI.
+Itanium C++ ABI.
 <i>Note that the level II and level III specifications are not
 completed at this time.</i>
 
@@ -141,7 +162,7 @@ or raising a new exception.
 
 <p>
 This document is based on the
-<a href=abi.html><b>C++ ABI for IA-64</b></a>,
+<a href=abi.html><b>C++ ABI for Itanium</b></a>,
 and the Level II specification below is considered to be part of that
 document (Chapter 4).
 See <a href=abi.html#docs>Base Documents</a> in that document for
@@ -169,7 +190,7 @@ The following open issues remain to be resolved in this document:
 
 <p>
 This section defines the Unwind Library interface,
-expected to be provided by any IA-64 psABI-compliant system.
+expected to be provided by any Itanium psABI-compliant system.
 This is the interface on which the C++ ABI exception-handling
 facilities are built.
 We assume as a basis the unwind descriptor tables described in the base
@@ -365,7 +386,7 @@ this third frame,
 e.g. by rethrowing the exception or throwing a new one in C++.
 
 <p>
-The API specified by the IA-64 psABI for implementing this framework is
+The API specified by the Itanium psABI for implementing this framework is
 described in the following sections.
 
 
@@ -1218,13 +1239,15 @@ Multithreading behavior.
 <h5> 2.2.1  C++ Exception Objects </h5>
 
 <p>
-A C++ exception object consists of a header,
+A <span class="change">complete</span> 
+C++ exception object consists of a header,
 which is a wrapper around an unwind object header with additional C++
 specific information,
-followed by the exception object itself.
+followed by the <span class="change">thrown C++</span>
+exception object itself.
 The structure of the header is as follows:
 <code><pre>
-      struct __cxa_exception { <font color=red>
+      struct __cxa_exception { 
 	std::type_info *	exceptionType;
 	void (*exceptionDestructor) (void *); </font>
 	unexpected_handler	unexpectedHandler;
@@ -1250,14 +1273,12 @@ The fields in the exception object are as follows:
 <li>
 The <code>exceptionType</code> field encodes the type of
 the thrown exception.
-<font color=red>
 The <code>exceptionDestructor</code> field
 contains a function pointer to a destructor
 for the type being thrown,
 and may be NULL.
 These pointers must be stored in the exception object
 since non-polymorphic and built-in types can be thrown.
-</font>
 
 <p>
 <li>
@@ -1460,7 +1481,7 @@ will produce code approximating the template:
 	#endif
 
 	// Pass the exception object to unwind library:
-	__cxa_throw(temp1, <font color=red>type_info&lt;X>, destructor&lt;X></font>); // Never returns
+	__cxa_throw(temp1, type_info&lt;X>, destructor&lt;X>); // Never returns
 
 	// Landing pad for copy constructor:
 	L1: __cxa_free_exception(temp1) // never throws
@@ -1538,9 +1559,9 @@ After constructing the exception object with the throw argument value,
 the generated code calls the <code>__cxa_throw</code> runtime library
 routine.
 This routine never returns.
-<code><pre> <font color=red>
+<code><pre> 
     void __cxa_throw (void *thrown_exception, std::type_info *tinfo, void (*dest) (void *) );
-</font> </pre></code>
+</pre></code>
 The arguments are:
 <ul>
 <p>
@@ -1550,12 +1571,10 @@ The arguments are:
 <p>
 <li> A <code>std::type_info</code> pointer,
      giving the static type of the throw argument
-<font color=red>
      as a <code>std::type_info</code> pointer,
      used for matching potential catch sites to the thrown exception.
 <p>
 <li> A destructor pointer to be used eventually to destroy the object.
-</font>
 </ul>
 
 <p>
@@ -1578,9 +1597,7 @@ Save the current <code>unexpected_handler</code> and
 
 <p>
 <li>
-<font color=red>
 Save the <code>tinfo</code> and <code>dest</code> arguments
-</font>
 in the <code>__cxa_exception</code> header.
 
 <p>
@@ -1998,7 +2015,6 @@ See the HP exception handling specification for elaboration at this time.
 <a name=imp-data></a>
 <h4> 3.2  Data Structures </h4>
 
-<font color=red>
 <p>
 &lt;To Be Supplied>
 
@@ -2277,6 +2293,11 @@ and below.
 
 <p><a name=revisions></a> <hr> <p>
 <h3> Appendix R:  Revisions </h3>
+
+<p>
+<font color="blue">[010315]</font>
+Clarify exception object structure (2.2.1).
+Rename IA-64 to Itanium throughout.
 
 <p>
 <font color=blue>[001110]</font>

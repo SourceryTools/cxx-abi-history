@@ -7,3 +7,6 @@ H2 CODE { font-weight: bold; color: blue }
 H3 CODE { font-weight: bold; color: blue }
 H4 CODE { font-weight: bold; color: blue }
 CODE { font-weight: bold }
+
+SPAN.change { color:red; }
+DIV.change { color:red; }
