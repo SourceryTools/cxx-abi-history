@@ -2821,7 +2821,6 @@ before transferring control to the non-adjusting entry point for C::f.
 
 <p>
 For each direct or indirect virtual base V of C such that either V declares f,
-or is derived from a class that declares f,
 the compiler must emit, in the same object file as the code for C::f,
 a <i>V-adjusting entry point</i> for C::f.
 This entry point will expect that its <code>this</code> pointer
@@ -2855,9 +2854,6 @@ where V is the nearest virtual base to M
 along the inheritance path from C to M.
 Then, it will convert the V* to a C* by using the vcall offset
 stored in the V's virtual table.
-(Note that one implementation of the M-adjusting entry point
-is to convert from M* to V*
-and then transfer control to the V-adjusting entry point.)
 
 <p>
 <h4> 3.2.4 Caller </h4>
@@ -4907,6 +4903,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021110]</font>
+Remove unnecessary V-adjusting thunks.
 
 <p>
 <font color=blue>[021110]</font>
