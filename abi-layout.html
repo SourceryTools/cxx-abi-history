@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 19 January 2000</i>
+<i>Revised 25 January 2000</i>
 
 </center>
 
@@ -30,7 +30,13 @@ C++ ABI for IA-64: Data Layout
 
 In this document, we define the memory layout for C++ data objects,
 including both predefined and user-defined data types,
-as well as internal compiler generated object such as virtual tables.
+as well as internal compiler generated objects such as virtual tables.
+
+<p>
+<font color=blue>
+Note that the body of this document makes free use of a number of terms
+which are defined in the <i><b>Definitions</b></i> section below.
+</font>
 
 <p> <hr> <p>
 <h3> Contents </h3>
@@ -54,18 +60,34 @@ There are outstanding questions in the body of the document to be
 clarified:
 
 <ul>
-<p>
-<li> <a href=#q1>
-Check the revised statement of when virtual base offsets are required.
+<li> <a href=#rtti-layout>
+The document currently specifies namespace std:: for
+many of the type_info classes.
+Is this what we want, or should we use our namespace abi::?
+Also, can someone who knows please check that, whichever it is,
+it is present everywhere it belongs (and not elsewhere)?
 </a>
 
 <p>
-<li> <a href=#a19>A-19:
-Suppose a nearly empty virtual direct base class E is the primary base
-class of a later nearly empty virtual direct base class D
-of the class C being laid out.
-Should E be the primary base (because first),
-or should D (because this saves a vptr)?
+<li> <a href=#array-new>
+Should a cookie be allocated even if there is no destructor for the
+array element type? (A-20).
+</a>
+
+<p>
+<li> <a href=#array-new>
+What is the value of the new array cookie -- byte size or number of
+elements? (A-20).
+</a>
+
+<p>
+<li> <a href=#array-new>
+Array placement new requires resolution (A-21).
+</a>
+
+<p>
+<li> <a href=#void-rtti>
+Why is <code>void</code> a special case for library base type RTTI?
 </a>
 
 </ul>
@@ -75,9 +97,18 @@ or should D (because this saves a vptr)?
 <h3> Revisions </h3>
 
 <p>
+<font color=blue>[000125]</font>
+Incorporate discussion of 20 January, generally clarifications.
+Resolved A-19 (choice of a primary virtual base).
+Answered Nathan's questions about RTTI.
+Included RTTI "Deliberations" as rationale notes in the specification,
+or removed redundant ones.
+Added array operator new section.
+
+<p>
 <font color=blue>[000119]</font>
 Clarify when virtual base offsets are required.
-Note that a vtable has offset-to-top and RTTI entries for classes with
+Note that a vtable has offset-to-top and RTTr entries for classes with
 virtual bases even if there are no virtual functions.
 Resolve allocation of a virtual base class that is a primary base for
 another base (A-17).
@@ -139,11 +170,36 @@ A value A such that any object X of type T has an address satisfying
 the constraint that &X modulo A == 0.
 
 <p>
+<font color=red>
+<dt> <i>direct base class order</i> </dt>
+<dd>
+When the direct base classes of a class are viewed as an ordered set,
+the order assumed is the order declared, left-to-right.
+
+<p>
+<dt> <i>dynamic class</i> </dt>
+<dd>
+A class requiring a virtual table pointer
+(because it or its bases have one or more virtual member functions or
+virtual base classes).
+</font>
+
+<p>
 <dt> <i>empty class</i> </dt>
 <dd>
 A class with no non-static data members other than zero-width bitfields,
 no virtual functions, no virtual base classes,
 and no non-empty non-virtual base classes.
+
+<p>
+<font color=red>
+<dt> <i>inheritance graph order</i> </dt>
+<dd>
+When all base classes of a class, direct and indirect,
+are viewed as an ordered set,
+the order assumed that obtained by a depth-first, left-to-right
+walk of the inheritance graph.
+</font>
 
 <p>
 <a name=q3></a>
@@ -163,15 +219,25 @@ sharing a virtual pointer with the derived class.
 <p>
 <dt> <i>primary base class</i> </dt>
 <dd>
-For a super-polymorphic class,
-the unique base class (if any) with which it shares the Vptr at offset 0.
+For a dynamic class,
+the unique base class (if any) with which it shares the virtual pointer
+at offset 0.
+
+<font color=red>
+<p>
+<dt> <i>secondary vtable</i> </dt>
+<dd>
+The instance of a vtable for a base class
+that is embedded in the vtable of a class derived from it.
 
 <p>
-<dt> <i>super-polymorphic class</i> </dt>
+<dt> <i>virtual table</i> (or <i>vtable</i>) </dt>
 <dd>
-A class requiring a virtual table pointer
-(because it or its bases have one or more virtual member functions or
-virtual base classes).
+A dynamic class has an associated table
+(often several instances, but not one per object)
+which contains information about its dynamic attributes,
+e.g. virtual function pointers, virtual base class offsets, etc.
+</font>
 
 </dl>
 
@@ -271,34 +337,31 @@ alignment, and non-virtual alignment.
 <a href=#general><b>General</b></a> above.)
 Layout (of type C) is done using the following procedure.
 
-<p><a name=a19><font color=blue>
-The proposed resolution of A-19 is in blue below.</font></a>
-
 <ol type=I>
 <p>
 <li> <h5> Initialization </h5>
   <ol type=1>
   <p>
   <li> Initialize sizeof(C) to zero, align(C) to one, dsize(C) to zero.
+
   <p>
-  <font color=blue>
-  <li> Identify all virtual base classes, direct or indirect,
-       that are primary base classes for some other direct or indirect
-       base class.
-       Call these <i>indirect primary base classes</i>.
-  </font>
-  <p>
-  <li> If C is a super-polymorphic type:
+  <li> If C is a dynamic class type:
       <ol type=a>
       <p>
-      <li> If C has a super-polymorphic base class,
+      <li> Identify all virtual base classes, direct or indirect,
+	   that are primary base classes for some other direct or indirect
+	   base class.
+	   Call these <i>indirect primary base classes</i>.
+
+      <p>
+      <li> If C has a dynamic base class,
 	   attempt to choose a primary base class B.
-	   It is the first (in left-to-right declaration order)
-	   non-virtual super-polymorphic base class, if one exists.
+	   It is the first (in direct base class order)
+	   non-virtual dynamic base class, if one exists.
 	   <font color=blue>
 	   Otherwise, it is a nearly empty virtual base class,
-	   the first one which is not an indirect primary base class
-	   if possible,
+	   the first one in inheritance graph order which
+	   is not an indirect primary base class if any exist,
 	   or just the first one if they are all indirect primaries.
 	   </font>
 
@@ -389,7 +452,7 @@ allocate as follows:
 Finally allocate any direct or indirect virtual base classes
 (except the primary base class or any indirect primary base classes)
 as we did non-virtual base classes in step II-1,
-in depth-first (in the inheritance graph) left-to-right declaration order.
+in inheritance graph order.
 Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
 If non-empty, also update align(C) and dsize(C) as in II-1.
 
@@ -402,7 +465,7 @@ will be allocated as part of that other base class,
 and is not allocated here.
 If E is a primary base class of more than one other base,
 the instance used as its allocation in C shall be the first such
-in the depth-first, left-to-right base declaration order.
+in the inheritance graph order.
 
 <p>
 <li> <h5> Finalization </h5>
@@ -464,29 +527,29 @@ Each vtable consists of the following components:
 <p>
 <li>
 <a name=q1></a>
-<i>Base offsets</i> are used to access
-the virtual bases of an object,
-Such an entry is a displacement to a virtual base subobject from the
-location within the object of the vtable pointer that addresses this vtable.
-<font color=red>
+<i>Base offsets</i> are used to access the virtual bases of an object.
+Such an entry is added to the derived class object address
+(i.e. the address of its vtable pointer)
+to get the address of a virtual base class.
 These entries are required for:
   <ul>
   <li>direct virtual base classes, or
   <li>indirect virtual base classes inherited from a direct virtual base
   class.
   </ul>
-</font>
 The values can be positive or negative.
 
 <p>
 <li>
-<i>vcall offsets</i> are used to perform pointer adjustment
+<i>Vcall offsets</i> are used to perform pointer adjustment
 for overridden virtual functions.
-These entries are allocated when the
-class is used as a virtual base.
-They are referenced by the virtual functions
+These entries are allocated when the class is used as a virtual base.
 to find the necessary adjustment from the base to the derived class,
 if any.
+When a virtual function is invoked via a virtual base,
+but has been overridden in a derived class,
+the overriding function adds this value to its this pointer to get
+the address of the derived object where the function was overridden.
 These values may be positive or negative.
 
 <p>
@@ -507,6 +570,9 @@ The <i>typeinfo pointer</i> points to the typeinfo object used for RTTI.
 All entries in each of the vtables for a given class must point to the
 same typeinfo object.
 A correct implementation of typeinfo equality is to check pointer equality.
+The typeinfo pointer is a valid pointer for polymorphic classes,
+i.e. those with virtual functions,
+and is zero for non-polymorphic classes.
 
 <p>
 <li>
@@ -627,7 +693,7 @@ Structure:
 </ul>
 
 <p>
-The vtable contains <font color=red>offset-to-top and</font> RTTI fields
+The vtable contains offset-to-top and RTTI fields
 followed by virtual function pointers.
 There is one function pointer entry for each
 virtual function declared in the class.
@@ -648,7 +714,7 @@ The entries are the same, except:
 
 <ul>
 <p>
-<li> The <font color=red>offset-to-top and</font> RTTI fields
+<li> The offset-to-top and RTTI fields
      contain information for the class,
      rather than for the base class. 
 
@@ -707,6 +773,7 @@ overridden function introduced by a non-primary base class.
 <p>
 <h5> Category 3: Virtual Bases Only </h5>
 
+<p>
 Structure:
 <ul>
 <li> Only virtual base classes.
@@ -744,23 +811,31 @@ It holds the following function pointer entries:
 The primary vtable also has virtual base offset entries
 to allow finding the virtual base subobjects.
 There is one virtual base offset entry for each virtual base class,
-<font color=red>
 direct or indirect.
-The entries are in the reverse order in which the virtual bases
-are encountered in a depth-first, left-to-right traversal
-of the inheritance graph.
+The entries are in the reverse of the inheritance graph order.
 That is, the entry for the leftmost virtual
 base is closest to the address point of the vtable.
-In the secondary vtable for a base B,
-offsets are only included for those virtual bases present
-in the primary vtable for B,
-and are present in the same order.
+<font color=red>
+If there is a primary base class,
+its virtual base and vcall offsets come first
+(i.e. closest to the vtable address point)
+so that they are in their previously defined locations for the base,
+followed by the additional entries required by the full derived class.
 </font>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>The above rule for laying out the virtual offsets
+is a specialization of the Category 4 rule below,
+made possible by the absence of non-virtual bases.
+It does not provide a different layout than the full Category 4 rule.
+</i>
 
 
 <p>
 <h5> Category 4: Complex </h5>
 
+<p>
 Structure:
 <ul>
 <li> None of the above,
@@ -776,7 +851,6 @@ However the rules for placing virtual base offset entries in the
 vtables requires elaboration. 
 
 <p>
-<font color=red>
 The primary vtable also has virtual base offset entries
 to allow finding the virtual base subobjects.
 There is one virtual base offset entry for each direct virtual base class,
@@ -786,17 +860,20 @@ inherited via a direct virtual base class.
 may be accessed via the the offset stored in the base's vtable.)
 If an indirect virtual base class is inherited via both virtual and
 non-virtual direct base classes,
-the first one in left-to-right declaration order determines whether we
-include a base offset for it.
-The entries are in the reverse order in which the virtual bases
-are encountered in a depth-first, left-to-right traversal
-of the inheritance graph.
+<font color=red>
+no virtual base offset entry is included for it.
+</font>
+The entries are in the reverse of the inheritance graph order.
 That is, the entry for the leftmost virtual
 base is closest to the address point of the vtable.
-In the secondary vtable for a base B,
-offsets are only included for those virtual bases present
-in the primary vtable for B,
-and are present in the same order.
+<font color=red>
+If there is a primary base class,
+its virtual base and vcall offsets come first
+(i.e. closest to the vtable address point)
+so that they are in their previously defined locations for the base,
+followed by the additional entries required by the full derived class.
+</font>
+
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -819,9 +896,8 @@ T's vtable contains a virtual base offset for S.
 U's vtable contains virtual base offsets for S and T.
 V's vtable contains a virtual base offset for U,
 but not for T because it is non-virtual,
-nor for S because it is first encountered as a virtual base of T.
+nor for S because it is already present as a virtual base of T.
 </i>
-</font>
 
 <p>
 <a name=vcall>
@@ -888,7 +964,7 @@ which performs the constant adjustment from B* to A*.
 <p>
 For each secondary vtable from a virtual base class 'C' which defines f,
 an additional entry point is generated which performs the adjustment
-from C* to A* using the vcall offset for f stored in the secondary
+from C* to A* by adding the vcall offset for f stored in the secondary
 vtable for C.
 
 <p>
@@ -896,7 +972,7 @@ For each secondary vtable from a base 'D' which is a non-virtual base
 of a virtual base 'E',
 an additional entry point is generated which
 first performs the constant adjustment from D* to E*,
-then the adjustment from E* to A* using the vcall offset for f stored
+then the adjustment from E* to A* by adding the vcall offset for f stored
 in the secondary vtable for E.
 
 <p>
@@ -948,7 +1024,7 @@ derived class do not have virtual bases at the same offsets.
 
 <p>
 A construction vtable holds the virtual function addresses,
-<font color=red>offset-to-top</font>,
+offset-to-top,
 and RTTI information associated with the base class,
 and virtual base offsets and addresses of adjustor entry points with their
 parameter adjustments associated with objects of the complete class.
@@ -967,6 +1043,52 @@ destructors.
 
 
 <p> <hr> <p>
+<a name=array-new>
+<h3> Operator <code>new</code> for Arrays </h3>
+
+<p>
+When operator <code>new</code> is used to create a new dynamic-length array,
+a cookie must be stored to remember the allocated length
+so that it can be deallocated correctly.
+
+<p>
+In the case of expression <code>new</code>,
+this ABI requires the cookie setup as follows:
+<ul>
+<li> The cookie will have size <code>sizeof(size_t)</code>.
+<li> Let <code>align</code> be the maximum alignment of
+<code>size_t</code> and an element of the array to be allocated.
+<li> The space allocated for the array will be the space required
+by the array itself plus <code>align</code> bytes.
+<li> The alignment of the space allocated for the array will be
+<code>align</code> bytes.
+<li> The array data will begin at an offset of <code>align</code> bytes
+from the space allocated for the array.
+<li> The cookie will be stored in the <code>sizeof(size_t)</code> bytes
+immediately preceding the array data.
+</ul>
+
+<i>
+These rules have the following consequences:
+<ul>
+<li> The array elements and the cookie are all aligned naturally.
+<li> Padding will be required if <code>sizeof(size_t)</code>
+is smaller than the array element alignment,
+and if present will precede the cookie.
+</ul>
+</i>
+
+<i>
+<font color=red>
+For placement <code>new</code>,
+the situation is more complex,
+and the ABI definition is not yet decided.
+</font>
+</i>
+
+
+
+<p> <hr> <p>
 <a name=rtti>
 <h3> Run-Time Type Information (RTTI) </h3>
 
@@ -978,69 +1100,40 @@ types be available at run time for three distinct purposes:
 <li> to match an exception handler with a thrown object, and
 <li> to implement the dynamic_cast operator.
 </ol>
-(c) only requires type information about super-polymorphic class types,
+(c) only requires type information about dynamic class types,
 but (a) and (b) may apply to other types as well;
 for example, when a pointer to an int is thrown,
 it can be caught by a handler that catches "int const*".
 
+<p>
+It is intended that two type_info pointers point to equivalent type
+descriptions if and only if the pointers are equal.
+An implementation must satisfy this constraint,
+e.g. by using symbol preemption, COMDAT sections, or other mechanisms.
 
 <p>
-<h5>Deliberations</h5>
-<p>
-The following conclusions were arrived at by the attending members of
-the C++ IA-64 ABI group:
-
-<ul>
-<p>
-<li> The exact layout for type_info objects is dependent on whether a
-    32-bit or 64-bit model is supported.
-<p>
-<li> Advantage should be taken of COMDAT sections and symbol preemption:
-    two type_info pointers point to equivalent types if and only if the
-    pointers are equal.
-<p>
-<li> A simple dynamic_cast algorithm that is efficient in the common
-    case of base-to-most-derived cast case is preferable to more
-    sophisticated ideas that handle deep-base-to-in-between-derived
-    casts more efficiently at a slight cost to the common case.
-    Hence, the original scheme of providing a hash-table into the
-    list of base classes
-    (as is done e.g. in the HP aC++ compiler)
-    has been dropped.
-<p>
-<li> The GNU egcs development team has implemented an idea of this ABI
-    group to accelerate dynamic_cast operations by a-posteriori
-    checking a "likely outcome".
-    The interface of std::__dynamic_cast therefore keeps the
-    src2dst_offset hint.
-<p>
-<li> std::__extended_type_info is dropped.
-<p>
-<li> It was decided to only keep direct base information about a class type.
-    Indirect base information can be found by chasing type_info pointers
-    (and care should be taken to determine ambiguous base class types).
-<p>
-<li> Different class types are introduced for class that (a) have no bases,
-    (b) use only single inheritance, and (c) use multiple inheritance.
-<p>
-<li> The typeinfo structure for a class type with associated virtual
-    tables is emitted as part of the set of virtual tables.
-    It precedes the tables proper
-    (not explicitly decided, but assumed:
-    it also precedes auxiliary tables for locating construction vtables).
-</ul>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+<font color=red>
+Note that the full structure described by an RTTI descriptor may
+include incomplete types not required by the Standard to be completed,
+although not in contexts where it would cause ambiguity.
+Therefore, any cross-references within the RTTI to types not known to
+be complete must be weak symbol references.
+</font>
+</i>
 
 <p>
 <h5>Place of emission</h5>
 
 <p>
-It is probably desirable to minimize the number of places where a
+It is desirable to minimize the number of places where a
 particular bit of RTTI is emitted.
-For super-polymorphic types,
+For dynamic class types,
 a similar problem occurs for virtual function tables,
-and hence the information can be appended at the end
-of the primary vtable for that type.
-For other types, they must presumably be emitted at the location
+and hence the RTTI descriptor should be emitted
+with the primary vtable for that type.
+For other types, they must be emitted at the location
 where their use is implied:
 the object file containing the typeid, throw or catch.
 
@@ -1049,6 +1142,7 @@ Basic type information (such as for "int", "bool", etc.)
 can be kept in the run-time support library.
 Specifically, this proposal is to place in the
 run-time support library type_info objects for the following types:
+<a name=void-rtti></a>
 <ul>
 <li> void*, void const*; and
 <li> X, X* and X const*,
@@ -1140,6 +1234,7 @@ The most common kind of dynamic_cast is base-to-derived in a singly
 inherited hierarchy.
 
 <p>
+<a name=rtti-layout></a>
 <h5>RTTI layout</h5>
 
 <ol type=1>
@@ -1148,6 +1243,8 @@ inherited hierarchy.
 <li>
 The RTTI layout for a given type depends on whether a 32-bit or
 64-bit mode is in effect.
+The class definitions below are to be interpreted as following the
+class layout rules for the host ABI.
 
 <p>
 <li>
@@ -1190,7 +1287,7 @@ The possible derived types are:
   <li> std::__class_type_info
   <li> std::__si_class_type_info
   <li> std::__vmi_class_type_info
-  <li> std::__ptr_to_member_type_info
+  <li> std::__pointer_to_member_type_info
 </ul>
 
 <p>
@@ -1243,7 +1340,7 @@ about the class (most for use of the derived classes):
   <li> 0x1: contains multiply inherited subobject
   <li> 0x2: is polymorphic
   <li> 0x4: has virtual bases
-  <li> 0x8: has privately inherited base
+  <li> 0x8: has non-publicly inherited base
   </ul>
 
 <p>
@@ -1251,7 +1348,8 @@ about the class (most for use of the derived classes):
 For classes containing only a single, nonvirtual inheritance hierarchy,
 class std::__si_class_type_info is used.
 It adds to std::__class_type_info
-a single pointer to the type_info structure for the base type.
+a single pointer to the type_info structure for the base type,
+of type "<code>__class_type_info const *type</code>".
 
 <p>
 <li>
@@ -1265,7 +1363,7 @@ It is derived from std::__class_type_info, and adds:
        each description is of the type:
 <pre><code>
       struct std::__base_class_info {
-         std::type_info *type;
+         __class_type_info const *type;
          std::ptrdiff_t offset;
 	 int vmi_flags;
       };
@@ -1273,17 +1371,25 @@ It is derived from std::__class_type_info, and adds:
   </ul>
 
 <p>
+The <code>type</code> member points to the RTTI for the base type.
+The <code>offset</code> member is the offset in the vtable of the
+virtual base offset for the virtual base.
 The vmi_flags field contains one or more flags:
   <ul>
   <li> 0x1: Base class is virtual
   <li> 0x2: Base class is public
   </ul>
 
+<p>
+Note that the resulting structure is variable-length,
+with the actual size depending on the number of trailing base class
+descriptions.
+
 </ol>
 
 <p>
 <li>
-The std::__ptr_to_member_type_info type adds two fields to std::type_info:
+The std::__pointer_to_member_type_info type adds two fields to std::type_info:
 <ul>
 <li> a pointer to a std::__class_type_info (e.g., the "A" in "int A::*")
 <li> a pointer to a std::type_info corresponding to the member type
@@ -1345,9 +1451,9 @@ to a "cross cast".
 These tests are implemented by std::__dynamic_cast:
 
 <pre><code>
-   void* std::__dynamic_cast ( void *sub,
-			       std::__class_type_info *src,
-			       std::__class_type_info *dst,
+   void* std::__dynamic_cast ( const void *sub,
+			       const std::__class_type_info *src,
+			       const std::__class_type_info *dst,
 			       std::ptrdiff_t src2dst_offset);
    /* sub: source address to be adjusted; nonnull, and since the
     *      source object is polymoprhic, *(void**)sub is a vptr.
@@ -1366,6 +1472,35 @@ These tests are implemented by std::__dynamic_cast:
     */
 
 </pre></code>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+Rationale: 
+<ul>
+<p>
+<li> A simple dynamic_cast algorithm that is efficient in the common
+    case of base-to-most-derived cast case is preferable to more
+    sophisticated ideas that handle deep-base-to-in-between-derived
+    casts more efficiently at a slight cost to the common case.
+    Hence, an earlier scheme of providing a hash-table into the
+    list of base classes
+    (as is done e.g. in the HP aC++ compiler)
+    was dropped.
+<p>
+<li> For similar reasons,
+    we only keep direct base information about a class type.
+    Indirect base information can be found by chasing type_info pointers
+    (and care should be taken to determine ambiguous base class types).
+<p>
+<li> The GNU egcs development team has implemented an idea of this ABI
+    group to accelerate dynamic_cast operations by a-posteriori
+    checking a "likely outcome".
+    This is the purpose of the src2dst_offset hint.
+    An implementation is free to always pass -1 (no hint),
+    or to always ignore the hint in __dynamic_cast.
+</ul>
+</i>
 
 <p>
 <h5>The exception handler matching algorithm</h5>
