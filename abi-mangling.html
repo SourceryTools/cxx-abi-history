@@ -15,7 +15,7 @@ C++ ABI for IA-64: Mangling
 
 <font size=-1>
 <p>
-<i>Revised 21 March 2000</i>
+<i>Revised 24 March 2000</i>
 
 </center>
 
@@ -111,7 +111,14 @@ C++ ABI for IA-64: Mangling
 <tr><td>oper</td> <td>r</td> <td> z </td> <td> Operator sizeof </td> </tr>
 <tr><td>type</td> <td>R</td> <td></td> <td> reference type </td> </tr>
 <tr><td>type</td> <td>s</td> <td></td> <td> builtin type short </td> </tr>
-<tr><td>abbr</td> <td>S</td> <td> &lt;digit></td> <td> substituted name </td> </tr>
+<tr><td>abbr</td> <td>S</td> <td> &lt;digit></td>
+<td> substituted name (repeated) </td> </tr>
+<tr><td>abbr</td> <td>S</td> <td> &lt;upper></td>
+<td> substituted name (repeated) </td> </tr>
+<tr><td>abbr</td> <td>S</td> <td> &lt;lower></td>
+<td> substituted name (standard abbreviation) </td> </tr>
+<tr><td>type</td> <td>S</td> <td> a </td>
+<td> abbreviation ::std::allocator </td> </tr>
 <tr><td>type</td> <td>S</td> <td> b </td>
 <td> abbreviation ::std::basic_string </td> </tr>
 <tr><td>type</td> <td>S</td> <td> d </td>
