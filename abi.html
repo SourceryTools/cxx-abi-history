@@ -1565,8 +1565,7 @@ a virtual table for T, and therefore cannot be used to locate U.
 
 <p>
 An array of virtual table addresses, called the <i><b>VTT</b></i>,
-is declared for each class type that needs a construction virtual table.
-A class needs a construction virtual table if it has
+is declared for each class type that has
 indirect or direct virtual base classes.
 (Otherwise,
 each proper base class may be initialized
@@ -1583,78 +1582,70 @@ address of the primary virtual table for the complete object D.
 <p>
 <li>
 <i>Secondary VTTs</i>:
-for each direct non-virtual proper base class B of D
-that requires a construction virtual table by virtue of having virtual bases,
-in declaration order,
-a sub-VTT for B-in-D,
-structured like the main VTT,
-with a primary virtual pointer, secondary VTTs,
-and secondary virtual pointers
-(but no virtual VTTs).
+
+for each direct non-virtual proper base class B of D that requires a
+VTT, in declaration order, a sub-VTT for B-in-D, structured like the
+main VTT for B, with a primary virtual pointer, secondary VTTs, and
+secondary virtual pointers, but without virtual VTTs.
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-This construction is applied recursively to embed sub-VTTs for
-non-virtual subobjects encountered in each of the base classes.
+This construction is applied recursively.
 </i>
 
 <p>
 <li>
 <i>Secondary virtual pointers</i>:
-For each subobject X with either (a) virtual bases or (b) reachable
-along a virtual path from D, the address of the secondary virtual
-table for X-in-D.  These include virtual and non-virtual, direct and
-indirect subobjects, with the exception of primary non-virtual bases.
-The order of the virtual pointers is inheritance graph preorder.
-<i>
-Though primary non-virtual bases do not get secondary virtual pointers,
-they do not otherwise affect the ordering.
-</i>
+
+for each base class X which (a) has virtual bases or is reachable
+along a virtual path from D, and (b) is not a non-virtual primary
+base, the address of the virtual table for X-in-D or an appropriate
+construction virtual table.
+
+<p>X is reachable along a virtual path from D if there exists a path
+X, B1, B2, ..., BN, D in the inheritance graph such that at least one
+of X, B1, B2, ..., or BN is a virtual base class.</p>
+
+<p>The order in which the virtual pointers appear in the VTT is
+inheritance graph preorder.</p>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-"Along a virtual path" refers to the path in the inheritance graph
-between X and D.
-This is considered a virtual path if one of the class derivations it
-represents is a virtual base of D.
+There are virtual pointers for direct and indirect base classes.
+Although primary non-virtual bases do not get secondary virtual
+pointers, they do not otherwise affect the ordering.
 </i>
 
 <p>
-<img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-Primary virtual bases require a secondary virtual pointer in the VTT,
-as their placement is determined by the most derived object. If a primary
-virtual base is the active instance of that base within the most derived
-object, the VTT entry for it will be D-in-most derived's primary virtual
-table pointer. Should that primary virtual base not be the active
-instance within the most derived object, the secondary virtual pointer
-will be different.
+Primary virtual bases require a secondary virtual pointer in the VTT
+because the derived class with which they will share a virtual pointer
+is determined by the most derived class in the hierarchy.
 </i>
 
 <p>
-<img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-Secondary virtual pointers may be required for base classes
-that do not require secondary VTTs.
-This may occur if, for D derived from B derived from A,
-A does not contain virtual bases,
-but does define a virtual function that is not overridden in B,
-but is overridden in D (along a virtual path).
+Secondary virtual pointers may be required for base classes that do
+not require secondary VTTs.  A virtual base with no virtual bases of
+its own does not require a VTT, but does require a virtual pointer
+entyr in the VTT.
 </i>
 
 <p>
 <li>
 <i>Virtual VTTs</i>:
-The sub-VTTs for each virtual subobject in
-inheritance graph preorder),
-i.e. the sub-VTT for virtual base W of virtual base V of D
-comes after the sub-VTT for V.
-These sub-VTTs are constructed as in (2) above,
-including sub-VTTs for any non-virtual bases of the current virtual base.
+For each proper virtual base classes in
+inheritance graph preorder, construct a sub-VTT as in (2) above.
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
 The virtual VTT addresses come last because they are only passed
 to the virtual base class constructors for the complete object.
+</i>
+
 </ol>
 
 <p>
@@ -1792,9 +1783,9 @@ in no particular order:
 the main virtual table group for C,
 i.e. the virtual table to which the primary virtual pointer
 (at offset 0) points,
-along with its proper base class subobject virtual tables
+along with its proper base class virtual tables
 in order of allocation,
-including virtual base class subobject virtual tables;
+including virtual base class virtual tables;
 
 <li>
 any construction virtual tables required for non-virtual and virtual bases;
@@ -4916,6 +4907,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021110]</font>
+Clarify VTT contents.
 
 <p>
 <font color=blue>[021021]</font>
