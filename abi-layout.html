@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 8 February 2000</i>
+<i>Revised 16 February 2000</i>
 
 </center>
 
@@ -49,10 +49,12 @@ which are defined in the <i><b>Definitions</b></i> section below.
 <li> <a href=#class-types> Non-POD Class Types </a>
 <li> <a href=#vtable> Virtual Table Layout </a>
 <li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
+<li> <a href=#array-new> Array Operator new Cookies </a>
 <li> <a href=#rtti> Run-Time Type Information (RTTI) </a>
 <li> <a href=#external-names> External Names </a>
 </ul>
 
+<!--
 <p> <hr> <p>
 <h3> Outstanding Questions </h3>
 <font color=red>
@@ -60,30 +62,23 @@ There are outstanding questions in the body of the document to be
 clarified:
 
 <ul>
-<li> <a href=#rtti-layout>
-The document currently specifies namespace std:: for
-many of the type_info classes.
-Is this what we want, or should we use our namespace abi::?
-Also, can someone who knows please check that, whichever it is,
-it is present everywhere it belongs (and not elsewhere)?
-</a>
-
-<p>
-<li> <a href=#array-new>
-Should a cookie be allocated even if there is no destructor for the
-array element type? (A-20).
-</a>
-
-<p>
-<li> <a href=#array-new>
-Array placement new requires resolution (A-21).
-</a>
 
 </ul>
 </font>
+-->
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000214]</font>
+Complete array new cookie specification.
+Remove unnecessary RTTI flags.
+Correct repeated inheritance flag description.
+Move all type_info subclasses in namespace abi, not namespace std.
+Note requirements for an implementation to prevent users from emitting
+invalid vtables for RTTI classes.
+Include construction vtable proposal.
 
 <p>
 <font color=blue>[000203]</font>
@@ -171,14 +166,12 @@ the constraint that &X modulo A == 0.
 When the direct base classes of a class are viewed as an ordered set,
 the order assumed is the order declared, left-to-right.
 
-<font color=red>
 <p>
 <dt> <i>diamond-shaped inheritance</i> </dt>
 <dd>
 A class has diamond-shaped inheritance iff it has a virtual base class
 that can be reached by distinct inheritance graph paths through
 more than one direct base.
-</font>
 
 <p>
 <dt> <i>dynamic class</i> </dt>
@@ -950,19 +943,24 @@ The primary vtable for A points to this entry point.
 For each secondary vtable
 from a non-virtual base class 'B' which defines f,
 an additional entry point is generated
-which performs the constant adjustment from B* to A*.
+which performs the constant adjustment from
+<font color=red>A* to B*</font>.
 
 <p>
 For each secondary vtable from a virtual base class 'C' which defines f,
-an additional entry point is generated which performs the adjustment
-from C* to A* by adding the vcall offset for f stored in the secondary
-vtable for C.
+an additional entry point is generated which performs the adjustment from
+<font color=red>
+A* to C* by adding the vcall offset for f stored in the secondary
+vtable for A</font>.
 
 <p>
 For each secondary vtable from a base 'D' which is a non-virtual base
 of a virtual base 'E',
-an additional entry point is generated which
-first performs the constant adjustment from D* to E*,
+an additional entry point is generated
+<font color=red>
+in the secondary vtable for 'E'
+</font>
+which first performs the constant adjustment from D* to E*,
 then the adjustment from E* to A* by adding the vcall offset for f stored
 in the secondary vtable for E.
 
@@ -1031,6 +1029,263 @@ base class constructor can find its set of vtables. Construction
 vtables are used in a similar way during the execution of base class  
 destructors.
 
+<p>
+<font color=red>
+<h4> VTT Order</h4>
+
+<p>
+An array of vtable addresses, called the VTT, is declared for each class
+type that needs a construction vtable.&nbsp; A class needs a construction
+vtable if it has:
+<ol>
+<li>
+indirect or direct virtual base classes, or</li>
+
+<li>
+a virtual function that is overridden along a virtual path (to provide
+correct vcall offset in most derived object).</li>
+</ol>
+
+<p>
+The elements of the VTT&nbsp;array are in this order:
+<ol>
+<li>
+Address of the vtable for the complete object, which includes subobject
+vtables appended to it in the order which the base classes are allocated
+in the complete object,</li>
+
+<p>
+<li>
+Addresses of construction vtables for each non-virtual subobject that needs
+a construction vtable.</li>
+
+<br>This step is recursive, the addresses of construction vtables for each
+subobject include the addresses in 1 and 2 for each subobject class that
+has non-virtual subobjects that need construction vtables.
+<li>
+Addresses of construction vtables for each virtual subobject in initialization
+(DFS) order.&nbsp; These addresses are as in #2 above, and can be recursive
+for non-virtual bases within the virtual base subobjects.&nbsp; The virtual
+VTT&nbsp;addresses are on the end because they are only passed to the virtual
+base class constructors for the complete object.</li>
+</ol>
+All vtable addresses in the VTT&nbsp;point to the beginning address of
+the vtable, not the address that is assigned to the vptr.
+
+<p>
+<h4> VTABLE Layout</h4>
+The construction vtables for a complete object are appended to the vtable
+in the order of their appearance in the VTT array.&nbsp;&nbsp; So the vtable
+for a complete object of class C has these components:
+<ol>
+<li>
+vtable that the primary vptr (the offset 0 one) points to</li>
+
+<li>
+base class subobject vtables in order of allocation, including virtual
+base class subobject vtables</li>
+
+<li>
+nonvirtual and virtual construction vtables in order of appearance in the
+VTT</li>
+
+<li>
+VTT&nbsp;array for C</li>
+</ol>
+We could separate the VTT&nbsp;array out of the vtable, and provide a new
+VTT data item.&nbsp; We could also make the VTT static so it has no linkage
+and is created in the modules that define the constructors and destructor
+of a class.&nbsp;&nbsp; I don't think they would take that much space.
+<br>&nbsp;
+
+<p>
+<h4> Construction VTABLE entries</h4>
+The construction vtables for base class subobject B, has the same entries
+in the same order as the vtable for the complete object, B.&nbsp; The entries
+of the construction vtable have the following values:
+<ol>
+<li>
+Virtual base class offsets relative to the complete object from B</li>
+
+<li>
+VCALL&nbsp;offsets relative to the complete object</li>
+
+<li>
+offset to top of B in B, should be 0.</li>
+
+<li>
+pointer to RTTI&nbsp;for B</li>
+
+<li>
+overridden virtual functions for B.</li>
+</ol>
+Within the construction vtable for a subobject B, the base class subobject
+construction vtable for base class V of B in derived class D, has the following
+entries:
+<ol>
+<li>
+Virtual base class offsets relative to complete object from V to D</li>
+
+<li>
+VCALL&nbsp;offsets relative to a V&nbsp;in B in a complete object D</li>
+
+<li>
+offset to the B base class subobject from V in D (may not be the same as
+offset of B in D)</li>
+
+<li>
+pointer to RTTI&nbsp;for B</li>
+
+<li>
+overridden virtual functions for V</li>
+</ol>
+
+<p>
+<h4> Subobject Construction and Destruction</h4>
+The complete object constructors and destructors call the subobject constructors
+and destructors by passing the address of the subobject entry in the VTT
+as the second parameter.&nbsp; The subobject ctor/dtors use the addresses
+passed to initialize the primary vptr and vptrs that point to the classes
+which either have virtual bases or override virtual functions with a virtual
+step (have vcall offsets needing adjustment).
+<p>Note: The EDG&nbsp;compiler passes the ctorvtbls by assigning them to
+the subobject vptr and the subobject constructors get the array address
+from the vptr.&nbsp; This didn't work when an exception is raised during
+construction and the destructor didn't have the ctorvtbls address anymore.&nbsp;
+There may be a way to make this work with the landing pad model, but I
+haven't worked that out.
+<p>Therefore the code for subobject constructor D which needs a construction
+vtable with one base class subobject B that needs a construction vtable
+would look like the following:
+
+<code><pre>
+     static vtable *__VTT__1D[3] = { D primary vtable, ctorvtbl for B in D }; 
+     D(D *this, vtable **ctorvtbls) 
+     {
+         // Call subobject constructors with ctorvtbls index
+	 // if that base needs it. 
+         B((B*)this, &ctorvtbls[1]); 
+         // etc... 
+         // Initialize vptr with primary ctorvtbls address (first element) 
+         this->vptr = ctorvtbls[0][n];  // where n is the index of
+					// first virtual function in vtbl. 
+         // Initialize vptrs of subobjects with ctorvtbls addresses
+	 // for the bases 
+         ((B*)this)->vptr = ctorvtbls[0][m];
+		 // where m is the index of the first virtual function 
+		 // for base class subobject B 
+         // Code for constructor. 
+      }
+</pre></code>
+
+<p>
+<h4> Test Program</h4>
+Following is a test program for this, that breaks on many compilers.
+
+<code><pre>
+/* 
+This test program should output: 
+
+V1 called 
+V2 called 
+C called 
+C::foo called 7 
+PASSED this == cp 
+D called 
+~C called 
+C::foo called 7 
+PASSED this == cp 
+~V2 called 
+~V1 called 
+Int caught 
+*/ 
+
+extern "C" int printf(const char *,...); 
+struct V1 {
+        int v; 
+        virtual int foo(); 
+        V1(); 
+        ~V1(); 
+}; 
+struct V2 : virtual V1 {
+        int v2; 
+        virtual int foo(); 
+        V2(); 
+        ~V2(); 
+}; 
+struct C : virtual V1, virtual V2 {
+        int c; 
+        virtual int foo(); 
+        C(); 
+        ~C(); 
+}; 
+
+struct B {
+   int b; }; 
+struct D : B, C {
+        int d; 
+        virtual int bar(); 
+        D(); 
+        ~D(); 
+}; 
+extern "C" int printf(const char *,...); 
+main() 
+{
+  try {
+        D *d = new D; 
+        delete d; 
+  } catch (int) {
+        printf("Int caught\n"); 
+  } 
+} 
+
+int V1::foo() {
+   printf("V1::foo called\n"); return 1; } 
+V1::V1() : v(5) {
+   printf("V1 called\n"); } 
+V1::~V1() {
+   printf("~V1 called\n"); } 
+
+int V2::foo() {
+   printf("V2::foo called\n"); return 1; } 
+V2::V2() : v2(6) {
+   printf("V2 called\n"); } 
+V2::~V2() {
+   printf("~V2 called\n"); } 
+
+int C::foo() {
+   printf("C::foo called %d\n", c); return 1; } 
+C::C() : c(7) {
+        printf("C called\n"); 
+        V1 *vv = this; vv->foo(); 
+        C *cp = dynamic_cast<C *>(vv); 
+        if (this == cp) {
+            printf("PASSED this == cp\n"); 
+        } else {
+            printf("FAILED this != cp\n"); 
+        } 
+} 
+C::~C() {
+        printf("~C called\n"); 
+        V1 *vv = this; vv->foo(); 
+        C *cp = dynamic_cast<C *>(vv); 
+        if (this == cp) {
+            printf("PASSED this == cp\n"); 
+        } else {
+            printf("FAILED this != cp\n"); 
+        } 
+} 
+
+int D::bar() {
+   printf("D::bar called\n"); return 1; } 
+D::D() : d(8) {
+   printf("D called\n"); throw 5; } 
+D::~D() {
+   printf("~D called\n"); } 
+</pre></code>
+
+</font>
+
 
 
 <p> <hr> <p>
@@ -1039,44 +1294,75 @@ destructors.
 
 <p>
 When operator <code>new</code> is used to create a new dynamic-length array,
-a cookie must be stored to remember the allocated length
+a cookie is usually stored to remember the allocated length
 (number of array elements)
 so that it can be deallocated correctly.
 
-<p>
-In the case of expression <code>new</code>,
-this ABI requires the cookie setup as follows:
-<ul>
-<li> The cookie will have size <code>sizeof(size_t)</code>.
-<li> Let <code>align</code> be the maximum alignment of
-<code>size_t</code> and an element of the array to be allocated.
-<li> The space allocated for the array will be the space required
-by the array itself plus <code>align</code> bytes.
-<li> The alignment of the space allocated for the array will be
-<code>align</code> bytes.
-<li> The array data will begin at an offset of <code>align</code> bytes
-from the space allocated for the array.
-<li> The cookie will be stored in the <code>sizeof(size_t)</code> bytes
-immediately preceding the array data.
-</ul>
-
-<i>
-These rules have the following consequences:
-<ul>
-<li> The array elements and the cookie are all aligned naturally.
-<li> Padding will be required if <code>sizeof(size_t)</code>
-is smaller than the array element alignment,
-and if present will precede the cookie.
-</ul>
-</i>
-
-<i>
 <font color=red>
-For placement <code>new</code>,
-the situation is more complex,
-and the ABI definition is not yet decided.
+<p>
+Specifically:
+<ul>
+<p>
+<li> No cookie is required if the array element type T has a trivial
+    destructor (C++ standard, 12.4/3).
+<p>
+<li> No cookie is required if the <code>new</code> operator being used
+    is <code>::operator new[](size_t, void*)</code>.
+
+<p>
+<li> Otherwise, this ABI requires a cookie, setup as follows:
 </font>
-</i>
+  <ul>
+  <li> The cookie will have size <code>sizeof(size_t)</code>.
+  <li> Let <code>align</code> be the maximum alignment of
+  <code>size_t</code> and an element of the array to be allocated.
+  <li> The space allocated for the array will be the space required
+  by the array itself plus <code>align</code> bytes.
+  <li> The alignment of the space allocated for the array will be
+  <code>align</code> bytes.
+  <li> The array data will begin at an offset of <code>align</code> bytes
+  from the space allocated for the array.
+  <li> The cookie will be stored in the <code>sizeof(size_t)</code> bytes
+  immediately preceding the array data.
+  </ul>
+
+  <i>
+  <p>
+  These rules have the following consequences:
+  <ul>
+  <li> The array elements and the cookie are all aligned naturally.
+  <li> Padding will be required if <code>sizeof(size_t)</code>
+  is smaller than the array element alignment,
+  and if present will precede the cookie.
+  </ul>
+  </i>
+
+</ul>
+
+<p>
+<font color=red>
+Given the above, the following is pseudocode for processing
+<code>new(ARGS) T[n]</code>:
+<code><pre>
+  if T has a trivial destructor (C++ standard, 12.4/3)
+    padding = 0
+  else if we're using ::operator new[](size_t, void*)
+    padding = 0
+  else
+    padding = max(sizeof(size_t), alignof(T))
+
+  p = operator new[](n * sizeof(T) + padding, ARGS)
+  p1 = (T*) ( (char *)p + padding )
+
+  if padding > 0
+    *( (unsigned long *)p1 - 1) = n
+
+  for i = [0, n)
+    create a T, using the default constructor, at p1[i]
+
+  return p1
+</pre></code>
+</font>
 
 
 
@@ -1106,13 +1392,11 @@ e.g. by using symbol preemption, COMDAT sections, or other mechanisms.
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
-<font color=red>
 Note that the full structure described by an RTTI descriptor may
 include incomplete types not required by the Standard to be completed,
 although not in contexts where it would cause ambiguity.
 Therefore, any cross-references within the RTTI to types not known to
 be complete must be weak symbol references.
-</font>
 </i>
 
 <p>
@@ -1266,24 +1550,24 @@ std::type_info contains just two pointers:
 <p>
 The possible derived types are:
 <ul>
-  <li> std::__fundamental_type_info
-  <li> std::__pointer_type_info
-  <li> std::__array_type_info
-  <li> std::__function_type_info
-  <li> std::__enum_type_info
-  <li> std::__class_type_info
-  <li> std::__si_class_type_info
-  <li> std::__vmi_class_type_info
-  <li> std::__pointer_to_member_type_info
+  <li> abi::__fundamental_type_info
+  <li> abi::__pointer_type_info
+  <li> abi::__array_type_info
+  <li> abi::__function_type_info
+  <li> abi::__enum_type_info
+  <li> abi::__class_type_info
+  <li> abi::__si_class_type_info
+  <li> abi::__vmi_class_type_info
+  <li> abi::__pointer_to_member_type_info
 </ul>
 
 <p>
 <li>
-std::fundamental_type_info adds no fields to std::type_info;
+abi::__fundamental_type_info adds no fields to std::type_info;
 
 <p>
 <li>
-std::__pointer_type_info adds two fields (in this order):
+abi::__pointer_type_info adds two fields (in this order):
 <ul>
   <p>
   <li> a word describing the cv-qualification of what is pointed to
@@ -1301,29 +1585,28 @@ the bit 0x2 encodes "volatile".
 
 <p>
 <li>
-std::__array_type_info and std::__function_type_info do not add fields
+abi::__array_type_info and abi::__function_type_info do not add fields
 to std::type_info
 (these types are only produced by the typeid operator;
 they decay in other contexts).
-std::__enum_type_info does not add fields either.
+abi::__enum_type_info does not add fields either.
 
 <p>
 <li>
 Three different types are used to represent type information:
-<font color=red>
 
 <ol type=a>
 <p>
 <li>
-std::__class_type_info is used for class types having no bases,
+abi::__class_type_info is used for class types having no bases,
 and is also a base type for the other two class type representations.
 
 <p>
 <li>
 For classes containing only a single, public, non-virtual base
 at offset zero (i.e. the derived class is dynamic iff the base is),
-class std::__si_class_type_info is used.
-It adds to std::__class_type_info
+class abi::__si_class_type_info is used.
+It adds to abi::__class_type_info
 a single member pointing to the type_info structure for the base type,
 declared "<code>__class_type_info const *type</code>".
 
@@ -1331,20 +1614,21 @@ declared "<code>__class_type_info const *type</code>".
 <li>
 For classes with bases that do not satisfy the
 __si_class_type_info constraints,
-std::__vmi_class_type_info is used.
-It is derived from std::__class_type_info, and adds fields:
+abi::__vmi_class_type_info is used.
+It is derived from abi::__class_type_info, and adds fields:
   <ul>
   <p>
+<font color=red>
   <li> vmi_flags: a word with flags describing details
       about the class (most for use of the derived classes):
 	<ul>
-	<li> 0x01: class has non-diamond multiple inheritance
+	<li> 0x01: class has non-diamond repeated inheritance
 	<li> 0x02: class is diamond shaped
-	<li> 0x04: class has virtual base(s)
-	<li> 0x08: class has non-virtual base(s)
-	<li> 0x10: class has publicly inherited base(s)
-	<li> 0x20: class has non-publicly inherited base(s)
+	<li> 0x04: class has publicly inherited base(s)
+	<li> 0x08: class has non-publicly inherited base(s)
 	</ul>
+      All of these flags refer to both direct and indirect bases.
+</font>
       The type of the _VMI_flags field is defined by each psABI,
       but must be at least 16 bits.
       For the 64-bit IA-64 ABI, it will be unsigned int (32 bits).
@@ -1359,7 +1643,7 @@ It is derived from std::__class_type_info, and adds fields:
   <li> vmi_bases[]: base class descriptions for every direct base;
        each description is of the type:
 <pre><code>
-      struct std::__base_class_info {
+      struct abi::__base_class_info {
          __class_type_info const *type;
 	 long vmi_offset_flags;
       };
@@ -1392,22 +1676,35 @@ It is derived from std::__class_type_info, and adds fields:
 Note that the resulting structure is variable-length,
 with the actual size depending on the number of trailing base class
 descriptions.
-</font>
 
 </ol>
 
 <p>
 <li>
-The std::__pointer_to_member_type_info type adds two fields to std::type_info:
+The abi::__pointer_to_member_type_info type adds two fields to std::type_info:
 <ul>
-<li> a pointer to a std::__class_type_info (e.g., the "A" in "int A::*")
+<li> a pointer to a abi::__class_type_info (e.g., the "A" in "int A::*")
 <li> a pointer to a std::type_info corresponding to the member type
     (e.g., the "int" in "int A::*")
 <li> a word describing the cv-qualification of what is pointed to
-    (see std::__pointer_type_info)
+    (see abi::__pointer_type_info)
 </ul>
 
 </ol>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+<font color=red>
+Note that this ABI requires elsewhere that a vtable be emitted for a
+dynamic type in the object where the first non-inline virtual function
+member is defined, if any, or everywhere referenced if none.
+Therefore, an implementation that has virtual function members in the
+classes defined above should include at least one non-inline virtual
+function member and define it in the library,
+to avoid having user code inadvertently preempt the vtable.
+</font>
+</i>
 
 
 <h5>std::type_info::name()</h5>
@@ -1457,12 +1754,12 @@ Otherwise, the run-time check fails.
 <p>
 The first check corresponds to a "base-to-derived cast" and the second
 to a "cross cast".
-These tests are implemented by std::__dynamic_cast:
+These tests are implemented by abi::__dynamic_cast:
 
 <pre><code>
-   void* std::__dynamic_cast ( const void *sub,
-			       const std::__class_type_info *src,
-			       const std::__class_type_info *dst,
+   void* abi::__dynamic_cast ( const void *sub,
+			       const abi::__class_type_info *src,
+			       const abi::__class_type_info *dst,
 			       std::ptrdiff_t src2dst_offset);
    /* sub: source address to be adjusted; nonnull, and since the
     *      source object is polymoprhic, *(void**)sub is a vptr.
