@@ -1,7 +1,7 @@
 <HTML>
 
 <HEAD>
-<title>C++ ABI for IA-64: Code Examples</title>
+<title>C++ ABI for IA-64: Code and Implementation Examples</title>
 
 <link rel=stylesheet href=small-table.css type="text/css">
 <link rel=stylesheet href=code.css type="text/css">
@@ -10,12 +10,12 @@
 
 <font size=6><i><b>
 <p>
-C++ ABI for IA-64: Code Examples
+C++ ABI for IA-64: Code and Implementation Examples
 </b></i></font>
 
 <font size=-1>
 <p>
-<i>Revised 21 March 2000</i>
+<i>Revised 5 September 2000</i>
 
 </center>
 
@@ -40,6 +40,8 @@ for the ABI specifications.
 <li> <a href=#bases> Base Class Layout </a>
 <li> <a href=#vcall> Virtual Function Calls </a>
 <li> <a href=#vtable-ctor> Virtual Tables During Object Construction </a>
+<li> <a href=#mangling> External Name Mangling </a>
+<li> <a href=#vague> Vague Linkage </a>
 </ul>
 
 
@@ -671,6 +673,227 @@ D::~D() {
 </pre></code>
 
 </font>
+
+
+
+<p> <hr> <p>
+<a name=mangling>
+<h3> External Name Mangling</h3>
+
+<p>
+In the table below,
+<code>Ret?</code> in the source name indicates a function for which
+the return type is not part of the mangling.
+<code>Type?</code> indicates a data object
+(for which the type is never part of the mangling).
+Spaces appear in some of the mangled names to assist a human parser --
+they are not part of the actual mangled name, and should be ignored.
+
+<p>
+<table border=1 cellpadding=4>
+<tr><th> Mangled name <br><i>(ignore spaces)</i> </th>
+<th> Source name </th> </tr>
+
+<tr class=small><td> f </td>
+<td> C function or variable "f" or a global namespace variable "f"</td></tr>
+
+<tr class=small><td> _Z1fv </td>
+<td> Ret? f(); <i>or</i> Ret? f(void); </td></tr>
+
+<tr class=small><td> _Z1fi </td>
+<td> Ret? f(int); </td></tr>
+
+<tr class=small><td> _Z3foo3bar </td>
+<td> Ret? foo(bar); </td></tr>
+
+<tr class=small><td> _Zrm1XS_ </td>
+<td> Ret? operator%(X, X); </td></tr>
+
+<tr class=small><td> _ZplR1XS0_ </td>
+<td> Ret? operator+(X&, X&); </td></tr>
+
+<tr class=small><td> _ZlsRK1XS1_ </td>
+<td> Ret? operator&lt;&lt; (X const&, X const&);
+<br> (Note: X is S_, X const is S0_)
+</td></tr>
+
+<tr class=small><td> _ZN3FooIA4_iE3barE </td>
+<td> Type? Foo&lt;int[4]>::bar; </td></tr>
+
+<tr class=small><td> _Z1fIiEvi </td>
+<td> void f&lt;int>(/*nondependent*/int);
+<br> (Note: the return type is always explicitly encoded for template
+functions taking parameters.)</td></tr>
+
+<tr class=small><td> _Z5firstI3DuoEvS0_ </td>
+<td> void first&lt;Duo>(/*nondependent*/Duo);
+<br>
+(Note: first template is S_, Duo is S0_, first<Duo>(Duo) is S1_.
+<br>Since the function parameter is not dependent, don't use T_.)
+</td></tr>
+
+<tr class=small><td> _Z5firstI3DuoEvT_ </td>
+<td> void first&lt;Duo>(/*T1=*/Duo); </td></tr>
+
+<tr class=small><td> _Z3fooIiPFidEiEvv </td>
+<td> void foo&lt;int,int(*)(double),int>();
+<br>(Note: return type encoded for template function.)</td></tr>
+
+<tr class=small><td> _ZN1N1fE </td>
+<td> Type? N::f </td></tr>
+
+<tr class=small><td> _ZN6System5Sound4beepEv </td>
+<td> Ret? System::Sound::beep(); </td></tr>
+
+<tr class=small><td> _ZN5Arena5levelE </td>
+<td> Type? Arena::level; </td></tr>
+
+<tr class=small><td> _ZN5StackIiiE5levelE </td>
+<td> Type? Stack&lt;int, int>::level; </td></tr>
+
+<tr class=small><td> _Z1fI1XE vPV N1AIT_E1TE </td>
+<td> void f&lt;X>(A&lt;/*T1=*/X>::T volatile*); </td></tr>
+
+<tr class=small><td>
+_ZngILi42EE v N1A I XplT_Li2EE E 1TE </td>
+<td> void operator-&lt;/*int J=*/42>(A&lt;J+2>::T); </td></tr>
+
+<tr class=small><td> _Z4makeI7FactoryiE T_IT0_E v </td>
+<td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
+<br> (Note: T_ = factory (a template), T0_ = int) </td></tr>
+
+<tr class=small><td> _Z3foo 5Hello5WorldS0_S_ </td>
+<td> void foo(Hello,World,World,Hello)
+<br> (Note: Hello is S_, World is S0_, foo(...) is S1_)
+</td></tr>
+
+<tr class=small><td> _Z3fooPM2ABi </td>
+<td> foo(int AB::**)
+<br> // M is a pointer, P adds another level </td></tr>
+
+<tr class=small><td> _ZlsRSoRKSs </td>
+<td> operator&lt;&lt; (std::ostream&,std::string const&) </td></tr>
+
+<tr class=small><td> _ZTI7a_class </td>
+<td>  typeid(class a_class)  </td></tr>
+
+</table>
+
+
+<font color=red>
+<p>
+<a name=mangling-ex>
+<h4> Local Scope Mangling</h4>
+
+<p>
+Following are several examples illustrating local scope mangling,
+all based on the following code snippet:
+<pre><code>
+    class A {
+      void foo (int) {
+        class B { };
+      }
+    };
+
+    void foo () {
+      class C {
+        class D { };
+	void bar () {
+	  struct E {
+	    void baz() { }
+	  };
+	}
+      };
+    }
+</code></pre>
+
+<p>
+First consider the mangling of A::foo::B,
+which is the case of a simple local name (B) in a nested function.
+<pre><code>
+  &lt;encoding> ::- &lt;name>
+             ::- &lt;local-name>
+             ::- Z &lt;function encoding> E &lt;entity name>
+</code></pre>
+where:
+<pre><code>
+  &lt;function encoding> ::- &lt;name> &lt;bare-function-type>
+                      ::- &lt;nested-name> &lt;bare-function-type>
+                      ...
+                      ::- N &lt;unqualified-name> &lt;unqualified-name> E &lt;bare-function-type>
+                      ::- N 1A 3foo E i
+  &lt;entity name> ::- &lt;name>
+                ::- 1B
+</code></pre>
+<p>
+So the final result is "Z N 1A 3foo E i E 1B".
+The next example is foo::C::D, i.e. a nested local name in a simple function:
+<pre><code>
+  &lt;encoding> ::- &lt;name>
+             ::- &lt;local-name>
+             ::- Z &lt;function encoding> E &lt;entity name>
+</code></pre>
+where:
+<pre><code>
+  &lt;function encoding> ::- &lt;name> &lt;bare-function-type>
+                      ::- 3foo i
+  &lt;entity name> ::- &lt;nested-name>
+                ...
+                ::- N &lt;unqualified-name> &lt;unqualified-name> E
+                ::- N 1C 1D E
+</code></pre>
+<p>
+So the final result is "Z 3foo i E N 1C 1D E".
+Finally, as an example of nested local scopes, consider foo::C::bar::E::baz:
+<pre><code>
+  &lt;encoding> ::- &lt;name>
+             ::- &lt;local-name>
+             ::- Z &lt;function encoding> E &lt;entity name>
+</code></pre>
+where:
+<pre><code>
+  &lt;function encoding> ::- &lt;name> &lt;bare-function-type>    (bar)
+                      ::- &lt;local-name> v
+                      ::- Z &lt;function encoding> E &lt;entity name> v
+                      ::- Z &lt;name> &lt;bare-function-type> E &lt;nested-name> v
+                      ...
+                      ::- Z 3foo v E N 1C 3bar E v
+  &lt;entity name> ::- &lt;function name>
+                ::- &lt;function name> &lt;bare-function-type>
+                ::- &lt;nested-name> &lt;bare-function-type>
+                ...
+                ::- N &lt;unqualified-name> &lt;unqualified-name> E &lt;bare-function-type>
+                ::- N 1E 3baz E v
+</code></pre>
+yielding the final result: <pre><code>
+        Z Z 3foo v E N 1C 3bar E v E N 1E 3baz E v
+</code></pre>
+
+
+
+
+<p> <hr> <p>
+<a name=vague>
+<h3> Vague Linkage</h3>
+
+<p>
+COMDAT groups are a new gABI feature specified during the IA-64 ABI
+definition, and may not be implemented by all vendors immediately.
+Pending their availability,
+other implementations may be required for the features specified to use
+COMDAT in the ABI.
+Using weak symbols for the objects requiring weak linkage instead of
+putting them in COMDAT groups will normally work,
+even in interaction with correctly-defined COMDAT group representations,
+although it will not have the space efficiency of COMDAT.
+However,
+weak symbol semantics are not consistent among Unix implementations,
+and implementors should be careful that whenever multiple symbols are
+specified to reside in a single COMDAT, and might interact
+(e.g. thunks falling through to primary function definitions),
+all are generated together as weak symbols as well.
+</font>
+
 
 
 <p>
