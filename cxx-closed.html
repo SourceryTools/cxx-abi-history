@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 7 November 2000</i>
+<i>Revised 17 November 2000</i>
 
 </center>
 
@@ -281,12 +281,19 @@ Closed as a duplicate of A-3.
 <td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> 990701 </td>
+<td> 001117 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 When passing a parameter with an empty class type by value,
 what is the convention?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A5> Resolution </a></b>:
+Except for cases of non-trivial copy constructors (see C-7),
+and parameters in the variable part of varargs lists,
+A single parameter slot will be allocated to empty parameters,
+as though they were a struct containing a single character.
 </td> </tr>
 
 </table>
@@ -336,6 +343,21 @@ Daveed and Matt will pursue the question of when copy constructors may
 be ignored for parameters with the Core committee,
 and if they identify cases where the constructors may clearly be
 omitted, those (empty) parameters will also be elided.
+
+<p>
+<font color=blue>[001109 CodeSourcery -- Mark]</font>
+Both g++ and the HP compiler have great difficulty dealing with this,
+and prefer to reserve the parameter slot even for empty parameters.
+At the meeting, we tentatively decided to reverse our decision and
+allocate an integer parameter slot even for empty parameters.
+We will place no constraints on the data in the parameter slot,
+except that on IA-64, it must be not be NaT data.
+
+<p>
+<font color=blue>[001117 All -- Jim]</font>
+There having been no objection to the proposed resolution,
+it is adopted.
+Results will be treated the same way.
 
 
 <p>
@@ -3134,6 +3156,260 @@ pointer-to-member is incomplete
 <font color=blue><hr><p>[000504 All]</font>
 It was decided to accept the current writeup.
 See the <a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A30></a> <td> A-30 </td>
+<td> RTTI portability </td>
+<td> data </td>
+<td> closed </td>
+<td> HUB </td>
+<td> 001012 </td>
+<td> 001109 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What must be specified to produce RTTI portability?
+Are member layouts specified?  Names?  Virtual functions?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A30> Resolution</a></b>:
+Data members of the ABI-defined type_info derived classes must be
+allocated as specified, and their names are normative.
+Virtual functions, beyond the Standard-specified destructor,
+are implementation-specific,
+and may not be referenced outside the compiler and system vendors'
+runtime libraries.
+</td> </tr>
+</table> 
+
+<p>
+<font color=blue>[001012 all -- Jim]</font>
+The issue here, raised originally by Martin, I will open as A-30.
+Implementations will generally need additional virtual functions
+associated with the type_info hierarchy to implement such functionality
+as dynamic cast.  Gcc for instance has functions __is_function_p,
+__do_catch, __pointer_catch, ...
+
+<p>  
+A program that is built from pieces from different compilers, where the
+pieces come from different implementations of the hierarchy, will see
+different structures, at least in the vtables, if we allow this extra
+material to be arbitrary, creating a problem if such programs actually
+make use of parts of the hierarchy.
+
+<p>
+We worked out the following possible solution:
+
+<ul>
+  <p>
+  <li>
+  First, observe that the vtables for the typeinfo derived classes will
+  be emitted where the key function (the virtual destructor, as
+  defined) is defined.  We require this to be in the implementation's
+  runtime library libcxa.so, so there is exactly one implementation of
+  them on any given target system.
+
+  <p>
+  <li>
+  We allow the implementation to define a collection of pseudo-virtual
+  functions to be associated with each class derived from
+  <code>std::type_info</code>:
+
+  <p>
+  <code><pre>
+        class __cxa_aux_typeinfo {
+          ... (*__is_function_p) (...);
+          ...
+        };
+  </pre></code>
+
+  <p>
+  The implementation will create one instance of this class for each of
+  the classes derived from std::type_info, and we will specify a
+  mangled name for it.
+
+  <p>
+  <li>
+  We add the following to the ABI definition of std::type_info:
+
+  <p>
+  <code><pre>
+        class std::type_info {
+          ...
+          protected:
+            __cxa_aux_typeinfo *__aux;
+            type_info (void) { /* set up __aux */ };
+        };
+  </pre></code>
+
+  <p>
+  <li>
+  Construction of one of the std::type_info derivatives can either call
+  the constructor or use the mangled name to initialize the __aux
+  member.
+
+  <p>
+  <li>
+  Use of __aux is reserved to the runtime implementation.
+</ul>
+
+<p>
+Now an implementation can add an arbitrary set of functions to
+__cxa_aux_typeinfo, specialized to the derived class like a virtual
+function, without changing the external interface (to the user) of
+the hierarchy.
+
+<p>
+<font color=blue>[001103 SGI -- Jim]</font>
+<p>
+[...leaving out much discussion...]
+<p>
+So, after all the above, I suggest the following actions:
+
+<ul>
+<li> Remove the statement that data member names are not normative.
+
+<li> Add a statement that the data members must be exactly as specified.
+
+<li> Leave the statement that the user may not reference the virtual
+  functions.  (Since the destructor is virtual, does this effectively
+  forbid deriving from the classes?)
+</ul>
+
+<p>
+<font color=blue><hr><p>[001109 all]</font>
+The current writeup is adequate.
+See the resolution in the issue header.
+
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A31></a> <td> A-31 </td>
+<td> Overlaying tail padding </td>
+<td> data </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 001019 </td>
+<td> 001109 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we change the decision to overlay tail padding in class layout?
+For volatile members?  In general?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A31> Resolution</a></b>:
+The overlaying of tail padding is eliminated,
+but we will retain the treatment of empty bases.
+</td> </tr>
+</table> 
+
+<p>
+<font color=blue>[001019 CodeSourcery -- Mark]</font>
+I think I recall that the committee was intentionally trying to use
+the tail padding of one object to save space.  For example, consider:
+
+  <code><pre>
+  struct A { short s; char c; };
+  struct B { A a; char d; };
+  </pre></code>
+
+<p>
+(These are PODs, but you can easily make an equivalent non-POD
+example).
+
+<p>
+Here, I think the comittee wanted to give `B' size 4, by packing `d'
+into the tail padding of `A'.
+
+<p>
+I think this is a mistake.  David Gross came up with the following
+example:
+
+<p>
+Code generator needs to copy dsize, not sizeof, unless it can prove
+that the object is in a context where tail padding isn't overlayed.
+Reason?  Tail padding might be overlayed by a volatile field.
+
+<p>
+Hence, a non-POD that looks like
+
+  <code><pre>
+      struct S { short sh; char ch; };
+  </pre></code>
+
+<p>
+requires ld2/st2/ld1/st1 for a copy instead of ld4/st4 because we
+might have
+
+  <code><pre>
+      struct T { S s; volatile char d; };
+  </pre></code>
+
+<p>
+Similarly, people using memcpy to copy around POD components of
+non-PODs will get burned.
+
+<p>
+This completely breaks user expectation since people routinely expect
+to be able to stick a function or two into a POD without changing its
+layout.
+
+<p>
+I think we should make the following changes:
+<ul>
+<li>
+Make nvsize a multiple of nvalign.  That ensures that we don't
+have odd sub-components that we can't copy around easily.
+
+<li>
+Allocate `sizeof' bytes for a data member, and `nvsize' bytes for
+a base class when laying out an object.
+</ul>
+
+<p>
+Note that this still permits the empty base optimization; nvsize will
+be zero, and sizeof will be 1.
+
+<p>
+There's an important different between using the tail padding in an
+empty base and the tail padding in a generic object: you know that you
+never have to copy an empty base.
+
+<p>
+<font color=blue><hr><p>[001109 all]</font>
+Although dealing with tail padding overlaying would be straightforward
+in a from-scratch compiler, getting the information to all the places
+in the back end of g++ or the HP compiler that would need it is a huge
+task (estimated at a widely scattered 1500 lines of code touched in g++).
+In addition, it is expected that some number of users moving back and
+forth between C and C++ and trying to match C structs with C++ non-POD
+classes will have problems, though there are questions about how many.
+
+<p>
+Therefore, we have decided to eliminate the overlaying of tail padding.
+Mark will provide alternate proposed wording for the ABI document.
+
+
 
 
 <p> <hr> <p>
@@ -9682,6 +9958,153 @@ Close with minor modifications.
 Christophe will send a thread cancellation example writeup.
 
 
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D14></a> <td> D-14 </td>
+<td> __cxa_begin/end_catch </td>
+<td> lib </td>
+<td> closed </td>
+<td> all </td>
+<td> 991216 </td>
+<td> 001109 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Define the interfaces of <code>__cxa_begin_catch</code>
+and <code>__cxa_end_catch</code>.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D14> Resolution</a></b>:
+See the <a href=abi-eh.html#cxx-handler>exception handling specification</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 All]</font>
+Define how <code>__cxa_begin_catch</code>
+and <code>__cxa_end_catch</code> identify the thrown exception.
+
+<p>
+<font color=blue>[991216 Compaq - Coleen]</font>
+If you need to clean up more than one live exception from a
+catch handler, don't you need a 'count' parameter to
+__cxa_end_catch?  In this case, you destroy both X and
+Y objects (whether or not they're both on the stack,
+or just X is).
+
+<p>
+Our equivalent of end_catch has a count parameter which
+is set to the number of live exception objects to
+delete and is used for branching out of the nested catch
+clause (not by rethrow).
+
+<p>
+<code><pre>
+struct X {
+   X(); ~X(); };
+struct Y {
+   Y(); ~Y(); };
+extern "C" int printf(const char *,...);
+main()
+{
+  try {
+    throw X();
+  } catch (X x) {
+    try {
+        throw Y();
+    } catch(...) {
+        //generates __cxa_end_catch(/*levels=*/2)
+        return 1;
+    }
+  }
+}
+</pre></code>
+
+<p>
+<font color=blue><hr><p>[991217 HP -- Christophe]</font>
+
+The reason __cxa_end_catch does not need the exception argument is that
+the exceptions it is interested in are in the "caught stack".
+When you rethrow,
+the exception you rethrow is also on this caught stack
+(it is indeed the top of the stack).
+So you don't need a separate copy or argument.
+
+<p>
+All you need is a flag set by __rethrow,
+saying "this top exception is the one being just rethrown".
+In that case, when __end_catch finds that the exception
+exits its last catch block, it will not delete it.
+Instead, the exception will just be popped from the stack.
+As a result, the exception being rethrown remains on the caught
+stack until you exit the last catch that caught it,
+and then becomes referred to only through the exception object
+passed in the runtime
+(that is, it becomes similar to a new exception being thrown:
+it does not appear in the caught stack.)
+This is the "stack + 1" model I mentioned...
+
+<p>
+__begin_catch clears the flag,
+in case you catch the rethrown exception before
+exiting the last catch handler.
+
+<p>
+This mechanism is actually correctly specified in the description of
+__cxa_end_catch (see in particular the last bullet):
+
+<p>
+Upon exit from the handler by any means,
+the epilogue calls __cxa_end_catch(),
+which:
+<ul>
+<li>
+Locates the most recently caught exception and decrements its handler count.
+<li>
+Removes the exception from the "caught" stack if the handler count
+goes to zero.
+<li>
+Destroys the exception if the handler count goes to zero,
+and the exception was not re-thrown by throw.
+</ul>
+
+<font color=red>
+<p>
+What is unclear, though,
+is the fact that __rethrow needs to pass a flag to
+__end_catch for that purpose,
+and also that the flag is stored in the high bit of the handlerCount
+(which is why it did not appear in the specification...).
+</font>
+
+<p>
+<font color=blue><hr><p>[000112 editor]</font>
+Does this mean that the specification on pg. 16 of the HP document
+is the desired definition?
+
+<p>
+<font color=blue>[000126 editor]</font>
+The answer to the above question is yes.
+This issue is effectively closed,
+but I will not close it officially until the
+<a href=exceptions.pdf>working paper</a>
+reflects the clarifications in the email discussion.
+
+<p>
+<font color=blue>[001109 Editor]</font>
+These routines are specified adequately in the Exception ABI document.
+
+
+
 <p>
 <table border=on cellpadding=3>
 
@@ -9784,41 +10207,6 @@ Noone has identified a problem with the proposal in the HP document.
 Close this issue, and it can be reopened if a problem surfaces.
 
 
-<p> <hr> <p>
-<h3> E.  Template Instantiation Model Issues </h3>
-
-<tr> <a name=E1></a> <td> E-1 </td>
-<td> When does instantiation occur? </td>
-<td> tools </td>
-<td> closed </td>
-<td> SGI </td>
-<td> 990520 </td>
-<td> 000511 </td>
-</tr>
-<tr> <td colspan=7>
-<b>Summary</b>:
-There are two principal models for instantiation.
-The <i>early instantiation</i> (or Borland) model performs all
-instantiation at compile time,
-potentially resulting in extra copies which are removed at link time.
-The <i>pre-link instantiation</i> model identifies the required
-instantiations prior to linking and instantiates them via a special
-compile step.
-</td> </tr>
-<tr> <td colspan=7>
-<b><a href=cxx-closed.html#E1> Resolution</a></b>:
-Non-export templates are instantiated where referenced in COMDAT groups.
-See the <a href=abi.html#vague-itemplate>Draft C++ ABI for IA-64</a>.
-</td> </tr>
-
-</table>
-
-<p>
-<font color=blue><hr><p>[000511 All]</font>
-Non-export templates are instantiated where referenced in COMDAT groups.
-We will not deal with export templates at this time (E-2).
-
-
 <p> <a name=D17></a>
 <table border=on cellpadding=3>
 
@@ -9916,6 +10304,149 @@ Accepted as originally proposed by Mark, without return types.
 The decision is intended to not burden the routines with dummy returns,
 since callers with ?: operators can use casts to achieve the desired
 result.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=D18></a> <td> D-18 </td></a>
+<td> __cxa_throw_type_info </td>
+<td> lib </td>
+<td> closed </td>
+<td> all </td>
+<td> 001012 </td>
+<td> 001109 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we replace the __cxa_throw_type_info pointer in the exception
+object by a pair of pointers to a <code>std::type_info</code> and a
+destructor?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D18> Resolution</a></b>:
+Make the replacement.
+See Sections 2.2.1 and 2.4.3 of the 
+See <a href=abi-eh.html#cxx-data>draft EH Specification</a>.
+</td> </tr>
+</table>
+
+<p>
+<font color=blue>[001012 all]</font>
+Making this type be a pair (type_info and destructor pointers)
+makes it necessary that a thrower or <code>__cxa_throw</code>
+construct one so that the exception object can point to it.
+This can't be done on the stack,
+since it's about to be unwound,
+and doing it on the heap when the
+exception might be out-of-memory doesn't seem ideal.
+
+<p>
+We propose that instead,
+we replace the <code>__cxa_throw_type_info</code> pointer
+in the exception object header by separate
+<code>std::type_info</code> and destructor pointers,
+and pass them as two parameters to <code>__cxa_throw</code>.
+
+<p>
+We also noticed that,
+if the thrown object is an array,
+the destructor passed will need to be a fabricated one which
+loops over the array elements.
+The alternative,
+to store the array bounds explicitly in the exception object,
+seems to be a lot of overhead for a very rare case.
+
+<p>
+<font color=blue>[001109 all]</font>
+The interface change will be made.
+
+
+
+<p> <hr> <p>
+<h3> E.  Template Instantiation Model Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr> <a name=E1></a> <td> E-1 </td>
+<td> When does instantiation occur? </td>
+<td> tools </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 000511 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+There are two principal models for instantiation.
+The <i>early instantiation</i> (or Borland) model performs all
+instantiation at compile time,
+potentially resulting in extra copies which are removed at link time.
+The <i>pre-link instantiation</i> model identifies the required
+instantiations prior to linking and instantiates them via a special
+compile step.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#E1> Resolution</a></b>:
+Non-export templates are instantiated where referenced in COMDAT groups.
+See the <a href=abi.html#vague-itemplate>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue><hr><p>[000511 All]</font>
+Non-export templates are instantiated where referenced in COMDAT groups.
+We will not deal with export templates at this time (E-2).
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+
+<tr> </tr>
+<tr> <th> E </th>
+<th colspan=6> Template Instantiation Model </th>
+</tr>
+
+<tr> <a name=E1></a> <td> E-1 </td>
+<td> When does instantiation occur? </td>
+<td> tools </td>
+<td> closed </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> 000511 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+There are two principal models for instantiation.
+The <i>early instantiation</i> (or Borland) model performs all
+instantiation at compile time,
+potentially resulting in extra copies which are removed at link time.
+The <i>pre-link instantiation</i> model identifies the required
+instantiations prior to linking and instantiates them via a special
+compile step.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#E1> Resolution</a></b>:
+Non-export templates are instantiated where referenced in COMDAT groups.
+See the <a href=abi.html#vague-itemplate>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
 
 
 <p>
@@ -11584,10 +12115,10 @@ at the cost of additional dynamic link time.
 <tr> <a name=G4></a> <td> G-4 </td>
 <td> Dynamic init of local static objects and multithreading </td>
 <td> call </td>
-<td> reopened </td>
+<td> closed </td>
 <td> SCO </td>
 <td> 990607 </td>
-<td> </td>
+<td> 001109 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -11604,10 +12135,512 @@ exception during construction.
 </td> </tr>
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#G4> Resolution</a></b>:
-The ABI will not specify multi-threading initialization behavior.
+The ABI will specify an 8-byte guard variable,
+with one byte used for the initialization flag,
+and the others available for use by a threading package for locking.
+ABI routines are specified for acquiring and releasing the lock.
+See ABI section 3.3.2.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue><hr><p>[990607 SCO -- Jonathan]</font>
+The standard is mute on multiple threads of control in general, so 
+there is no requirement in the language to support what I'm talking
+about. But as a practical matter compilers have to do it (Watcom gave
+a paper on their approach during the standardization process, if I
+remember).  This example using UI/SVR4 threads will usually show
+whether a compiler does it or not: 
+
+<pre><code>
+thr5.C:
+// static local initialization and threads
+
+#include <stdlib.h>
+#define EXIT(a) exit(a)
+#define THR_EXIT() thr_exit(0)
+
+#include <thread.h>
+
+int init_count = 0;
+int start_count = 0;
+
+int init()
+{
+  
+        ::thr_yield();
+        return ++init_count;
+}
+
+void* start(void* s)
+{
+  
+        start_count++;
+        static int i = init();
+        if (i != 1) EXIT(5);
+        THR_EXIT();
+        return 0;
+}
+                
+int main()
+{
+  
+        thread_t t1, t2;
+        if (::thr_create(0, 0, start, 0, 0L, &t1) != 0) EXIT(1);
+        if (::thr_create(0, 0, start, 0, 0L, &t2) != 0) EXIT(2);
+        if (::thr_join(t1, 0, 0) != 0) EXIT(3);
+        if (::thr_join(t2, 0, 0) != 0) EXIT(4);
+        if (start_count != 2)
+                EXIT(6);
+        if (init_count != 1)
+                EXIT(7);
+        THR_EXIT();
+}
+</code></pre>
+
+<p>
+When compiled with CC -Kthread thr5.C on UnixWare 7, for instance,
+it passes by returning 0.  When compiled with CC -mt thr5.C on
+Solaris/x86 C++ 4.2 (sorry don't have the latest version!), it
+fails by returning 5.
+
+
+<p>
+<font color=blue><hr><p>[990607 Sun -- Mike Ball]</font>
+As far as I can tell, the language says that the automatic blocking 
+issue isn't a valid approach.  It says what has to happen, and
+it isn't that.
+
+<p>
+If you look at the entire statement you find that it reads:
+<quote>
+"Otherwise such an object is initialized the first time control passes
+through its declaration; such an object is considered initialized upon
+the completion of its initialization.
+If the initialization exits by throwing an exception,
+the initialization is not complete,
+so it will be tried again the next time control enters the declaration.
+If control re-enters the declaration (recursively)
+while the object is being initialized,
+the behavior is undefined."
+</quote>
+
+<p>
+The word "recursively" is normative,
+so eliminates that sentence from consideration.
+
+<p>
+One can, of course, make any extension to the language,
+but in this case I think the extension invalidates some otherwise valid code.
+
+<p>
+The sentence I'm referring to is that the object is considered
+initialized upon the completion of its initialization.
+This is explicit, and the reason for it is covered in the following sentence,
+which discusses an initialization that terminates with an exception.
+A person catching such an exception has the right to try again
+without danger that the static variable will be initialized in the meantime.
+
+<p>
+I don't see anything at all to justify semantics that say,
+"after initialization is started, Any other threads of control are
+blocked until that thread completes the initialization,
+unless, of course, it executes by an exception,
+in which case the other thread can do the initialization before the
+exception handler gets a chance to try again, except...."
+ Take an attempt to define the semantics as far as you like.
+
+<p>
+The problem is that there is no way for the compiler writer to know
+what the programmer really wanted to do.
+I can (and will at some other date, if necessary)
+come up with scenarios justifying a variety of mutual exclusion policies,
+including none.
+
+<p>
+The solution is to let the programmer write the mutual exclusion, the
+same as we do for every other potential race condition.
+It's a real mess, and, I claim, an unwise one to put in as an extension.
+
+<p>
+<font color=blue><hr><p>[990608 HP -- Christophe]</font>
+The semantics currently implemented in the HP aC++ compiler is as follows:
+<ul>
+<li> No two thread can enter a static initialization at the same time
+<li> Threads are blocked until immediately after the static  
+    initialization either succeeds or fails with an exception.
+</ul>
+
+<p>
+There are details of our implementation that I disagree with, but in  
+general, the semantics seem clear and sane, not as convoluted as you  
+seemed to imply. In particular, it correctly covers the case where  
+the static initialization fails with an exception. Any thread at that  
+point can attempt the initialization.
+
+<p>
+<font color=blue><hr><p>[990608 SCO -- Jonathan]</font>
+Here's what the SCO UnixWare 7 C++ compiler does for IA-32,
+from a (slightly sanitized) design document.
+ It meets Jim's goal of having no overhead for non-threaded programs
+and minimal overhead for threaded programs unless
+actual contention occurs (infrequent),
+and meets Mike's goal of handling exceptions in the initialization correctly
+(although it doesn't guarantee that the thread getting the exception is
+the one that gets next crack at initializing the static).
+ It's also worth noting that dynamic initialization of local variables
+(static or otherwise) is very common in C++,
+since that's what most object constructions involve,
+so I don't think this case is as rare as Jim does.
+
+
+<p>
+[...] This is in local static variables with dynamic initialization,
+where the compiler generates out a static one-time flag to guard the
+initialization.
+Two threads could read the flag as zero before either of them set it,
+resulting in multiple initializations.
+
+<p>
+[...] Accordingly, when compilation is done with -Kthread on,
+a code sequence will be generated to lock this initialization.  
+[...] the basic idea is to have one guard saying whether the
+initialization is done (so that multiple initializations do not occur)
+and have another guard saying whether initialization is in progress
+(so that a second thread doesn't access what it thinks is
+an initialized value before the first thread has finished the
+initialization).  [...]
+
+<p>
+When compiled with -Kthread, the generated code for a dynamic
+initialization of a local static variable will look like the
+following. guard is a local static boolean, initialized to zero,
+generated by the [middle pass of the compiler]. 
+Two bits of it are used: the low-order 'done bit'
+and the next-low-order 'busy bit'.
+
+<pre><code>
+.again:
+        movl    $guard,%eax
+        testl   $1,(%eax)       // test the done bit
+        jnz     .done           // if set, variable is initialized,
+done
+        lock; btsl  $1,(%eax)   // test and set the busy bit
+        jc      .busy
+        < init code >           // not busy, do the initialization
+        movl    $guard,%eax
+        movl    $3,(%eax)       // set the done bit
+        jmp     .done
+.busy:
+        pushl   %eax            // call RTS routine to wait, passing address
+        call1   __static_init_wait      // of guard to monitor
+        testl   %eax,%eax       // 1 means exception occurred in init code,
+        popl    %ecx
+        jnz     .again                  // start the whole thing over
+.done                                   // 0 means wait finished
+</code></pre>
+
+<p>
+The above code will work for position-independent code as well.
+
+The complication due to exceptions is:
+what happens if the initialization code throws an exception?
+The [compiler] EH tables will have set up a special region and flag in
+their region table to detect this situation,
+along with a pointer to the guard variable.
+Because the initialization never completed,
+when the RTS sees that it is cleaning up from such a region,
+it will reset the guard variable back to both zeroes.
+This will free up a busy-waiting thread, if any,
+or will reset everything for the next thread that calls the function.
+
+<p>
+The idea of the __static_init_wait() RTS routine is to monitor the
+value of guard bits passed in, by looping on this decision table:
+<pre><code>
+    done    busy
+    0       0       return 1 in %eax        (EH wipe-out)
+    1       1       return 0 in %eax        (no longer busy)
+    0       1       continue to wait        (still busy)
+    1       0       internal error, shouldn't happen
+</code></pre>
+
+<p>
+As for how the wait is done [... not relevant for ABI,
+although currently we're using thr_yield(),
+which may or may not be right for this context].
+
+<p>
+<font color=blue><hr><p>[990608 SGI -- Hans]</font>
+I'd like to make some claims about function scope static constructor
+calls in multithreaded environments.
+I personally can't recall ever having used such a construct,
+which somewhat substantiates my claims,
+but also implies some lack of certainty.
+I'd be interested in hearing any arguments to the contrary.
+
+<p>
+I believe that these arguments imply that this problem is not important
+enough to warrant added ABI complexity or overhead for sequential code.
+
+<p>
+Consider the following skeletal example:
+
+<p><code>
+f(int x) { static foo a(...); ... }
+</code>
+
+<ol>
+<p>
+<li>
+If the constructor argument doesn't depend on the function parameter,
+and the code behaves reasonably, it should be possible to rewrite this as
+
+<p><code>
+static foo a(...);
+<br>
+f(int x) { ... }
+</code>
+
+<p>
+<li>
+If I read the standard correctly (and that's a big disclaimer),
+the compiler is entitled to perform the above transformation under
+conditions that are usually true,
+but hard for the compiler to deduce.
+Thus code that relies on the initialization occurring during the
+execution of f is usually broken.
+
+<p>
+<li>
+Thus the foo constructor cannot rely on its caller holding any locks.
+It must explicitly acquire any locks it needs.
+
+<p>
+<li>
+It is far preferable to write the transformed form with a file scope
+static variable to start with.
+The initial form risks deadlock,
+since f may be called with locks held which the constructor
+can't assume are held.
+If it needs one of those locks it will need to reacquire it.
+With default mutex semantics that results in deadlock with itself.
+(If locks may be reentered,
+it may fail in a more subtle manner since the foo constructor may
+acquire a monitor lock whose monitor invariant doesn't hold.)
+
+<p>
+<li>
+File scope static constructor calls aren't a problem and require no locking,
+since they are executed in a single thread before main is called or
+before dlopen returns.
+(Forking a thread in a static constructor should probably be disallowed.
+Threads may not have been fully initialized, among other issues.)
+
+<p>
+<li>
+Static function scope constructor calls which depend on function
+arguments are likely to involve a race condition anyway,
+if multiple instances of the function can be invoked concurrently.
+Any of the calls might determine the constructor parameters.
+Thus these aren't very interesting either.
+And if they are really needed, they can be replaced with a file scope
+static constructor call plus an assignment.
+
+</ol>
+
+<p>
+<font color=blue><hr><p>[990607 SCO -- Jonathan]</font>
+Hans' argument breaks such local statics into two groups:
+those that don't depend upon the function's parameters,
+and those that do.
+For the latter group, he says:
+
+<pre><i>
+> 6) Static function scope constructor calls which depend on function
+> arguments are likely to involve a race condition anyway, if multiple
+> instances of the function can be invoked concurrently.  Any of the
+> calls might determine the constructor parameters.  Thus these aren't
+> very interesting either.  And if they are really needed, they can be
+> replaced with a file scope static constructor call plus an assignment.
+</i></pre>
+
+<p>
+I don't agree with these claims.
+There are sometimes situations where a group of objects is being processed,
+and you want to arbitrarily pick one of them
+to serve as an identifier or key for all of them.
+ Consider perhaps a golf course scheduler,
+which is taking in players and assigning them to foursomes.  
+You want to name each foursome by one of the names of the players
+(it doesn't matter which one),
+such as the "Jones group" or the "Smith group".  
+A natural way to program this might be:
+
+<pre><tt>
+      void build_foursome(string golfer) {
+	  static string group_name(golfer);
+	  // process golfer into group group_name ...
+      }
+</tt></pre>
+
+<p>
+Now if the golfers being scheduled are coming from four different databases,
+it might be that a thread is running to extract from each database.
+Thus build_foursome() might be called concurrently.
+That's fine, and there is no need for application-level locks in
+either the caller or this function; we don't care which golfer
+the group is named after.
+We just want the 'static' to work correctly;
+what we don't want is a double initialization,
+with two different group names being generated for golfers in the same group,
+which is possible if the guard code isn't thread-safe.
+
+<p>
+Now one can say that this kind of design isn't wise,
+or that locks will probably be needed later in this function
+to do the rest of the processing, 
+or that this can be coded in several other ways.
+And that may all be so.
+But I think this usage is *reasonable* in this context,
+and that as implementors we should get it right.
+[Editorial:  Especially with the advent of Java,
+threaded application programming is becoming more the norm; 
+and language implementations that dodge the challenge and say that
+thread support is solely the job of libraries,
+may not be looked upon kindly by users.]
+
+<p>
+<font color=blue><hr><p>[000511 All]</font>
+The ABI will not specify special multi-threading behavior.
+Note that the initialization guard variable (Issue C-14)
+is specified with size 8 bytes, with only 1 used,
+so an implementation is free to make arbitrary use of the other 7
+for the suggested purpose,
+with the consequence that initializations from multiple copies
+(e.g. from inlining) could be inconsistent across implementations.
+
+<p>
+<font color=blue><hr><p>[000706 All]</font>
+Reopen this issue and attempt to define an API for those
+implementations that do want to do a thread-safe version.
+Jim has added a proposed API to the Draft ABI document.
+
+<p>
+<font color=blue><hr><p>[000706 HP -- Christophe]</font>
+The current HP implementation does not use a release, and has a more
+specializedroutine. This would be something like:
+<code><pre>
+    extern "C" void __cxa_allocate_static(
+	    bool *flag,
+	    void *object_address,
+	    void (*object_dtor)(void *object));
+
+</pre></code>
+
+<p>
+The calling sequence for:
+<code><pre>
+    static X x
+
+</pre></code>
+
+becomes:
+<code><pre>
+    static bool static_x_flag;
+    static X x;
+    if (!static_x_flag)
+	    __cxa_allocate_static(&static_x_flag,
+				  &x, __addressof(X::~X));
+
+</pre></code>
+
+<p>
+This has the following benefits:
+<ol>
+<li> If the static has been initialized already,
+the flag is set, so we short-circuit the function call
+
+<li> The function registers the object and its destructor for invocation
+at exit()time.
+
+</ol>
+
+<p>
+The function itself deals with the flag in a thread-safe way,
+but this requires only one mutex inside the function.
+This is important, since test and set operations
+are potentially costly memorywise on IA64
+(they are definitely on PA-RISC,
+where any mutex / lock / whatever must be 16-bytes aligned)
+
+<p>
+<font color=blue><hr><p>[000803 All]</font>
+Discussion brought out that Christophe's
+<code>__cxa_allocate_static</code> can't work precisely as described,
+since the constructor and its arguments are also needed.
+Christophe said that the actual sequence is more complex,
+he removed too much to simplify the presentation,
+and he will attempt to provide a fuller description.
+
+<p>
+The concern was repeated that there are objections to any automatic
+locking approach, and we should go back and consider them again.
+
+<p>
+<font color=blue><hr><p>[000720 All]</font>
+Christophe would like to see the locking for this purpose combined with
+the locking required to register the initialized object with __cxa_atexit,
+as well as the ability to statically create the structure that will be
+enqueued by __cxa_atexit.
+
+<p>
+A potential interface that allows this would be the following.
+Expand the guard object to the following structure:
+<pre><code>
+	struct __cxa_guard {
+	  long long guard;	// Guard variable
+	  void *next;		// List link for destructor chain
+	  void (*dtor) (void*);	// Pointer to destruction routine
+	  void *p;		// Pointer to dtor parameter
+	  dso_handle dhandle;	// DSO handle for owning DSO
+	};
+</code></pre>
+An implementation that chooses to implement its __cxa_atexit list with
+elements matching this structure could then simply enqueue the above
+structure on the list (without its initial doubleword guard).
+An implementation using another structure might need to rearrange the data.
+(This ABI would not specify either choice.)
+The __cxa_guard_release call above would be re-specified to also
+enqueue the object on the destruction list by calling __cxa_atexit or
+its equivalent.
+
+<p>
+<font color=blue><hr><p>[000817 SGI -- Jim]</font>
+Note the tradeoff in the above:
+It would increase the guard variable size from 8 to 40 bytes,
+but would likely eliminate a bunch of instructions
+to gather that data for the destructor registration call.
+(But it would be a pure loss for no-destructor objects.
+So perhaps we should modify it to eliminate the extra data for those,
+and pass a parameter or use a byte in the <code>guard</code> member
+to indicate that to the release routine?)
+
+<p>
+<font color=blue><hr><p>[001109 all]</font>
+It was observed that the current specification of __cxa_guard_release
+in 3.3.2 is not adequate to cope with the case where an exception is
+raised and the lock must be released without marking the object
+initialization complete.
+Therefore, we will define an analogous __cxa_guard_abort that does not
+mark the initialization complete, so that the next thread entering the
+scope will obtain the lock and try again.
+
+<p>
+Since there has been no further feedback from HP on the more
+complicated proposal above, and the current HP attendees do not think
+it necessary, this issue will be closed.
 
 
 <p>
