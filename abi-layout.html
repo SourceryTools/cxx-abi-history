@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 21 March 2000</i>
+<i>Revised 28 March 2000</i>
 
 </center>
 
@@ -31,12 +31,10 @@ C++ ABI for IA-64: Data Layout
 In this document, we define the memory layout for C++ data objects,
 including both predefined and user-defined data types,
 as well as internal compiler generated objects such as virtual tables.
-<font color=red>
 In general, this document is written as a generic specification,
 to be usable by C++ implementations on a variety of architectures.
 However, it does contain processor-specific material for the IA-64
 64-bit ABI, identified as such.
-</font>
 
 <p>
 In general, text appearing in this document in color is either
@@ -83,6 +81,11 @@ clarified:
 <li> Specify initialization guard variables.
 </a>
 
+<a href=#morally-virtual>
+<li> The description of the callee for morally virtual bases does
+not match what has teen described w.r.t. where the vcall offset is.
+</a>
+
 <a href=#vmi>
 <li> Is there any useful purpose for the has-public-base flag in
     <code>vmi_flags</code> of <code>__vmi_class_type_info</code>?
@@ -102,6 +105,12 @@ clarified:
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000327]</font>
+Updates from 23 March meeting.
+Adopt construction vtable Proposal B, and rewrite.
+Further work on mangling, especially substitution.
 
 <p>
 <font color=blue>[000320]</font>
@@ -323,9 +332,7 @@ These include, for the 64-bit IA-64 ABI:
 The offset of a non-virtual base subobject in the full object containing
 it must be representable by a 56-bit signed integer
 (due to RTTI implementation).
-<font color=red>
 This implies a practical limit of 2**55 bytes on the size of a class.
-</font>
 
 </ul>
 
@@ -579,9 +586,7 @@ allocate as follows:
 Finally allocate any direct or indirect virtual base classes
 (except the primary base class or any indirect primary base classes)
 as we did non-virtual base classes
-<font color=red>
 in step II-2 (if empty) or II-3 (if non-empty),
-</font>
 in inheritance graph order.
 Update sizeof(C) to max (sizeof(C), offset(D)+nvsize(D)).
 If non-empty, also update align(C) and dsize(C) as in II-2.
@@ -661,10 +666,8 @@ except for the exceptions specified.
 <i>Virtual call (vcall) offsets</i> are used
 to perform pointer adjustment for overridden virtual functions.
 These entries are allocated
-<font color=red>
 in the secondary vtable containing the virtual function pointer for the
 overridden function when the corresponding
-</font>
 class is used as a virtual base,
 to find the necessary adjustment from the base to the derived class,
 if any.
@@ -708,7 +711,6 @@ The offset provides a way to find the top of the object from any base
 subobject with a vtable pointer.
 This is necessary for dynamic_cast&lt;void*> in particular.
 
-<font color=red>
 <p>
 <i>In a complete object vtable,
 and therefore in all of its primary base vtables,
@@ -720,7 +722,6 @@ Only in some construction vtables will some virtual base vtables have
 positive offsets, due to a different ordering of the virtual bases in
 the full object than in the subobject's standalone layout.
 </i>
-</font>
 
 <p>
 <li>
@@ -728,7 +729,10 @@ The <i>typeinfo pointer</i> points to the typeinfo object used for RTTI.
 It is always present.
 All entries in each of the vtables for a given class must point to the
 same typeinfo object.
-A correct implementation of typeinfo equality is to check pointer equality.
+A correct implementation of typeinfo equality is to check pointer equality,
+<font color=red>
+except for pointers (directly or indirectly) to incomplete types.
+</font>
 The typeinfo pointer is a valid pointer for polymorphic classes,
 i.e. those with virtual functions,
 and is zero for non-polymorphic classes.
@@ -747,13 +751,11 @@ or the address of a secondary entry point that performs certain
 adjustments before transferring control to a virtual function.
 
 <p>
-<font color=red>
 The form of a virtual function pointer is specified by the
 processor-specific C++ ABI for the implementation.
 In the specific case of 64-bit IA-64 shared library builds,
 a virtual function pointer entry contains a pair of components
 (each 64 bits):
-</font>
 the value of the target GP value and the actual function address.
 That is, rather than being a normal function pointer,
 which points to such a two-component descriptor,
@@ -780,12 +782,22 @@ that of its standalone vtable.
 
 <p>
 The entries for virtual destructors are actually pairs of entries.
-The first destructor, called the not-in-charge destructor,
+The first destructor,
+<font color=red>
+called the non-deleting in-charge destructor,
+</font>
 performs the destruction without calling delete() on the object.
-The second destructor, called the in-charge destructor,
+The second destructor,
+<font color=red>
+called the deleting in-charge destructor,
+</font>
 calls delete() after destroying the object.
 Both destroy any virtual bases;
-a separate, non-virtual entry performs destruction of the object but
+a separate, non-virtual function,
+<font color=red>
+called the not-in-charge destructor,
+</font>
+performs destruction of the object but
 not its virtual base subobjects, and does not call delete().
 
 </ul>
@@ -870,7 +882,8 @@ Structure:
 
 <p>
 The class has a vtable for each base class that has a vtable.
-The class's vtables are constructed from copies of the base class vtables.
+The secondary vtables for the class
+are constructed from copies of the base class complete object vtables.
 The entries are the same, except:
 
 <ul>
@@ -1105,8 +1118,7 @@ that its `this' pointer points to a C object.
 
 <p>
 We say that a subobject X is a <i>morally virtual</i> base of Y
-if X is an indirect or direct base class of Y,
-and if X is either a virtual base of Y,
+if X is either a virtual base of Y,
 or the direct or indirect base of a virtual base of Y.
 
 
@@ -1116,10 +1128,10 @@ The calling convention is as follows:
 <ul>
 <li>Vtable Components:
 <p>
-For each virtual function defined in a class C,
+For each virtual function declared in a class C,
 we add an entry to its vtable if one is not already there
 (i.e. if it is not overriding a function in its primary base).
-In particular, a definition which overrides a function inherited from
+In particular, a declaration which overrides a function inherited from
 a secondary base gets a new slot in the primary vtable.
 We do this to avoid useless adjustments when calling a virtual
 function through a pointer to the most derived class.
@@ -1142,7 +1154,7 @@ The vtable contains a function pointer pointing to the
 non-adjusting entry point for A::f.
 
 <p>
-<li> A = C
+<li> A != C
 <p>
 In this case, we are creating the A-in-B secondary vtable.
 <p>
@@ -1168,8 +1180,11 @@ the compiler must emit, in the same object file as the code for C::f,
 an <i>A-adjusting entry point</i> for C::f.
 This entry point will expect that its <code>this</code> pointer
 points to an A*,
-and will convert it to a C* before transferring control
-to the non-adjusting entry point for C::f.
+and will convert it to a C*
+<font color=red>
+(which merely requires adding a constant offset)
+</font>
+before transferring control to the non-adjusting entry point for C::f.
 
 <p>
 For each direct or indirect virtual base V of C such that either V declares f,
@@ -1180,9 +1195,11 @@ This entry point will expect that its <code>this</code> pointer
 points to the unique virtual V subobject of C.
 (Note that there may in general be multiple V subobjects of C,
 but that only one of them will be virtual.)
-This entry point must examine the V vtable given by its
-<code>this</code> pointer,
+<font color=red>
+This entry point must load the vcall offset corresponding to f located
+in the vtable for V obtained via its <code>this</code> pointer,
 extract the vcall offset corresponding to f located in that vtable,
+</font>
 and add this offset to the <code>this</code> pointer.
 (Note that, as specified in the data layout document,
 when V is used as a virtual base,
@@ -1191,17 +1208,24 @@ declared in V or any of its bases.)
 Then,
 this entry point must transfer control to the non-adjusting entry point.
 
+<a name=morally-virtual>
 <p>
-For each morally virtual base M of C such that M is <i><b>not</b></i>
-a virtual base,
+For each morally virtual base M of C
+such that M is <i><b>not</b></i> a virtual base
+<font color=red>
+(and therefore must be a subobject of a virtual base V),
+</font>
 and such that M declares f,
 the compiler must emit,
 in the same object file as the code for C::f,
 an <i>M-adjusting entry point</i> for C::f.
 This entry point will expect that its <code>this</code> pointer
-points to an A*,
-and will convert it to a V*,
-where V is the nearest virtual base to M along the path from C to M.
+<font color=red>
+points to an M*,
+and will convert it to a V* (a fixed offset),
+</font>
+where V is the nearest virtual base to M
+along the inheritance path from C to M.
 Then, it will convert the V* to a C* by using the vcall offset
 stored in the V's vtable.
 (Note that one implementation of the M-adjusting entry point
@@ -1336,103 +1360,147 @@ An array of vtable addresses, called the VTT,
 is declared for each class type that needs a construction vtable.
 A class needs a construction vtable if it has
 indirect or direct virtual base classes.
-<font color=red>
 (Otherwise,
 each base class may be initialized using its complete object vtable group.)
-</font>
 
 <p>
-The elements of the VTT array are in this order:
+The elements of the VTT array for a class D are in this order:
+<font color=red>
 
-<p>
-<table border=1 cellpadding=5>
-
-<tr> <th> Proposal A </th> </tr>
-<tr> <td> <font color=red size=-1>
-<ol>
+<ol type=1>
 <li>
-Address of the vtable for the complete object,
-which includes subobject vtables appended to it
-as described in <a href=#vtable>Virtual Table Layout</a> above.
+<i>Primary vptr</i>:
+address of the primary vtable for the complete object D.
 
 <p>
 <li>
-Addresses of construction vtables for each non-virtual subobject that needs
-a construction vtable,
-ordered as a VTT for the subobject.
+<i>Secondary VTTs</i>:
+for each non-virtual subobject B of D,
+that requires a construction vtable by virtue of having virtual bases,
+a sub-VTT for B-in-D, which contains:
 
+<ol type=a>
 <p>
-This step is recursive:
-the addresses of construction vtables for each subobject include the
-addresses in 1 and 2 for each subobject class that
-has non-virtual subobjects that need construction vtables.
+<li>
+The address of the primary construction vtable for the subobject B in D,
+as described below.
 
 <p>
 <li>
-Addresses of construction vtables for each virtual subobject in
-initialization (DFS) order.
-These addresses are as in #2 above,
-and can be recursive for non-virtual bases within the virtual base subobjects.
-The virtual VTT addresses are on the end because they are only passed
+For each non-virtual subobject A of B,
+that needs a construction vtable for construction as part of B,
+a sub-VTT for A-in-B in D,
+constructed recursively according to the rules (1)-(2).
+Subobject A of B needs a construction vtable for construction as part of B
+if it either
+(i) has virtual bases (which may require vbase offset changes) or
+(ii) has a virtual function that is overridden along a virtual path
+in the complete object constructor for B
+(which may require vcall offset changes).
+
+<p>
+<li>
+<i><b>Ed. Note:
+Don't we need the equivalent of secondary vptrs here, too?
+</i>
+
+</ol>
+
+<p>
+Note that steps 2a and 2b are applied recursively to embed sub-VTTs for
+subobjects encountered in 2b.
+
+<p>
+<li>
+<i>Secondary vptrs</i>:
+For each subobject X with either virtual bases
+or virtual functions overridden along a virtual path in D,
+the address of the secondary vtable for X-in-D.
+These include virtual and non-virtual, direct and indirect subobjects,
+in inheritance graph order.
+
+<p>
+<li>
+<i>Virtual VTTs</i>:
+The sub-VTTs for each virtual subobject in initialization (DFS) order,
+i.e. the sub-VTT for virtual base W of virtual base V of D
+comes before the sub-VTT for V.
+These sub-VTTs are constructed as in (2) above,
+including sub-VTTs for any non-virtual bases of the current virtual base.
+The virtual VTT addresses come last because they are only passed
 to the virtual base class constructors for the complete object.
-
 </ol>
 
-</font></td></tr>
 
-<tr> <th> Proposal B </th> </tr>
-<tr> <td> <font color=green size=-1>
-<ol>
-<li>
-Address of the primary vtable for the complete object,
+<p>
+Each vtable address in the VTT is the address to be assigned to the
+respective virtual pointer,
+i.e. the address of the first virtual function pointer in the vtable,
+not of the first vcall offset.
 
-<li>
-For each non-virtual subobject that needs a construction vtable, provide:
+<p>
+For example, suppose we have the following hierarchy:
+<code><pre>
+  class A1 { void f(); };
+  class A2 { };
+  class V1 : public A1, public A2 { };
+  class B1 { };
+  class B2 { };
+  class V2 : public B1, public B2, public virtual V1 { void f(); };
+  class C1 : public virtual V1 { };
+  class C2 : public virtual V2 { };
+  class X1 { };
+  class C3 : public X1 { };
+  class D : public C1, public C2, public C3 { void f(); };
 
-<ol>
-<li>
-Address of the primary construction
-vtable for the subobject,
+</pre></code>
 
-<li>
-Address of any secondary construction
-vtable for the subobject that either has virtual bases or has a virtual
-function that is overridden along a virtual path in the complete object
-constructor.
-</ol>
-This step is recursive between 1 and
-2 -&nbsp; the addresses of construction vtables for each subobject include
-the addresses in 1 and 2 for each subobject class that has non-virtual
-subobjects that need construction vtables.
-<li>
-Addresses of secondary vtables that
-either have virtual bases or virtual functions overridden on a virtual
-path.
+Then the VTT for D would appear in the following order,
+where indenting indicates the sub-VTT structure,
+and asterisks (*) indicate that construction vtables instead of
+complete object vtables are required.
+<code><pre>
+  // 1. Primary vptr:
+  D * has virtual bases
 
-<li>
-Addresses of construction vtables for
-each virtual subobject in initialization (DFS) order.&nbsp; These addresses
-are as in #2 above, and can be recursive for non-virtual bases within
-the virtual base subobjects.&nbsp; The virtual VTT addresses are on the
-end because they are only passed to the virtual base class constructors
-for the complete object.
-</ol>
+  // 2. Secondary VTTs:
+    C1 * has virtual base
+      V1-in-C1 in D secondary vptr
+	A1-in-...-C2 in D secondary vptr
 
-</font></td></tr>
+    C2 * has virtual bases
+      V2-in-C2 in D secondary vptr
+	V1-in-V2-in-C2 in D secondary vptr
+	  A1-in-...-C2 in D secondary vptr
 
-</table>
+  // 3. Secondary vptrs:
+    C1-in-D secondary vptr
+      V1-in-D secondary vptr
+	A1-in-V1-in-D secondary vptr
+    C2-in-D secondary vptr
+      V2-in-D secondary vptr
 
-All vtable addresses in the VTT point to the beginning address of the vtable,
-not the address that is assigned to the vptr.
+  // 4. Virtual VTTs:
+    (V1 can use complete object constructor).
+    V2 * has virtual base, has overridden f()
+      V1-in-V2 in D secondary VTT
+	A1-in-V1 * has overridden f()
+      V1-in-V2 in D secondary vptr
+	A1-in-V1-in-V2 in D secondary vptr
+
+</pre></code>
+</font>
 
 <p>
 <h4> Construction VTABLE Layout</h4>
-The construction vtables for a complete object are appended to the vtable
-in the order of their appearance in the VTT array.
-So the vtable structures for a complete object of class C include,
+
+<p>
 <font color=red>
-in no particular order:
+The construction vtables for a complete object are 
+emitted in the same object file as the vtable.
 </font>
+So the vtable structures for a complete object of class C include,
+in no particular order:
 
 <ul>
 <li>
@@ -1442,79 +1510,35 @@ along with its base class subobject vtables in order of allocation,
 including virtual base class subobject vtables;
 
 <li>
-the construction vtable groups for nonvirtual and virtual bases; and
+any construction vtables required for non-virtual and virtual bases; and
 
 <li>
 the VTT array for C, providing location information for the above.
 </ul>
 
+</font>
+
 <p>
-<font color=red>
 The VTT array is referenced via its own mangled external name,
-and the construction vtable groups are accessed via the VTT array,
+and the construction vtables are accessed via the VTT array,
 so the latter do not have external names.
-</font>
 
-
-<p>
-Issues:
-<ul>
-<li>
-We could separate the VTT array from the vtable,
-and provide a new VTT data item.
-<font color=purple>
-We will do so.
-</font>
-<li>
-We could also make the VTT static so it has no linkage
-and is created in the modules that define the constructors and destructor
-of a class.  I don't think they would take that much space.
-<font color=purple>
-We will not do this.
-To avoid replicating the construction vtables, which are big,
-we need to allocate them with the main vtable with a known interface.
-So there's no benefit to putting the VTT elsewhere.
-</font>
-<li>
-The subobject construction vtables do not need to be contiguous to the
-normal vtable, since they will be accessed via the VTT.
-<font color=purple>
-We will do so.
-</font>
-</ul>
 
 <p>
 <h4> Construction VTABLE entries</h4>
 
 <p>
-<table border=1 cellpadding=5>
-
-<tr> <th> Proposal A </th> </tr>
-<tr> <td> <font color=red size=-1>
-
-The construction vtable group for a base class subobject B
-(of derived class D)
-has the same entries in the same order as the main vtable group
-for a complete object B,
-as described in <a href=#vtable>Virtual Table Layout</a> above.
-
-</font></td></tr>
-
-<tr> <th> Proposal B </th> </tr>
-<tr> <td> <font color=green size=-1>
-
+<font color=red>
 The construction vtable group for a
 base class subobject B (of derived class D)
 does not have the same entries in the same
 order as the main vtable group for a complete object B,
 as described in <a href=#vtable>Virtual Table Layout</a> above.
-Some of the base class subobject vtables may not need construction vtables,
-so will not be present in the construction vtable group,
-even though they are present in the main vtable group for the complete object.
-
-</font></td></tr>
-
-</table>
+Some of the base class subobjects may not need construction vtables,
+which will therefore not be present in the construction vtable group,
+even though the subobject vtables are present in the main vtable group
+for the complete object.
+</font>
 
 <p>
 The <i>values</i> of some construction vtable entries will differ
@@ -1561,21 +1585,12 @@ virtual bases or override virtual functions with a virtual step
 (have vcall offsets needing adjustment).
 
 <p>
-<table border=1 cellpadding=5>
-
-<tr> <th> Proposal B </th> </tr>
-<tr> <td> <font color=green size=-1>
-
 If the not-in-charge constructor calls constructors for base class
 subobjects that do not need construction vtables,
 the construction vtable parameter is not passed to the base class
 subobject constructor,
 and the base class subobject constructors use
 their complete object vtables for initialization.
-
-</font></td></tr>
-
-</table>
 
 <p>
 <i>
@@ -1586,92 +1601,74 @@ This doesn't work when an exception is raised during construction,
 and the destructor doesn't have the constructor vtable's address anymore.
 There may be a way to make this work with the landing pad model,
 but I haven't worked that out.
-</i>
-
-<p>Therefore the code for subobject constructor D which needs a construction
-vtable with one base class subobject B that needs a construction vtable
-would look like the following:
 
 <p>
-<table border=1 cellpadding=5>
+<font color=red>
+Suppose we have a subobject class D that needs a construction vtable,
+derived from a base B that needs a construction vtable as part of D,
+and possibly from others that do not need construction vtables.
+Then the sub-VTT and constructor code for D would look like the following:
+</font>
+</i>
 
-<tr> <th> Proposal A </th> </tr>
-<tr> <td> <font color=red>
-
-<code><pre>
-     static vtable *__VTT__1D[3] =
+<p>
+<code><pre> <font color=red>
+     // Sub-VTT for D (embedded in VTT for its derived class X):
+     static vtable *__VTT__1D [1+n+m] =
 	{ D primary vtable,
-	  ctorvtbl for B in D }; 
+	  // The sub-VTT for B-in-D in X may have further structure:
+	  B-in-D sub-VTT (n elements),
+	  // The secondary vptrs for D's bases have elements
+	  // corresponding to those in the B-in-D sub-VTT,
+	  // and possibly others for virtual bases of D:
+	  D secondary vptr for B and bases (m elements) }; 
 
-     D(D *this, vtable **ctorvtbls) 
+     D ( D *this, vtable **ctorvtbls )
      {
-         // Call subobject constructors with ctorvtbls index
-	 // if that base needs it. 
-         B((B*)this, &ctorvtbls[1]); 
-         // etc... 
-         // Initialize vptr with primary ctorvtbls address (first element) 
-         this->vptr = ctorvtbls[0][n];  // where n is the index of
-					// first virtual function in vtbl. 
-         // Initialize vptrs of subobjects with ctorvtbls addresses
-	 // for the bases 
-         ((B*)this)->vptr = ctorvtbls[0][m];
-		 // where m is the index of the first virtual function 
-		 // for base class subobject B 
-         // Code for constructor. 
+	// (The following will be unwound, not a real loop):
+	for ( each base A of D ) {
+
+	   // A "boring" base is one that does not need a ctorvtbl:
+	   if ( ! boring(A) ) {
+	     // Call subobject constructors with sub-VTT index
+	     // if the base needs it -- only B in our example:
+	      A ( (A*)this, ctorvtbls + sub-VTT-index(A) ); 
+
+	   } else {
+	     // Otherwise, just invoke the complete-object constructor:
+	      A ( (A*)this );
+	   }
+	}
+
+        // Initialize vptr with primary ctorvtbls address (first element):
+        this->vptr = ctorvtbls+0;	// primary vptr
+
+	// (The following will be unwound, not a real loop):
+	for ( each subobject A of D ) {
+	
+	   // Initialize vptrs of subobjects with ctorvtbls addresses
+	   // for the bases 
+	   if ( ! boring(A) ) {
+	      ((A*)this)->vptr = ctorvtbls + 1+n + secondary-vptr-index(A);
+		   // where n is the number of elements in the sub-VTTs
+	    
+	   } else {
+	     // Otherwise, just use the complete-object vtable:
+	      ((A *)this)->vptr = &(A-in-D vtable);
+	   }
+	}
+
+        // Code for D constructor.
+	...
       }
+</font>
 </pre></code>
-
-</font></td></tr>
-
-<tr> <th> Proposal B </th> </tr>
-<tr> <td> <font color=green>
-
-<code><pre>
-     static vtable *__VTT__1D[3] =
-	{ D primary vtable,
-	  ctorvtbl for B in D,
-	  D secondary vtables }; 
-
-     D(D *this, vtable **ctorvtbls) 
-     {
-         // Call subobject constructors with ctorvtbls index
-	 // if that base needs it. 
-	 if ( base B is not BORING ) {
-	    B ( (B*)this, &ctorvtbls[1] ); 
-	 } else {
-	    BORING ( (BORING *)this );
-	 }
-
-         // etc... 
-
-         // Initialize vptr with primary ctorvtbls address (first element) 
-         this->vptr = ctorvtbls[0][n];  // where n is the index of
-					// first virtual function in vtbl. 
-
-         // Initialize vptrs of subobjects with ctorvtbls addresses
-	 // for the bases 
-	 if ( base B is not BORING ) {
-	    ((B*)this)->vptr = ctorvtbls[2][m];
-		 // where m is the index of the first virtual function 
-		 // for base class subobject B 
-	  
-	 } else {
-	    ((BORING *)this)->vptr = ctorvtbls[3][p];
-	 }
-
-         // Code for constructor. 
-      }
-</pre></code>
-
-</font></td></tr>
 
 </table>
 
 <p>
 A test program for this can be found in the
 <a href=abi-examples.html#vtable-ctor>ABI Examples</a> document.
-
-</font>
 
 
 
@@ -1701,9 +1698,7 @@ Specifically:
 
     <p>
     (Note: if the usual array deallocation function takes two arguments,
-<font color=red>
     then it is a member function whose second argument is of type size_t.
-</font>
     The standard guarantees (12.5 [class.free])
     that this function will be passed the
     number of bytes allocated with the previous array new expression.
@@ -1966,13 +1961,25 @@ with the following public interface:
   };
 </pre></code>
 
+<font color=red>
 <p>
-Assuming that after linking and loading only one type_info structure is
-active for any particular type symbol,
-the equality and inequality operators can be
+After linking and loading,
+only one type_info structure is accessible via the external name
+defined by this ABI for any particular complete type symbol.
+Therefore,
+</font>
+the equality and inequality operators can generally be
 written as address comparisons:
-to type_info structures describe the same type
+two type_info structures describe the same type
 if and only if they are the same structure (at the same address).
+<font color=red>
+However, in the case of pointer types,
+pointing to incomplete class types directly or indirectly,
+a more complex comparison is required,
+described below with the RTTI layout of pointer types.
+</font>
+
+<p>
 In a flat address space
 (such as that of the IA-64 architecture),
 the before() member is also easily written in terms of an address comparison.
@@ -2115,17 +2122,13 @@ It contains:
 
 <p>
 If the target type of the pointer is an incomplete class type,
-<font color = red>
 directly or indirectly,
-</font>
 a dummy class RTTI is generated for the incomplete type
 that will not resolve to the final complete class RTTI
 (because the latter need not exist),
 possibly by making it a local static object,
 and the incomplete target type flag is set
-<font color=red>
 in each pointer RTTI that references it directly or indirectly.
-</font>
 
 <p>
 Two abi::__pointer_type_info objects are compared for equality
@@ -2161,9 +2164,13 @@ the RTTI for the complete class type,
 for instance by emitting it as a static object (without external linkage).
 
 <p>
-Two abi::__class_type_info objects are compared for equality
+Two abi::__class_type_info objects are normally compared for equality
 (i.e. of the types represented)
 <font color=red>
+by comparison of their addresses.
+However, incomplete class RTTI objects,
+which can only be accessed via abi::__pointer_type_info objects,
+must be compared for equality
 by comparison of the name NTBS in their std::type_info bases.
 </font>
 
@@ -2226,8 +2233,7 @@ It is derived from abi::__class_type_info, and adds fields:
       For a virtual base,
       this is the offset in the vtable of the
       virtual base offset for the virtual base referenced
-      (in general, negative if introduced in this primary vtable,
-      or positive if reused from a non-virtual base's vtable).
+      (negative).
 
       <p>
       The lower byte of vmi_offset_flags contains flags,
@@ -2332,7 +2338,7 @@ These tests are implemented by abi::__dynamic_cast:
     *      source object is polymoprhic, *(void**)sub is a vptr.
     * src: static type of the source object.
     * dst: destination type (the "T" in "dynamic_cast&lt;T>(v)").
-    * obj2sub_offset: a static hint about the location of the
+    * src2dst_offset: a static hint about the location of the
     *    source subobject with respect to the complete object;
     *    special negative values are:
     *       -1: no hint
@@ -2429,12 +2435,11 @@ or <code>Type?</code> for an unknown data type.
 <p>
 <ul>
 <li> Mangling of special entities: helper variables for thread protection, ...
-<font color=red>
-<li> Qualifier for extern "C" function types.
 <li> Mangling local names for RTTI matching.
-<li> Clarify substitution dictionary contents.
-</font>
 <li> Complete glossary of Sx abbreviations.
+<font color=red>
+<li> Distinguish data and parameter-less functions?
+</font>
 <li> Proof of nonambiguity
 <li> ILP-32 conventions?
 <li> Revise examples.
@@ -2449,31 +2454,24 @@ Mangled names have the general structure:
 <pre><font color=blue><code>
     &lt;mangled-name> ::= _Z &lt;encoding>
 <font color=red>
-    &lt;encoding> ::= &lt;name> [&lt;encoding-type>]
-		# See <a href=#mangling-type>Type Encodings</a> below
-    &lt;encoding-type> ::= &lt;type>
-		    ::= &lt;bare-function-type>
-		    ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
+    &lt;encoding> ::= &lt;<i>function</i> name> &lt;bare-function-type>
+	       ::= &lt;<i>data</i> name>
 </font>
 </pre></font></code>
 
-<font color=red>
 Thus, a name is mangled by prefixing "_Z" to an encoding of its name,
-and in some cases its type.
+and in the case of functions its type (to support overloading).
 At this top level,
-function types do not have the delimiters required when nested
-(see below).
-</font>
+function types do not have the special delimiter characters required
+when nested (see below).
 
 <pre><font color=blue><code>
-<font color=red>
     &lt;name> ::= &lt;nested-name>
 	   ::= &lt;unqualified-name>
 	   ::= &lt;local-name>	# See <a href=#mangling-scope>Scope Encoding</a> below
 	   ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
 </pre></font></code>
 
-<font color=red>
 Names of objects nested in namespaces or classes are identified as a
 delimited sequence of names identifying the enclosing scopes.
 For compression purposes
@@ -2485,10 +2483,8 @@ encoding the <code>this</code> attributes.
 Note that if member function CV-qualifiers are required,
 the delimited form must be used even if the remainder of the name is
 a single substitution.
-</font>
 
 <pre><font color=blue><code>
-<font color=red>
     &lt;nested-name> ::= N &lt;qualified-name> E
     &lt;qualified-name> ::= &lt;CV-qualifier> &lt;qualified-name>
 		     ::= &lt;compound-name>
@@ -2501,7 +2497,6 @@ a single substitution.
 		     ::= &lt;substitution>
     &lt;nesting-qualifier> ::= &lt;<i>namespace</i> source-name>
 			::= &lt;class-enum-name>
-</font>
 
     &lt;unqualified-name> ::= &lt;<i>function</i> source-name>
 		       ::= &lt;<i>function</i> source-name> &lt;template-args>
@@ -2601,42 +2596,35 @@ shall encode them as a 'vx' prefix followed by the name in &lt;length,ID> form.
 <p>
 <a name=mangling-special>
 <h4> Other Special Functions and Entities </h4>
-<pre><font color=blue><code>
-  &lt;special-name> ::= TV	# virtual table
-			# &lt;type> is vtable's class type
-		 ::= TT	# VTT structure (construction vtable index)
-			# &lt;type> is VTT's class type
-		 ::= TI	# typeinfo structure
-			# &lt;type> is typeinfo's class type
-		 ::= TD	# typeinfo common proxy
-			# &lt;type> is typeinfo's class type
+
 <font color=red>
-		 ::= Th[n] &lt;<i>offset</i> number> _ &lt;<i>base</i> name> &lt;<i>base</i> function-type>
-			# non-virtual base override thunk
-			# <i>base</i> is the nominal target function of thunk
-			# No &lt;type> other than base function's
-		 ::= Tv &lt;<i>vcall offset</i> number> _ &lt;<i>base</i> name> &lt;<i>base</i> function-type>&lt;<i>base class</i> type>
-			# virtual base override thunk
-			# <i>base</i> is the nominal target function of thunk
-			# No &lt;type> other than base function's
+<p>
+Associated with a virtual table are several entities with mangled
+external names: the vtable itself, the VTT for construction,
+and the typeinfo structure.
+All have an encoding where the &lt;name> is a simple two-character code,
+appearing as the last component of a &lt;nested-name>,
+where the prefix is the name of the class with which they are associated.
 </font>
 
-		 ::= C1	# complete object (in-charge) constructor
-			# for class &lt;type>
-		 ::= C2	# base object (not-in-charge) constructor
-			# for class &lt;type>
-		 ::= C3	# complete object (in-charge) allocating constructor
-			# for class &lt;type>
-		 ::= C4	# base object (not-in-charge) allocating constructor
-			# for class &lt;type>
-		 ::= D0	# deleting (in-charge) destructor
-			# for class &lt;type>
-		 ::= D1	# complete object (in-charge) destructor
-			# for class &lt;type>
-		 ::= D2	# base object (not-in-charge) destructor
-			# for class &lt;type>
+</font>
+<pre><font color=blue><code>
+  &lt;special-name> ::= TV	# virtual table
+		 ::= TT	# VTT structure (construction vtable index)
+		 ::= TI	# typeinfo structure
 
-		 ::= GV &lt;<i>object</i> name>	# Guard variable for one-time initialization
+</pre></font></code>
+
+<font color=red>
+<p>
+Initialization of function-scope static objects requires
+a guard variable to prevent multiple initialization.
+These are mangled as a 'GV' prefix with the mangled name of the object
+being guarded.
+</font>
+
+<pre><font color=blue><code>
+  &lt;special-name> ::= GV &lt;<i>object</i> name>	# Guard variable for one-time initialization
 			# No &lt;type>
 
 </pre></font></code>
@@ -2658,6 +2646,36 @@ The target function encodings of both incorporate the function type;
 no additional type is encoded for the thunk itself.
 
 
+<pre><font color=blue><code>
+  &lt;special-name> ::= Th[n] &lt;<i>offset</i> number> _ &lt;<i>base</i> name> &lt;<i>base</i> function-type>
+			# non-virtual base override thunk
+			# <i>base</i> is the nominal target function of thunk
+			# No &lt;type> other than base function's
+		 ::= Tv &lt;<i>vcall offset</i> number> _ &lt;<i>base</i> name> &lt;<i>base</i> function-type>&lt;<i>base class</i> type>
+			# virtual base override thunk
+			# <i>base</i> is the nominal target function of thunk
+			# No &lt;type> other than base function's
+
+</pre></font></code>
+
+<font color=red>
+<p>
+Constructors and destructors are simply special cases of &lt;nested-name>,
+where the final &lt;unqualified-name> is replaced by one of the following:
+</font>
+
+<pre><font color=blue><code>
+  &lt;special-name> ::= C1	# complete object (in-charge) constructor
+		 ::= C2	# base object (not-in-charge) constructor
+		 ::= C3	# complete object (in-charge) allocating constructor
+		 ::= C4	# base object (not-in-charge) allocating constructor
+		 ::= D0	# deleting (in-charge) destructor
+		 ::= D1	# complete object (in-charge) destructor
+		 ::= D2	# base object (not-in-charge) destructor
+
+</pre></font></code>
+
+
 <p>
 <a name=mangling-type>
 <h4> Type encodings </h4>
@@ -2672,6 +2690,9 @@ Types are encoded as follows:
 	 ::= &lt;array-type>
 	 ::= &lt;pointer-to-member-type>
 	 ::= &lt;template-param>
+<font color=red>
+	 ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
+</font>
 
 </pre></font></code>
 
@@ -2680,28 +2701,41 @@ Types are qualified (optionally) by single-character prefixes encoding
 cv-qualifiers and/or pointer, reference, complex, or imaginary types:
 
 <pre><font color=blue><code>
-<font color=red>
   &lt;type> ::= &lt;CV-qualifier>
-</font>
 	 ::= P &lt;type>	# pointer-to
 	 ::= R &lt;type>	# reference-to
 	 ::= C &lt;type>	# complex pair (C 2000)
 	 ::= G &lt;type>	# imaginary (C 2000)
-<font color=red>
 	 ::= U &lt;source-name> &lt;type>	# vendor extended type qualifier
-</font>
-<font color=red>
+
   &lt;CV-qualifier> ::= K &lt;type>	# const
 		 ::= V &lt;type>	# volatile
 		 ::= r &lt;type>	# restrict (C 2000)
-</font>
 
 </pre></font></code>
 
 <p>
-<font color=red>
-Vendors who define extended type qualifiers (e.g. near, far for pointers)
+Vendors who define extended type qualifiers (e.g. _near, _far for pointers)
 shall encode them as a 'U' prefix followed by the name in &lt;length,ID> form.
+
+<font color=red>
+<p>
+In cases where multiple order-insensitive qualifiers are present,
+they should be ordered 'K' (closest to the base type), 'V', 'r', and
+'U' (farthest from the base type), with the 'U' qualifiers in
+alphabetical order by the vendor name.
+For example, <code>int* volatile const restrict _far p</code>
+has mangled type name <code>U4_farrVKPi</code>.
+
+<p>
+<i>
+Vendors must therefore specify which of their extended qualifiers are
+considered order-insensitive,
+not necessarily on the basis of whether their language translators
+impose an order in source code.
+They are encouraged to resolve questionable cases as being
+order-insensitive to maximize consistency in mangling.
+</i>
 </font>
 
 <a name=mangling-builtin>
@@ -2744,17 +2778,15 @@ Vendors who define builtin extended types shall encode them
 as a 'u' prefix followed by the name in &lt;length,ID> form.
 
 <p>
-<font color=red>
 Function types are composed from their parameter types and possibly the
 result type.
-Except at the outer level type of an &lt;encoding-type>,
-or in the &lt;encoding> of an otherwise delimited external name
+Except at the outer level type of an &lt;encoding>,
+or in the &lt;encoding> of an otherwise delimited external name in a
 &lt;template-parameter> or &lt;local-name> function encoding,
 these types are delimited by an "F..E" pair.
 For purposes of substitution
 (see <a href=#mangling-compression>Compression</a> below),
 delimited and undelimited function types are considered the same.
-</font>
 
 <p>
 The type of nontemplate function objects
@@ -2764,23 +2796,39 @@ includes only the parameter types.
 For template functions,
 or for function type specifications such as function parameters,
 &lt;type> includes the return type followed by the parameter types.
+<font color=red>
+Thus:
+<ul>
+<li> Template functions (names or types) have return types encoded.
+<li> Non-template function names do not have return types encoded.
+<li> Function types not appearing as part of a function name mangling,
+e.g. parameters, pointer types, etc., have return type encoded.
+</ul>
+</font>
+
+<p>
 Empty parameter lists declared conventionally as <code>(void)</code>
 are not encoded with a void parameter specifier (v).
-Member functions do not encode the full type of their <code>this</code>
-parameter.
-<font color=red>
+Member functions do not encode the type of
+their implicit <code>this</code> parameter.
+
+<p>
 A "Y" prefix for the bare function type encodes extern "C".
 If there are any cv-qualifiers of <code>this</code>,
 they are encoded at the beginning of the &lt;qualified-name>
 as described above.
+<font color=red>
+This affects only type mangling,
+since extern "C" function objects have unmangled names.
 </font>
 
 <pre><font color=blue><code>
 <font color=red>
-  &lt;function-type> ::= F &lt;bare-function-type>* E
-  &lt;bare-function-type> ::= [Y] &lt;<i>param</i> type>*
-</font>
+  &lt;function-type> ::= F [Y] &lt;bare-function-type> E
+  &lt;bare-function-type> ::= &lt;<i>signature</i> type>*
+	# types are possible return type, then parameter types
 
+</font>
 </pre></font></code>
 
 <p>
@@ -2790,32 +2838,24 @@ Class names can optionally be followed by the encoding of a template
 argument list.
 Nested class names are preceded by the nesting qualifiers
 (namespace or class names), all enclosed in N/E brackets.
-<font color=red>
 Thus, the class type encoding is the same as function name encoding,
 except that no CV-qualifiers are present in a nested name specification.
-</font>
 
 <pre><font color=blue><code>
-<font color=red>
   &lt;class-enum-type> ::= &lt;nested-name>
 		    ::= &lt;class-enum-name>
   &lt;class-enum-name> ::= &lt;<i>class-enum</i> source-name>
 		    ::= &lt;<i>class-enum</i> source-name>  &lt;template-args>
-</font>
 </pre></font></code>
 
 <p>
-<font color=red>
 Array types encode the dimension (number of elements) and the element type.
 Note that "array" parameters to functions are encoded as pointer types.
 For variable length arrays,
 the dimension (but not the '_' separator) is omitted.
-</font>
 
 <pre><font color=blue><code>
-<font color=red>
   &lt;array-type> ::= A [&lt;<i>dimension</i> number>] _ &lt;<i>element</i> type>
-</font>
 
 </pre></font></code>
 
@@ -2831,9 +2871,7 @@ Pointer-to-member types encode the class and member types.
 Template parameters (including nontype and template template parameters)
 encode the parameter number.
 Objects appearing within multiple levels of template number the
-<font color=red>
 top-level parameters 1..n, the next level n+1..n+m, etc.
-</font>
 
 <pre><font color=blue><code>
   &lt;template-param> ::= T &lt;<i>parameter</i> number> _
@@ -2843,7 +2881,7 @@ top-level parameters 1..n, the next level n+1..n+m, etc.
 <p>
 Template argument lists appear after the unqualified template name,
 and are bracketed by I/E.
-This is used for name specializations in particular,
+This is used in names for specializations in particular,
 but also in types and scope identification.
 
 <pre><font color=blue><code>
@@ -2926,7 +2964,7 @@ Occasionally entities in local scopes must be mangled too
 (e..g., because inlining or separate template compilation causes
 multiple translation units to require access to that entity).
 Local entities that might be mangled are
-numbered in lexical order starting with "1".
+numbered in lexical order within the function starting with "1".
 The numbered entities are:
 <ul>
 <li> local static variables
@@ -2973,7 +3011,6 @@ Example:
 <p>
 <a name=mangling-compression>
 <h4> Compression </h4>
-<font color=red>
 
 <p>
 To minimize the length of external names,
@@ -2986,48 +3023,75 @@ types, names, and qualified name prefixes,
 is both a source of future substitutions
 and a candidate for being substituted.
 
+<font color=red>
 <p>
+<i>
+All substitutions are for entities that would appear in a symbol table.
+In particular,
+we make substitutions for prefixes of qualified names,
+but not for arbitrary components of them.
+Thus, the components ::n1::foo() and ::n2:foo() appearing in the same
+name would not result in substituting for the second "foo."
+Similarly, we do not substitute for expressions,
+though names appearing in them might be substituted.
+The reason for this is to facilitate implementations that use the
+symbol table to keep track of components that might be substitutable.
+</i>
+</font>
+
+<p>
+<font color=red>
 Logically, the substitutable components of a mangled name are
-considered in the order they would be identified when interpreting the
-mangled name in the above grammar,
-that is left-to-right, a larger structure before its components.
-If a components has been encountered before,
-it is substituted as described below and added to a list
-of substitutable components that have been encountered so far.
-If not, its components are considered,
-and it is added to the list after they have been processed.
-Thus, large structures are considered for substition before their components,
-but are added to the list after their components.
+considered left-to-right,
+components before the composite structure of which they are a part.
+If a component has been encountered before,
+it is substituted as described below.
+If not, its mangling is identified,
+and it is added to a dictionary of substitution candidates.
+No entity is added to the dictionary twice.
+Thus, an implementation may optimize by considering large structures
+for substitution before their components.
 
 <p>
 Substitution is according to the production:
 
 <pre><font color=blue><code>
-  &lt;substitution> ::= S &lt;number> _
+  &lt;substitution> ::= S &lt;seq-id> _
+		 ::= S_
 
 </pre></font></code>
 
-The &lt;number> identifies the number-th most recently encoded component,
-(in right-to-left order, starting at "1").
+The &lt;seq-id> is a sequence number in base 36,
+using digits and upper case letters,
+and identifies the &lt;seq-id>-th most recently encoded component,
+in right-to-left order, starting at "0".
+As a special case,
+the immediately preceding substitutable entity is encoded as "S_",
+i.e. with no number,
+so the numbered entities are the second preceding one as "S0_",
+the third as "S1_", the twelfth as "SA_", the thirty-eighth as "S10_",
+etc.
 All substitutable components are so numbered,
-including those that have been substituted already,
-but the substitution occurs only if "S&lt;number>_"
+except those that have been substituted already,
+but the substitution occurs only if "S&lt;seq-id>_" (or "S_")
 is strictly shorter than the unsubstituted encoding.
+</font>
 A component is less recent than the structure of which it is a part.
 For example:
 
 <code><pre>
-   "_ZN1N1TIiiE2mfES5_IddE": Ret? N::T&lt;int, int>::mf(N::T&lt;double, double>)
+   "_ZN1N1TIiiE2mfES2_IddE": Ret? N::T&lt;int, int>::mf(N::T&lt;double, double>)
 </pre></code>
 
-since at the point where S5_ appears:
+since at the point where S2_ appears:
 <code><pre>
-   "S1_" == N::T&lt;int, int>::mf
-   "S2_" == N::T&lt;int, int>
-   "S3_" == int
-   "S4_" == int
-   "S5_" == N::T (template is less recent than template-id)
-   "S6_" == N (qualifier is less recent than qualified entity)
+<font color=red>
+   "S_" == N::T&lt;int, int>::mf
+   "S0_" == N::T&lt;int, int>
+   "S1_" == int
+   "S2_" == N::T (template is less recent than template-id)
+   "S3_" == N (qualifier is less recent than qualified entity)
+</font>
 </pre></code>
 
 <p>
@@ -3041,6 +3105,7 @@ In addition,
 the following catalog of abbreviations of the form "Sx" are used:
 <pre><font color=blue><code>
    &lt;substitution> ::= St # ::std::
+   &lt;substitution> ::= Sa # ::std::allocator
    &lt;substitution> ::= Sb # ::std::basic_string
    &lt;substitution> ::= Ss # ::std::basic_string &lt; char,
 						 ::std::char_traits&lt;char>,
@@ -3069,13 +3134,21 @@ For example:
    "_ZNSt3_In4wardE": ::std::_In::ward
 </pre></code>
 
-</font>
-
 
 <p>
 <a name=mangling-examples>
 <h4> Examples </h4>
 
+<p>
+In the table below,
+<code>Ret?</code> in the source name indicates a function for which
+the return type is not part of the mangling.
+<code>Type?</code> indicates a data object
+(for which the type is never part of the mangling).
+Spaces appear in some of the mangled names to assist a human parser --
+they are not part of the actual mangled name, and should be ignored.
+
+<p>
 <table border=1 cellpadding=4>
 <tr><th> Mangled name <br><i>(ignore spaces)</i> </th>
 <th> Source name </th> </tr>
@@ -3098,35 +3171,48 @@ For example:
 <tr class=small><td> _ZplR1XR1X </td>
 <td> Ret? operator+(X&, X&); </td></tr>
 
-<tr class=small><td> _ZlsRK1XS1_ </td>
-<td> Ret? operator(X const&, X const&);
-<br> (Note: strlen("S1_")&lt;strlen("RK1X")) </td></tr>
+<tr class=small><td> _ZlsRK1XS_ </td>
+<td><font color=red> Ret? operator&lt;&lt; (X const&, X const&);
+<br> (Note: strlen("S_")&lt;strlen("RK1X")) </font></td></tr>
+
+<tr class=small><td> _ZlsRK1XS_S_ </td>
+<td><font color=red> Ret? operator&lt;&lt; (X const&, X const&, X const&);
+</font></td></tr>
+
+<tr class=small><td> _ZN3FooIA4_iE3barE </td>
+<td><font color=red> Type? Foo<int[4]>::bar; </font></td></tr>
 
 <tr class=small><td> _Z1fIiEvi </td>
 <td> void f&lt;int>(/*nondependent*/int);
 <br> (Note: the return type is always explicitly encoded for template
 functions taking parameters.)</td></tr>
 
-<tr class=small><td> _Z5firstI3DuoEvS2_ </td>
-<td> void first&lt;Duo>(/*nondependent*/Duo);
-<br>(Note: "S1_" would refer to the "void" return type.) </td></tr>
+<tr class=small><td> _Z5firstI3DuoEvS0_ </td>
+<td><font color=red> void first&lt;Duo>(/*nondependent*/Duo);
+<br>(Note: "S_" would refer to the "void" return type.) </font></td></tr>
 
 <tr class=small><td> _Z5firstI3DuoEvT1_ </td>
 <td> void first&lt;Duo>(/*T1=*/Duo); </td></tr>
 
+<tr class=small><td> _Z3fooIiPFidEiEv </td>
+<td> void foo&lt;int,int(*)(double),int>();
+<br>(Note: return type encoded for template function.)</td></tr>
+
 <tr class=small><td> _ZN1N1fE </td>
-<td> Ret? N::f(); </td></tr>
+<td><font color=red> Ret? N::f();  <i>or</i><br> Type? N::f </font></td></tr>
 
 <tr class=small><td> _ZN6System5Sound4beepE </td>
-<td> Ret? System::Sound::beep(); </td></tr>
+<td><font color=red> Ret? System::Sound::beep();  <i>or</i>
+<br> Type? System::Sound::beep </font></td></tr>
 
 <tr class=small><td> _ZN5Arena5levelE </td>
-<td> Type? Arena::level; </td></tr>
+<td><font color=red> Ret? Arena::level(); <i>or</i>
+<br> Type? Arena::level; </font></td></tr>
 
 <tr class=small><td> _ZN5StackIiiE5levelE </td>
 <td> Type? Stack&lt;int, int>::level; </td></tr>
 
-<tr class=small><td> _Z1fI1XE vPV N1AIT1_E1T </td>
+<tr class=small><td> _Z1fI1XE vPV N1AIT1_E1TE </td>
 <td> void f&lt;X>(A&lt;/*T1=*/X>::T volatile*); </td></tr>
 
 <tr class=small><td> _ZngILi42EE vN1AIXplT1_Li2EE1TE </td>
@@ -3136,13 +3222,16 @@ functions taking parameters.)</td></tr>
 <td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
 <br> // T1 == template template parameter </td></tr>
 
-<tr class=small><td> _Z3foo 5Hello5WorldS1_S3_ </td>
-<td> void foo(Hello,World,World,Hello)
-<br> // S1_ counts as a type in numbering </td></tr>
+<tr class=small><td> _Z3foo 5Hello5WorldS_S0_ </td>
+<td><font color=red> void foo(Hello,World,World,Hello) </font></td></tr>
 
 <tr class=small><td> _Z3fooPM2ABi </td>
 <td> foo(int AB::**)
 <br> // M is a pointer, P adds another level </td></tr>
+
+<tr class=small><td> _ZlsRSoRKSs </td>
+<td><font color=red> operator&lt;&lt; (std::ostream&,std::string const&)
+</font></td></tr>
 
 </table>
 
