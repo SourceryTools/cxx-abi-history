@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 4 August 1999</i>
+<i>Revised 6 August 1999</i>
 
 </center>
 
@@ -25,6 +25,12 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990805]</font>
+Closed A-12, A-14, B-3, B-4, B-7, C-7.
+Additions to <a href=#A6>A-6</a>, <a href=#A11>A-11</a>,
+<a href=#B1>B-1</a>, <a href=#B6>B-6</a>, <a href=#F1>F-1</a>.
 
 <p>
 <font color=blue>[990729]</font>
@@ -151,7 +157,7 @@ The identifiers used are:
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> A-1 </td>
+<tr> <a name=A1></a> <td> A-1 </td>
 <td> Vptr location </td>
 <td> data </td>
 <td> closed </td>
@@ -179,7 +185,7 @@ First.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> A-2 </td>
+<tr> <a name=A2></a> <td> A-2 </td>
 <td> Virtual base classes </td>
 <td> data </td>
 <td> closed </td>
@@ -302,7 +308,7 @@ no parameter slot will be allocated to empty parameters.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> A-6 </td>
+<tr> <a name=A6></a> <td> A-6 </td>
 <td> RTTI .o representation </td>
 <td> data call ps </td>
 <td> open </td>
@@ -326,6 +332,17 @@ Define the data structure to be used for RTTI, that is:
 <font color=blue>[990701 All]</font>
 Daveed will put together a proposal by the 15th (action #13);
 the group will discuss it on the 22nd.
+
+<p>
+<font color=blue>[990805 All]</font>
+Daveed should have his proposal together for discussion.
+Michael Lam will look into the Sun dynamic cast algorithm.
+
+<p>
+It was noted that appropriate name selection along with the normal
+DSO global name resolution should be sufficient to produce a unique
+address for each class' RTTI struct,
+which address would then be a suitable identifier for comparisons.
 
 <p>
 <table border=on cellpadding=3>
@@ -465,7 +482,7 @@ except for cases with non-trivial copy constructors identified in C-7.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> A-11 </td>
+<tr> <a name=A11></a> <td> A-11 </td>
 <td> Pointers to member functions </td>
 <td> data </td>
 <td> open </td>
@@ -499,6 +516,34 @@ Others will describe their representations.
 IBM has an alternative, but it is believed to be patented by Microsoft.
 
 <p>
+<font color=blue>[990805 All]</font>
+It is agreed that a two-element struct will be used for a pointer to a
+member function, with elements as follows:
+
+<dl>
+<p>
+<dt> <code>ptr</code>:
+<dd> For a non-virtual function, this field is a simple function pointer.
+     (Under current base IA-64 psABI conventions,
+     this is a pointer to a GP/function address pair.)
+     For a virtual function,
+     it is 1 plus twice the Vtable offset of the function.
+     The value zero is a NULL pointer.
+
+<p>
+<dt> <code>adj</code>:
+<dd> The required adjustment to <i>this</i>.
+</dl>
+
+<p>
+Although we agreed to close this, SGI suggests a minor modification.
+Since the Vtable offset of a virtual function will always be even,
+we suggest that it not be doubled before adding 1.
+This is because shifts are more restricted on many processors than
+other integer ALU operations (shifters are large structures),
+so an XOR or NAND will often be cheaper than a right shift.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -507,13 +552,13 @@ IBM has an alternative, but it is believed to be patented by Microsoft.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> A-12 </td>
+<tr> <a name=A12></a> <td> A-12 </td>
 <td> Merging secondary vtables </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> Sun </td>
 <td> 990610 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -523,21 +568,14 @@ This allows their reference via the primary Vtable entry symbol,
 minimizing the number of external symbols required in linking,
 in the GOT, etc.
 </td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Concatenate the Vtables associated with a class in the same order
+that the corresponding base subobjects are allocated in the object.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[990701 Michael Lam]</font>
-Michael will check what the Sun ABI treatment is and report back.
-
-<p>
-<font color=blue>[990729 All]</font>
-A separate issue raised in conjunction with A-6 is whether to include
-Vfunc pointers in the primary Vtable for functions defined only in the
-base classes and not overridden.
-If the primary and secondary Vtables are concatenated,
-this is no longer an issue,
-since all can be referenced from the primary Vptr.
 
 <p>
 <table border=on cellpadding=3>
@@ -581,25 +619,25 @@ No special treatment will be specified by the ABI.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr class=small> <td> A-14 </td>
+<tr class=small> <a name=A14></a> <td> A-14 </td>
 <td> Pointers to data members </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990729 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 How should pointers to data members be represented?
 </td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Represented as one plus the offset from the base address.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[990729 SGI]</font>
-We suggest an offset from the base address of the class,
-represented as a <code>ptrdiff_t</code>.
 
 <p> <hr> <p>
 <h3> Virtual Function Handling Issues </h3>
@@ -613,7 +651,7 @@ represented as a <code>ptrdiff_t</code>.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-1 </td>
+<tr> <a name=B1></a> <td> B-1 </td>
 <td> Adjustment of "this" pointer (e.g. thunks) </td>
 <td> data call </td>
 <td> open </td>
@@ -636,6 +674,349 @@ to perform the adjustment may actually prove interesting.
 </table>
 
 <p>
+<font color=blue>[990623 HP -- Christophe]</font>
+
+<p>
+<h4>Open Issues Relevant To This Discussion</h4>
+
+<ol>
+<p>
+<li>
+Keeping all of a class in a single load module.
+The vtable contains the target address and one copy of the target GP.
+This implies that it is not in text, and that it is generated by dld.
+
+<p>
+<li>
+Detailed layout of the virtual table.
+
+<p>
+<li>
+How can we share class offsets?
+
+</ol>
+
+
+<p>
+<h4> 1. Scope and "State of the Art"</h4>
+
+<p>
+The following proposal applies only to calls to virtual functions  
+when a this pointer adjustment is required from a base class to a  
+derived class.
+Essentially, this means multiple inheritance, and the  
+existence of two or more virtual table pointers (vptr)
+in the complete object.
+The multiple vptrs are required so that the layout  
+of all bases is unchanged in the complete object.
+There will be one additional vptr for each base class which already
+required a vptr,  
+but cannot be placed in the whole object so that it shares its vptr  
+with the whole object.
+Note: when the vptr is shared,
+the base class  is said to be the "primary base class",
+and there is only one such class.
+
+<p>
+For the primary base class, no pointer adjustment is needed.
+For all  other bases, a pointer to the whole object is not a pointer
+to the base class,
+so whenever a pointer to the base class is needed,  
+adjustment will occur.
+
+<p>
+In particular, when calling a virtual function,
+one does not know in advance in which class the function was actually defined.
+Depending on the actual class of the object pointed to,
+pointer adjustment may be needed or not,
+and the pointer adjustment value may vary from class to class.
+The existing solution is to have the vtable point not to the function itself,
+but to a "thunk" which does pointer adjustment when needed,
+and then jumps to the actual function.  
+Another possibility is to have an offset in the vtable,
+which is used by the called function.
+However, more often than not, this implies adding zero.
+
+<p>
+Virtual bases make things slightly more complicated.
+In that case, the data layout is such that there is only
+one instance of the virtual base in the whole object.
+Therefore, the offset from a this  
+pointer to a same virtual base may change along the inheritance tree.  
+This is solved by placing an offset in the virtual table,
+which is used to adjust the this pointer to the virtual base.
+
+
+<p>
+<h4> 2. Proposal and Rationale </h4>
+
+<p>
+My proposal is to replace thunks with offsets,
+with two additional tricks:
+<ul>
+<li>
+Give a virtual function two entry points,
+so as to bypass the adjustment when it's known to be zero.
+<li>
+Moving the adjustment at call-site,
+where it can be scheduled more easily,
+using a "reasonable" value,
+so that the adjustment is bypassed even more often.
+</ul>
+
+<p>
+The thunks are believed to cost more on IA64 than they would on  
+other platforms.
+The reason is that they are small islands of code spread throughout the code,
+where you cannot guarantee any cache locality.
+Since they immediately follow an indirect branch,
+chances are we will always encounter both a branch misprediction and a  
+I-cache miss in a row.
+
+<p>
+On the other hand,
+a virtual function call starts by reading the virtual function address.
+Reading the offset immediately thereafter should almost never cause a
+D-cache miss (cache locality should be good).
+More often than not, no adjustment is needed,
+or the adjustment will be done at call site correctly.
+In the worst case scenario, we perform two adjustments,
+one static at call site, and one dynamic in the callee,
+but this case should be really infrequent.
+
+
+<p>
+<h4> 3. New Calling Convention </h4>
+
+<p>
+The new calling convention requires that the 'this' pointer on entry  
+points to the class for which the virtual function is just defined.  
+That is, for A::f(),
+the pointer is an A* when the main entry of the function is reached.
+If the actual pointer is not an A*,
+then an adjusting entry point is used,
+which immediately precedes the function.
+
+<p>
+In the following, we will assume the following examples:
+<p>
+<code><pre>
+    struct A { virtual void f(); };
+    struct B { virtual void g(); };
+    struct C: A, B { }
+    struct D : C { virtual void f(); virtual void g(); }
+    struct E: Other, C { virtual void f(); virtual void g(); }
+    struct F: D, E { virtual void f(); }
+
+    void call_Cf(C *c) { c->f(); }
+    void call_Cg(C *c) { c->g(); }
+    void call_Df(D* d) { d->f(); }
+    void call_Dg(D* d) { d->g(); }
+    void call_Ef(E* e) { e->f(); }
+    void call_Eg(E* e) { e->g(); }
+    void call_Ff(F *ff) { ff->f(); }
+    void call_Fg(F *ff) { ff->g(); }	// Invalid: ambiguous
+</pre></code>
+
+<dl>
+<p>
+<dt> a) Call site:
+<dd>
+The caller performs adjustment to match the class of the last  
+overrider of the given function.
+
+<ul>
+<p>
+<li> call_Cf will assume that the pointer needs to be cast to an A*,  
+since C::f is actually A::f. Since A is the primary base class, no  
+adjustment is done at call site.
+
+<p>
+<li> call_Cg is similar, but assumes that the actual type is a B*, and  
+performs the adjustment, since B is not the primary base class.
+
+<p>
+<li> call_Df and call_Dg will assume that the pointer needs to be cast  
+to a D*, which is where D::f is defined. No adjustment is performed  
+at call site.
+</ul>
+</dd>
+
+
+<p>
+<dt> b) Callee
+<dd>
+<ul>
+<p>
+<li> A::f and B::g are defined in classes where there is a single vptr.  
+They don't define a secondary entry point. Because of call-site  
+conventions, they expect to always be called with the correct type.
+
+<p>
+<li> D::f is defined in a class where there is more than one vptr, so  
+it needs a secondary entry point and an entry 'convert_to_D' in the  
+vtable. That's because it can be potentially called with either an A*  
+or a B*. There are two vtables, one for A in D, one for B in D. The  
+D::f entry in A in D points to the non-adjusting entry point, since A  
+shares its vptr.
+
+<p>
+<li> D::g requires a secondary entry point, that will read the same  
+offset 'convert_to_D' from the vtable.
+
+<p>
+<li> E also will require a 'convert_to_E' entry in the vtable, but this  
+time, the vtable for A in C will have to point to an adjusting entry  
+point, since A no longer shares the vptr with E (assuming Other has  
+a vptr). This vtable is also the vtable of C in E.
+</ul>
+</dd>
+
+
+<p>
+<dt> c) Offsets in the vtable
+<dd>
+Offsets have to be placed in the vtable at a position which does not  
+conflict with any offset in the inheritance tree.
+
+<p>
+convert_to_D and convert_to_E are likely to be at the same offset in  
+the vtable. This is not a problem, even if D and E are used in the  
+same class, such as F, because this is the same offset in different  
+vtables.
+
+<ul>
+<p>
+<li> call_Fg is invalid, because it is ambiguous.
+
+<p>
+<li> A notation such as ((E*) ff)->g() can be used to disambiguate, but  
+in that case, we don't use the same vtable (either the E in F or D  
+in F vtable). The E in F vtable uses that offset as 'convert_to_E',  
+whereas the D in F vtable uses that offset as 'convert_to_D'.
+
+<p>
+<li> Similarly, call_Cf called with an F object will actually be called  
+with the E in F or D in F, which disambiguates which C is actually  
+used. The actual C* passed will have been adjusted by the caller  
+unambiguously, or the call will be invalid.
+
+<p>
+<li> For functions overriden in F, an entry 'convert_to_F' is created  
+anyway. This entry will not overlap with either convert_to_E or  
+convert_to_D.
+</ul>
+
+<p>
+The fact that an offset is reserved does not mean that it is  
+actually used. A vtable need to contain the offset only if it refers  
+to a function that will use it. An offset of 0 is not needed, since  
+the function pointer will point to the non-adjusting entry point in  
+that case.
+</dd>
+
+</dl>
+
+
+<p>
+<h4> 4. Cases where adjustment is performed </h4>
+
+<ul>
+<p>
+<li> For call_Cf: No adjustment is done at call site. No adjustment is  
+done at callee site if the dynamic type is C,  or D, or D in F (that  
+is, F casted to an E).
+
+<p>
+<li> For call_Cg: Adjustment to B* is done at call-site. No further  
+adjustment is needed if the dynamic type is C, D, or D in F. On the  
+other hand, a second adjustment may happen for an E or E in F,  
+because C is not their primary base.
+</ul>
+
+<p>
+In other words, adjustment is made only when necessary, and at a  
+place where it is better scheduled than with thunks. The only bad  
+case is double adjustment for call_Cg called with an E*. This case  
+can probably be considered rare enough, compared to calls such as  
+call_Cg called with a C*, where we now actually do the adjustment at  
+the call-site.
+
+
+<p>
+<h4> 5. Comparing the code trails </h4>
+
+<p>
+Currently, the sequence for a virtual function call in a shared  
+library will look as follows. I'm assuming +DD64, there would be some  
+additional addp4 in +DD32. The trail below is the dynamic execution  
+sequence. In bold and between #if/#endif, the affected code.
+
+<p>
+<code><pre>
+        // Compute the address of the vptr in the object,
+	// from the this pointer
+        // Optional, since vptroffset is often 0.
+	// This also adjusts to the class of the final overrider
+        addi            Rthis=vptroffset_of_final_overrider,Rthis
+        ;;
+        // Load the vptr in a register
+        ld8             Rvptr=[Rthis]
+        ;;
+        // Add the offset to get to the function descriptor pointer
+	// in the vtable.  Never zero, this instruction is always generated
+        addi            Rfndescr=fndescroffset,Rvptr
+        ;;
+        // (Assuming inlined stub) Load the function address and new GP
+        ld8             Rfnaddr=[Rfndescr],8
+        ;;
+        // Load the new GP
+        ld8             GP=[Rfndescr]
+        mov             BRn=Rfnaddr
+        ;;
+        // Perform the actual branch to the target
+
+        // For prediction to occur correctly on McKinley,
+        // at least 5 cycles between the mov to BR above and the use
+        // of the BR.  Up to 16 bundles...
+        // This is very unlikely to be possible in most actual code, so...
+        // ... Branch misprediction almost always, followed by
+        // ... I-Cache miss almost always if jumping to a thunk
+        br.call B0=BRn
+
+#if OLD_ADJUST
+thunk_A::f_from_a_B:
+        // If the 'adjustment_from_B_to_A is the 'adjustment_to_A' above,
+        // then in the new case, the vtable directly points to A::f
+        addi            Rthis,adjustment_from_B_to_A
+
+        // In most cases, we can probably generate a PC-relative branch here
+        // It is unclear whether we would correctly predict that branch
+        // (since it is assumed that we arrive here immediately following
+        // a misprediction at call site)
+        br              A::f
+#endif // OLD_ADJUST
+
+// This occurs less often than OLD_ADJUST
+// (it does not happen when call-site adjustment is correct)
+#if NEW_ADJUST
+adjusting_entry_A::f
+        // Can't be executed in less than 3 cycles?
+        addi            Rvptr=class_adjustment_offset,Rvptr
+        ;;
+        // This loads data which is close to the fn descriptor,
+        // so it's likely to be in the D-cache
+        ld8             Rvptr=[Rvptr]
+        ;;
+        add             Rthis=Rthis,Rvptr
+#endif
+
+A::f:
+        alloc   ...
+</pre></code>
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -644,7 +1025,7 @@ to perform the adjustment may actually prove interesting.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-2 </td>
+<tr> <a name=B2></a> <td> B-2 </td>
 <td> Covariant return types </td>
 <td> call </td>
 <td> closed </td>
@@ -677,13 +1058,13 @@ Provide a separate Vtable entry for each return type.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-3 </td>
+<tr> <a name=B3></a> <td> B-3 </td>
 <td> Allowed caching of vtable contents </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -695,13 +1076,13 @@ However, this may sometimes break "beyond the standard" code,
 such as code loading a shared library that replaces a virtual function.
 Can we all agree when caching is allowed? 
 </td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+Caching is allowed within a member function.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[990604 HP Christophe]</font>
-Mike (Ball) gave me what I believe is an excellent definition of  
-when caching is allowed.  I'd like him to present it.
 
 <p>
 <table border=on cellpadding=3>
@@ -712,13 +1093,13 @@ when caching is allowed.  I'd like him to present it.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-4 </td>
+<tr> <a name=B4></a> <td> B-4 </td>
 <td> Function descriptors in vtable </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -728,15 +1109,13 @@ what should vtable entries contain?
 One possibility is to put a function address/GP pair in the vtable.
 Another is to include only the address of a thunk which loads the GP
 before doing the actual call.
-
+</td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+The Vtable will contain a function address/GP pair.
 </td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990624 All]</font>
-Note that putting GP in the Vtable prevents putting it in shared memory.
-See B-7.
 
 
 <p>
@@ -748,7 +1127,7 @@ See B-7.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-5 </td>
+<tr> <a name=B5></a> <td> B-5 </td>
 <td> Where are vtables emitted? </td>
 <td> data </td>
 <td> open </td>
@@ -983,7 +1362,7 @@ he is just pointing out some of the issues we will have to resolve.)
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-6 </td>
+<tr> <a name=B6></a> <td> B-6 </td>
 <td> Virtual function table layout </td>
 <td> data </td>
 <td> open </td>
@@ -1317,6 +1696,14 @@ and Daveed leaves on vacation the next week.)
 
 
 <p>
+<font color=blue>[990805 All]</font>
+We need a specific proposed representation for COMDAT.
+IBM's version is restricted to one symbol per section.
+Jim will look for Microsoft's PECOFF definition.
+Anyone else with a usable definition should send it.
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -1325,13 +1712,13 @@ and Daveed leaves on vacation the next week.)
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-7 </td>
+<tr> <a name=B7></a> <td> B-7 </td>
 <td> Objects and Vtables in shared memory </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990624 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -1339,118 +1726,12 @@ Is it possible to allocate objects in shared memory?
 For polymorphic objects, this implies that the Vtable must also be
 in shared memory.
 </td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+No special representation is useful in support of shared memory.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990624 All]</font>
-Note that putting GP in the Vtable prevents putting it in shared memory.
-This interacts with B-4.
-
-<p>
-<font color=blue>[990624 HP -- Cary]</font>
-For a C++ object to be placed into shared memory,
-its vtable pointer must be valid in all processes
-that are sharing that object.
-
-<ol>
-<p>
-<li>
-If the vtable can be placed in text, that would be fine,
-but the vtable contains function pointers (or descriptors)
-that require runtime relocation, so it must be in data.
-
-<p>
-<li>
-We can place the vtables in shared memory,
-but only if the function pointers/descriptors are valid in all processes.
-The entry point addresses, which refer to shared text, should be shareable,
-but the gp values may not be identical for all processes.
-(RTTI pointers are also an issue,
-and could be solved by putting the RTTI information in shared memory as well.)
-
-<p>
-<li>
-We can place the vtables in private memory,
-provided they are at the same address in all processes.
-</ol>
-
-<p>
-One way or another,
-we need a way of ensuring that a pointer from shared 
-memory to private memory is valid in all processes,
-which means that we will need a means to ensure that certain shared
-library data segments can get mapped at the same address in all
-processes that load those certain libraries.
-
-<p>
-My wild idea a few years ago was to put the vtables in shared memory
-(by allocating and building them at load time, as Taligent did),
-and store a shared library index in place of the gp value
-in each function descriptor.
-Each process would have its own table of gp values,
-indexed by this shared library index,
-but the index space would be managed system-wide.
-The C++ runtime library would have been responsible for allocating
-a new index for each unique C++ shared library loaded on the system,
-then storing the process-local copy of the gp pointer in the 
-appropriate slot of the table.
-
-<p>
-<font color=blue>[990628 SGI -- Jim]</font>
-Note a further problem with vtables in shared memory (Cary's point 2).
-If a virtual function comes from another DSO,
-it may be pre-empted differently in different programs.
-Hence, the function pointer itself is a problem even if the GP isn't.
-
-<p>
-<font color=blue>[990701 All]</font>
-An extensive discussion boiled down to a few points:
-<ul>
-<p>
-<li> The primary issue is objects in shared memory --
-    vtables aren't interesting in themselves, but rather because
-    putting the object in shared memory implies having the vtable at
-    the same address in all sharing processes.
-
-<p>
-<li> Many of us have a few customers asking for this.
-    It is not clear just how extensive a facility they need,
-    or how automatic it needs to be.
-    We should attempt to gauge the need.
-
-<p>
-<li> Noone thinks we should penalize the non-shared case for
-    the rare instances of shared demand.
-
-<p>
-<li> It is questionable whether we can define an ABI mechanism
-    which will work on all of our systems,
-    but we'd like not to preclude OS-specific extensions to do
-    this if we can't.
-
-<p>
-<li> One possible approach would be an API allowing a user to
-    place an object in shared memory,
-    and then "install" it by setting its vtable pointers,
-    possibly to copies also placed in the same shared memory.
-
-<p>
-<li> A more automatic approach would be something which allocated
-    certain objects/vtables to shared memory,
-    gave up at link time if not all pointers were internal to the
-    object being linked,
-    attempted to place the relevant segments at the same runtime
-    addresses to allow sharing,
-    and gave up on sharing if this was not possible.
-    Such an approach would perhaps still require some care on the part
-    of the user to prevent problematic runtime situations.
-</ul>
-
-<p>
-These ideas are very fuzzy.
-Participants should think about the need and possibilities and attempt
-to identify more concrete approaches.
 
 
 <p>
@@ -1462,7 +1743,7 @@ to identify more concrete approaches.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> B-8 </td>
+<tr> <a name=B8></a> <td> B-8 </td>
 <td> dynamic_cast </td>
 <td> data </td>
 <td> open </td>
@@ -1497,7 +1778,7 @@ by the 15th (action #13); the group will discuss it on the 22nd.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-1 </td>
+<tr> <a name=C1></a> <td> C-1 </td>
 <td> Interaction with .init/.fini </td>
 <td> lif ps </td>
 <td> open </td>
@@ -1536,7 +1817,7 @@ with DT_INIT being executed before the DT_INITARRAY elements.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-2 </td>
+<tr> <a name=C2></a> <td> C-2 </td>
 <td> Order of ctors/dtors w.r.t. link </td>
 <td> lif ps </td>
 <td> open </td>
@@ -1807,7 +2088,7 @@ separating the priority and address vectors.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-3 </td>
+<tr> <a name=C3></a> <td> C-3 </td>
 <td> Order of ctors/dtors w.r.t. DSOs </td>
 <td> ps </td>
 <td> open </td>
@@ -1844,7 +2125,7 @@ requires a mechanism for early destruction of a subset.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-4 </td>
+<tr> <a name=C4></a> <td> C-4 </td>
 <td> Calling vfuncs in ctors/dtors </td>
 <td> call </td>
 <td> open </td>
@@ -1875,7 +2156,7 @@ some other means is required for accessing the correct vfunc.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-5 </td>
+<tr> <a name=C5></a> <td> C-5 </td>
 <td> Calling destructors </td>
 <td> call </td>
 <td> open </td>
@@ -1914,7 +2195,7 @@ but noone has yet identified why.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-6 </td>
+<tr> <a name=C6></a> <td> C-6 </td>
 <td> Extra parameters to ctors/dtors </td>
 <td> call </td>
 <td> open </td>
@@ -1940,13 +2221,13 @@ must be transmitted somehow to the ctor/dtor.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-7 </td>
+<tr> <a name=C7></a> <td> C-7 </td>
 <td> Passing value parameters by reference </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> All </td>
 <td> 990624 </td>
-<td> </td>
+<td> 990805 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -1954,24 +2235,15 @@ It may be desirable in some cases where a type has a non-trivial
 copy constructor to pass value parameters of that type by performing
 the copy at the call site and passing a reference.
 </td> </tr>
+<tr> <td colspan=7>
+<b> Resolution </b>:
+Whenever a class type has a non-trivial copy constructor,
+pass value parameters of that type by performing
+the copy at the call site and passing a reference.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[990701 All]</font>
-Daveed and Matt will attempt to pin down the copy requirements with the
-Core committee, i.e. when a non-trivial copy constructor may be elided.
-The relevant Standard requirement is 12.8/15,
-and there is an open defect report related to this question.
-For cases where the ctor may not be elided,
-we expect to perform the copy at the call site,
-and pass a reference.
-
-<p>
-<font color=blue>[990729 All]</font>
-Matt will produce a clear proposal for when the ABI will elide the
-constructor (and therefore pass the class object like a normal C struct),
-based on the Standard's exceptions.
 
 <p>
 <table border=on cellpadding=3>
@@ -1982,7 +2254,7 @@ based on the Standard's exceptions.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> C-8 </td>
+<tr> <a name=C8></a> <td> C-8 </td>
 <td> Returning classes with non-trival copy constructors </td>
 <td> call </td>
 <td> closed </td>
@@ -2015,7 +2287,7 @@ and passes a pointer as an implicit first parameter
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-1 </td>
+<tr> <a name=D1></a> <td> D-1 </td>
 <td> Language-specific data area format </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2071,7 +2343,7 @@ called to compare the types of the exception and handler.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-2 </td>
+<tr> <a name=D2></a> <td> D-2 </td>
 <td> Unwind personality routines </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2101,7 +2373,7 @@ This issue involves specification of the API (see also D-3).
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-3 </td>
+<tr> <a name=D3></a> <td> D-3 </td>
 <td> Unwind process clarification </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2128,7 +2400,7 @@ This issue involves specification of unwind process (see also D-2).
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-4 </td>
+<tr> <a name=D4></a> <td> D-4 </td>
 <td> Unwind routines nested? </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2154,7 +2426,7 @@ Is that the preferred definition?
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-5 </td>
+<tr> <a name=D5></a> <td> D-5 </td>
 <td> Interaction with other languages (e.g. Java) </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2186,7 +2458,7 @@ Does it allow even more?
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-6 </td>
+<tr> <a name=D6></a> <td> D-6 </td>
 <td> Allow resumption in other languages? </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2216,7 +2488,7 @@ where the exception was thrown?
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-7 </td>
+<tr> <a name=D7></a> <td> D-7 </td>
 <td> Interaction with signals or asynch events </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2249,7 +2521,7 @@ if it does not exit the handler.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> D-8 </td>
+<tr> <a name=D8></a> <td> D-8 </td>
 <td> Interaction with threads packages </td>
 <td> lib ps </td>
 <td> open </td>
@@ -2284,7 +2556,7 @@ processing an exception?
 <th colspan=6> Template Instantiation Model </th>
 </tr>
 
-<tr> <td> E-1 </td>
+<tr> <a name=E1></a> <td> E-1 </td>
 <td> When does instantiation occur? </td>
 <td> tools </td>
 <td> open </td>
@@ -2314,7 +2586,7 @@ compile step.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> E-2 </td>
+<tr> <a name=E2></a> <td> E-2 </td>
 <td> Separate compilation model </td>
 <td> tools </td>
 <td> open </td>
@@ -2338,7 +2610,7 @@ compile step.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> E-3 </td>
+<tr> <a name=E3></a> <td> E-3 </td>
 <td> Template repository </td>
 <td> tools </td>
 <td> open </td>
@@ -2373,7 +2645,7 @@ Issues:
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> F-1 </td>
+<tr> <a name=F1></a> <td> F-1 </td>
 <td> Mangling convention </td>
 <td> call </td>
 <td> open </td>
@@ -2391,6 +2663,18 @@ name necessary to resolve overloading?
 </table>
 
 <p>
+<font color=blue>[990806 SGI -- Jim]</font>
+Naming to be resolved under this issue includes:
+<ul>
+<li> Global and member operator names
+<li> Global and member function names
+<li> Vtable names (primary and initialization)
+<li> RTTI struct names
+<li> Template instance names
+<li> Namespace effects
+</ul>
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -2399,7 +2683,7 @@ name necessary to resolve overloading?
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> F-2 </td>
+<tr> <a name=F2></a> <td> F-2 </td>
 <td> Mangled name size </td>
 <td> call g </td>
 <td> open </td>
@@ -2431,7 +2715,7 @@ which at least mitigate it.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> F-3 </td>
+<tr> <a name=F3></a> <td> F-3 </td>
 <td> Distinguish template instantiation and specialization
 </td>
 <td> call g </td>
@@ -2463,7 +2747,7 @@ the linker could check for conflicts and report the ODR violation.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> G-1 </td>
+<tr> <a name=G1></a> <td> G-1 </td>
 <td> Basic command line options </td>
 <td> tools </td>
 <td> open </td>
@@ -2489,7 +2773,7 @@ possibly allowing portable makefiles?
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> G-2 </td>
+<tr> <a name=G2></a> <td> G-2 </td>
 <td> Detection of ODR violations </td>
 <td> call </td>
 <td> open </td>
@@ -2514,7 +2798,7 @@ possibly allowing portable makefiles?
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> G-3 </td>
+<tr> <a name=G3></a> <td> G-3 </td>
 <td> Inlined routine linkage </td>
 <td> call </td>
 <td> open </td>
@@ -2550,7 +2834,7 @@ and handle multiple copies like we do above.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> G-4 </td>
+<tr> <a name=G4></a> <td> G-4 </td>
 <td> Dynamic init of local static objects and multithreading </td>
 <td> call </td>
 <td> open </td>
@@ -2894,7 +3178,7 @@ static constructor call plus an assignment.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> H-1 </td>
+<tr> <a name=H1></a> <td> H-1 </td>
 <td> Runtime library DSO name </td>
 <td> tools </td>
 <td> open </td>
@@ -2921,7 +3205,7 @@ in programs from mixed sources, identify naming convention for them.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
-<tr> <td> H-2 </td>
+<tr> <a name=H2></a> <td> H-2 </td>
 <td> Runtime library API </td>
 <td> lif </td>
 <td> open </td>
