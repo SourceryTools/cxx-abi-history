@@ -12,7 +12,7 @@
 <BODY>
 
 <hr />
-<h1>Itanium C++ ABI ($Revision: 1.75 $)</h1>
+<h1>Itanium C++ ABI ($Revision: 1.76 $)</h1>
 <p> <hr> <p>
 
 <h2> Contents </h2>
@@ -4595,6 +4595,16 @@ No entity is added to the dictionary twice.
 The type of a non-static member function is considered to be
 different, for the purposes of substitution, from the type of a
 namespace-scope or static member function whose type appears similar.
+The types of two non-static member functions are considered to be
+different, for the purposes of substitution, if the functions are
+members of different classes.  In other words, for the purposes of
+substitution, the class of which the function is a member is
+considered part of the type of function.
+</p>
+
+<p>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
 Therefore, in the following example:
 <blockquote><code><pre>
 typedef void T();
@@ -4608,6 +4618,7 @@ the function pointed to by the first parameter.  Both function types
 are, however, entered the substitution table; subsequent references to
 either variant of the function type will result in the use of
 substitutions.
+</i></p>
 
 <p>
 Substitution is according to the production:
@@ -4912,9 +4923,14 @@ unwind table location.
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
 
-<p>This version of this document is $Revision: 1.75 $.  No special
+<p>This version of this document is $Revision: 1.76 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[040219]</font>
+Clarify substition of member function types.
+</p>
 
 <p>
 <font color=blue>[031128]</font>
