@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 25 January 2000</i>
+<i>Revised 1 February 2000</i>
 
 </center>
 
@@ -83,11 +83,6 @@ elements? (A-20).
 <p>
 <li> <a href=#array-new>
 Array placement new requires resolution (A-21).
-</a>
-
-<p>
-<li> <a href=#void-rtti>
-Why is <code>void</code> a special case for library base type RTTI?
 </a>
 
 </ul>
@@ -942,8 +937,9 @@ determine the adjustment necessary.
 <p>
 <li>Caller:
 <p>
-The caller adjusts the 'this' argument to 
-point to the class which last overrode the function being called.
+The caller adjusts the 'this' argument to point to the class
+that contains the unique final overrider (as defined in [class.virtual])
+for the function being called.
 The result provides both the 'this' argument and the vtable pointer
 for finding the function we want.
 
@@ -1138,18 +1134,14 @@ where their use is implied:
 the object file containing the typeid, throw or catch.
 
 <p>
-Basic type information (such as for "int", "bool", etc.)
-can be kept in the run-time support library.
-Specifically, this proposal is to place in the
-run-time support library type_info objects for the following types:
-<a name=void-rtti></a>
-<ul>
-<li> void*, void const*; and
-<li> X, X* and X const*,
-    for every X in: bool, wchar_t, char, unsigned char, signed char,
-    short, unsigned short, int, unsigned int, long, unsigned long, long long,
-    unsigned long long, float, double, long double.
-</ul>
+Basic type information (e.g. for "int", "bool", etc.)
+will be kept in the run-time support library.
+Specifically, the run-time support library
+should contain type_info objects for the types
+X, X* and X const*,
+for every X in: void, bool, wchar_t, char, unsigned char, signed char,
+short, unsigned short, int, unsigned int, long, unsigned long, long long,
+unsigned long long, float, double, long double.
 (Note that various other type_info objects for class types may reside
 in the run-time support library by virtue of the preceding rules;
 e.g., that of std::bad_alloc.)
@@ -1373,7 +1365,9 @@ It is derived from std::__class_type_info, and adds:
 <p>
 The <code>type</code> member points to the RTTI for the base type.
 The <code>offset</code> member is the offset in the vtable of the
-virtual base offset for the virtual base.
+virtual base offset for the virtual base referenced
+(in general, negative if it is introduced in this primary vtable,
+or positive if it is reused from a non-virtual base's vtable).
 The vmi_flags field contains one or more flags:
   <ul>
   <li> 0x1: Base class is virtual
@@ -1393,7 +1387,7 @@ The std::__pointer_to_member_type_info type adds two fields to std::type_info:
 <ul>
 <li> a pointer to a std::__class_type_info (e.g., the "A" in "int A::*")
 <li> a pointer to a std::type_info corresponding to the member type
-    (e.g., the "int*" in "int A::*")
+    (e.g., the "int" in "int A::*")
 <li> a word describing the cv-qualification of what is pointed to
     (see std::__pointer_type_info)
 </ul>
