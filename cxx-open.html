@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 1 July 1999</i>
+<i>Revised 20 July 1999</i>
 
 </center>
 
@@ -25,6 +25,10 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990720]</font>
+Additions to B-2, B-5, C-2, D-1.
 
 <p>
 <font color=blue>[990701]</font>
@@ -598,6 +602,107 @@ Another is to return two result pointers (base/derived),
 and have the caller select the right one.
 
 <p>
+<font color=blue>[990715 All]</font>
+Daveed presented his multiple-return-value scheme,
+including an example that involved virtual base classes,
+return values that are pointers to nonpolymorphic classes,
+and other equally horrible things.
+
+<p>
+Consensus: we need to get the horrible cases correct,
+but speed only matters in the simple case.
+The simple case: class B has a virtual function f returning a B1*
+and class D has a virtual function f returning a D1*,
+where all four classes are polymorphic,
+B is a primary base of D, and B1 is a primary base of D1.
+(The really important case is where B1 is B and D1 is D,
+but that simplification doesn't make any difference.)
+
+<p>
+Jason: Would the usual multiple-entry-point scheme work just as well?
+That is, would it be just as fast as Daveed's scheme in the simple case,
+and still preserve enough information for the more complicated cases?
+It appears so, but we don't have a proof.
+Jason will try to provide one.
+
+
+<p>
+<font color=blue>[990716 Cygnus -- Jason]</font>
+Proof?
+You always know what types a given override must be able to return,
+and you know how to convert from the return type to those base types.
+You know from the entry point which type is desired.
+Seems pretty straightforward to me.
+
+
+
+<p>
+<font color=blue>[990716 Cygnus -- Jason]</font>
+The alternative I was talking about yesterday goes something like this:
+
+<p>
+When we have a non-trivial covariant return situation,
+we create a new entry in the vtable for the new return type.
+The caller chooses which vtable entry to use based on the type they want.
+
+<p>
+This could be implemented several ways,
+at the discretion of the vendor:
+
+<ol>
+<p>
+<li>
+Multiple entry points to one function,
+with an internal flag indicating which type to return.
+<p>
+<li>
+Thunks which intercept the function's return and modify the return value.
+Note that unlike the case of calling virtual functions,
+for covariant returns we always know which adjustments will be needed,
+so we don't have to pay for a long branch.
+We do, however, lose the 1-1 correspondence between calls and returns,
+which apparently affects performance on the Pentium Pro.
+<p>
+<li>
+Function duplication.
+</ol>
+
+<p>
+The advantage of this approach to the complex case is that we don't have to
+do a dynamic_cast when faced with multiple levels of virtual derivation.
+It is also strictly simpler;
+Daveed's model already requires something like
+this in cases of multiple inheritance.
+
+<p>
+Of course, we can always mix and match;
+we could choose to only do this in cases of virtual inheritance,
+or use Daveed's proposal and do this only in
+cases of repeated virtual inheritance.
+In that case, the multiple returns
+would just be an optimization for the single virtual inheritance case.
+
+<p>
+Since we don't seem to care about the performance of
+anything but single nonvirtual inheritance,
+it seems simpler not to bother with multiple returns.
+
+<p>
+The remaining question is how to handle the case of nontrivial
+nonvirtual inheritance:
+do we use multiple slots or have the caller do the adjustment?
+My inclination is to have the caller adjust.
+
+<p>
+WRT patents,
+the idea of having the function return the base-most class and having
+the caller adjust is parallel to the patented Microsoft scheme whereby
+they pass the base-most class as the 'this' argument to virtual functions,
+but the word 'return' does not appear anywhere in the patent,
+so it seems safe.
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -857,6 +962,50 @@ is a runtime or a compile time initialization, such as in :
 
 <p>
 So I personally recommend that we put everything in COMDAT.
+
+<p>
+<font color=blue>[990715 All]</font>
+Consensus so far: use a heuristic for vtable and typeinfo emission,
+based on the definition of the key function.
+(The first virtual function that is not
+declared inline in the class definition.)
+The vtable must be emitted where the key function is defined,
+it may also be emitted in other translation units as well.
+If there is no key function then the vtable must be emitted in any
+translation unit that refers to the vtable in any way.
+
+<p>
+Implication: the linker must be prepared to discard duplicate vtables.
+We want to use COMDAT sections for this
+(and for other entities with vague linkage.)
+
+<p>
+Open issue: the elf format allows only 16 bits for section identifiers,
+and typically two of those bits are already taken up for other things.
+So we've only got 16k sections available,
+which is unacceptable if we're creating lots of small sections.
+
+<p>
+Jason - COMDATs disappear into text and data at link time,
+so the issue is really only serious if we've got more than 16k vtables
+(or template instantiations, etc.)
+in a single translation unit.
+
+<p>
+Daveed - HP has gotten around this problem by hacking their ELF files
+to steal another 8 bits from somewhere else.
+
+<p>
+Jack - a new kind of section table could be a viable solution.
+However, it would break everything if we did it for ia32.
+Is a solution that only works on ia64 acceptable?
+Note also that the elf section table has its own string table,
+which we wouldn't be able to share with the new kind of section table.
+Index and link fields often point into section table,
+we would have to figure out how to deal with this.
+(Jack is not opposed to the idea of an alternate section table,
+he is just pointing out some of the issues we will have to resolve.)
+
 
 
 <p>
@@ -1472,6 +1621,35 @@ unloading of DSOs is handled, and the data structure used for that
 purpose (issue C-3).
 
 <p>
+<font color=blue>[990715 All]</font>
+Cygnus scheme:
+priorities are 16-bit unsigned integers, lower numbers are higher priority.
+In each translation unit,
+there's a single initialization function for each priority.
+Anything that's prioritized has a higher priority than anything that
+isn't explicitly assigned a priority.
+
+<p>
+IBM scheme:
+priorities are 32-bit signed integers, higher numbers are higher priority.
+Something that isn't explicitly assigned a priority effectively
+gets a priority of 0.
+
+<p>
+Consensus:
+nobody is sure that negative priorities are very important,
+but also nobody can think of a reason not to allow them.
+We accept the idea that priorities are 32-bit signed integers.
+On a source level Cygnus will keep lower numbers as higher priority,
+but that's a source issue, not an ABI issue.
+
+<p>
+Status: No real technical issues,
+we have consensus on everything that matters.
+We need to write up the finicky details.
+
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -1666,6 +1844,32 @@ How do we return classes with non-trivial copy constructors?
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[990715 Cygnus -- Jason]</font>
+The languge-specific part of the EH stack in g++ contains these
+elements:
+
+<p>
+<code><pre>
+void *value; // pointer to the thrown object, or the thrown value
+             // itself if a pointer
+void *type;  // pointer to the type_info node for the thrown object
+void (*cleanup)(void *, int) // pointer to the dtor for the object
+bool caught; // has this exception been caught since its last throw?
+long handlers; // how many catch handlers are active for this exception
+</code></pre>
+
+<p>
+Both 'caught' and 'handlers' are needed to handle rethrowing and
+catching within a catch block.
+
+<p>
+Language interaction is handled by recording the language of both the
+exception region and the thrown exception.  Each thrown exception also
+includes a pointer to a language-specific matching function which is
+called to compare the types of the exception and handler.
+
 
 <p>
 <table border=on cellpadding=3>
