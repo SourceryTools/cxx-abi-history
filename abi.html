@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 1 May 2000</i>
+<i>Revised 9 May 2000</i>
 
 </center>
 
@@ -46,18 +46,21 @@ C++ ABI for IA-64 (Draft)
   <li> <a href=#guards>		2.8 Initialization Guard Variables </a>
   <li> <a href=#rtti>		2.9 Run-Time Type Information (RTTI) </a>
   </ul>
-<li> <a href=#calls> Chapter 3: Function Calling Conventions </a>
+<li> <a href=#calls> Chapter 3: Function Calling Conventions and APIs </a>
   <ul>
   <li> <a href=#normal-call> 3.1 Non-virtual Function Calling Conventions </a>
   <li> <a href=#vcall>	     3.2 Virtual Function Calling Conventions </a>
   <li> <a href=#subobj-ctor> 3.3 Subobject Construction and Destruction</a>
-  <li> <a href=#array-ctor>  3.4 Array Construction and Destruction</a>
+  <li> <a href=#array-ctor>  3.4 Array Construction and Destruction APIs </a>
+  <li> <a href=#dso-dtor>    3.5 DSO Object Destruction API </a>
+  <li> <a href=#demangler>   3.6 Demangler API</a>
   </ul>
 <li> <a href=abi-eh.html> Chapter 4: Exception Handling </a>
 <li> <a href=#linkage> Chapter 5: Linkage and Object Files </a>
   <ul>
   <li> <a href=#mangling>	5.1 External Names (a.k.a. Mangling)</a>
   <li> <a href=#vague>		5.2 Vague Linkage </a>
+  <li> <a href=#unwind>		5.3 Unwind Table Location </a>
   </ul>
 <li> <a href=#revisions> Appendix R: Revision History</a>
 </ul>
@@ -67,19 +70,46 @@ C++ ABI for IA-64 (Draft)
 <h2> Chapter 1: Introduction </h2>
 <p> <hr> <p>
 
-In this document, we define the memory layout for C++ data objects,
+In this document, we specify the Application Binary Interface for
+C++ programs,
+that is, the object code interfaces between user C++ code and the
+implementation-provided system and libraries.
+This includes the memory layout for C++ data objects,
 including both predefined and user-defined data types,
 as well as internal compiler generated objects such as virtual tables.
+It also includes function calling interfaces,
+exception handling interfaces,
+global naming,
+and various object code conventions.
+
+<p>
 In general, this document is written as a generic specification,
 to be usable by C++ implementations on a variety of architectures.
 However, it does contain processor-specific material for the IA-64
 64-bit ABI, identified as such.
+<font color=red>
+Where structured data layout is described,
+we generally assume IA-64 psABI member sizes.
+An implementation for a 32-bit ABI would typically just change the
+sizes of members as appropriate
+(i.e. pointers and long ints would become 32 bits),
+but sometimes an order change would be required for compactness,
+and we note more substantive changes.
 
 <p>
+This document is a work in progress,
+still being changed on a regular basis.
 In general, text appearing in this document in color is either
 tentative wording of agreements,
 or proposals not yet agreed upon,
 and should be taken as more subject to change than black material.
+Red text will generally remain red until the next group meeting
+provides an opportunity to comment.
+If problems are noticed,
+they should be reported to the
+<a href=mailto:cxx-abi@corp.sgi.com>C++ ABI Group</a>
+as soon as possible.
+</font>
 
 <p>
 <font color=blue>
@@ -112,27 +142,26 @@ clarified:
 <h4> Recent Revisions </h4>
 
 <p>
+<font color=blue>[000505]</font>
+Updates from 4 May meeting.
+VTT is preorder, like everything else.
+Add issue C-3 destructor API.
+Added demangler API.
+Yet another try at the nested-name mangling grammar.
+Don't mangle builtin types (except vendor extended ones).
+Reverse mangling substitution order,
+and fix mangling substitution examples,
+Add vague linkage information for instantiated templates.
+Specify location of unwind tables.
+
+<p>
+<font color=blue>[000502]</font>
+Fixed mangling of template parameters again.
+
+<p>
 <font color=blue>[000427]</font>
 Reorganization and section numbering.
 Added <a href=#normal-call>non-virtual function calling conventions</a>.
-
-<p>
-<font color=blue>[000417]</font>
-Updates from 17 April meeting.
-Clarify order of vcall offsets.
-More elaboration of construction vtable.
-Specification of COMDAT RTTI name.
-Reorganization of pointer RTTI.
-Modify mangling grammar to clarify substitution in compound names.
-Clarify Vague Linkage section.
-
-<p>
-<font color=blue>[000407]</font>
-Updates from 6 April meeting, email.
-More elaboration of construction vtable.
-Updates/issues in RTTI.
-Minor mangling changes.
-Added Vague Linkage section.
 
 <p>
 <a href=#revisions>Revision History</a>
@@ -348,9 +377,9 @@ However, some (many?) are specified to be extern "C" if they:
 <p> <hr> <p>
 <a name=layout>
 <h2> Chapter 2: Data Layout </h2>
-
-
 <p> <hr> <p>
+
+
 <a name=general>
 <h3> 2.1 General </h3>
 
@@ -675,7 +704,7 @@ Round sizeof(C) up to a non-zero multiple of align(C).
 <h3> 2.5 Virtual Table Layout </h3>
 
 <p>
-<h4> General </h4>
+<h4> 2.5.1 General </h4>
 
 <p>
 A <i>virtual table</i> (<i>vtable</i>) is a table of information used
@@ -713,7 +742,7 @@ The vtable may therefore contain components at either positive or
 negative offsets from its address point.
 
 <p>
-<h4> Virtual Table Components and Order </h4>
+<h4> 2.5.2 Virtual Table Components and Order </h4>
 
 <p>
 This section describes the usage and relative order of various
@@ -897,7 +926,7 @@ and again excluding primary bases
 
 
 <p>
-<h4> Virtual Table Construction </h4>
+<h4> 2.5.3 Virtual Table Construction </h4>
 
 <p>
 In this section, we describe how to construct the vtable for an class,
@@ -1025,7 +1054,6 @@ except that the vtable for a virtual base A also includes a vcall
 offset entry for each virtual function represented in A's primary
 vtable and the secondary vtables from A's non-virtual bases.
 
-<font color=red>
 The vcall offsets in the secondary vtable for a virtual base A are
 ordered as described next.
 We describe the ordering from the entry closest to the vtable address
@@ -1072,7 +1100,6 @@ Note that there are no vcall offsets for virtual functions declared in
 a virtual base class V of A and never overridden within A.
 Calls to such functions will use the vcall offset in V's virtual table.
 </i>
-</font>
 
 <p>
 The class also has a vtable that is not copied from the virtual base
@@ -1176,7 +1203,10 @@ is the only one present.
 
 <p> <hr> <p>
 <a name=vtable-ctor>
-<h3> 2.6 Vtables During Object Construction (open issue C-4)</h3>
+<h3> 2.6 Vtables During Object Construction </h3>
+
+<p>
+<h4> 2.6.1 General </h4>
 
 <p>
 In some situations,
@@ -1227,7 +1257,7 @@ vtables are used in a similar way during the execution of proper base class
 destructors.
 
 <p>
-<h4> VTT Order</h4>
+<h4> 2.6.2 VTT Order</h4>
 
 <p>
 An array of vtable addresses, called the VTT,
@@ -1272,18 +1302,17 @@ or (b) virtual function declarations overridden along a virtual path
 between the declaration and D,
 the address of the secondary vtable for X-in-D.
 These include virtual and non-virtual, direct and indirect subobjects,
-in inheritance graph postorder.
 <font color=red>
+in inheritance graph preorder.
+</font>
 (When constructing a sub-VTT for a subclass B of D in part 2 above,
 the relevant condition (b) for the inclusion of a secondary virtual
 pointer in the sub-VTT for B is the existence of a virtual function
 declaration overridden along a virtual path between the declaration and B,
 since otherwise the complete object virtual table for B is used.)
-</font>
 The order of the virtual pointers is
-depth-first search postorder.
 <font color=red>
-(Ed. shouldn't this be preorder?)
+inheritance graph preorder.
 </font>
 
 <p>
@@ -1301,8 +1330,7 @@ but is overridden in D (along a virtual path).
 <i>Virtual VTTs</i>:
 The sub-VTTs for each virtual subobject in
 <font color=red>
-initialization order (as specified by the C++ Standard,
-i.e. depth-first search postorder),
+inheritance graph preorder),
 </font>
 i.e. the sub-VTT for virtual base W of virtual base V of D
 comes before the sub-VTT for V.
@@ -1328,9 +1356,7 @@ Therefore, the various components of its VTT are present based on the
 rules given, even if they point to the D complete object vtable or its
 secondary vtables.
 That is, secondary VTTs are present for all bases with virtual bases
-<font color=red>
 (including the virtual bases themselves in the virtual VTT section),
-</font>
 and secondary virtual pointers are present for all bases with either
 virtual bases or virtual function declarations overridden along a
 virtual path.
@@ -1355,7 +1381,6 @@ For example, suppose we have the following hierarchy:
 
 </pre></code>
 
-<font color=red>
 Then the VTT for D would appear in the following order,
 where indenting indicates the sub-VTT structure,
 and asterisks (*) indicate that construction vtables instead of
@@ -1368,14 +1393,18 @@ complete object vtables are required.
   [1]  C1 * (has virtual base)
 
   [2]  C2 * (has virtual bases)
-  [3]    V1-in-C2 in D (secondary vptr)
-  [4]    V2-in-C2 in D (secondary vptr)
+<font color=red>
+  [3]    V2-in-C2 in D (secondary vptr)
+  [4]    V1-in-C2 in D (secondary vptr)
+</font>
 
   // 3. Secondary virtual pointers:
     // (no C1-in-D -- primary base)
-  [5]    V1-in-D (A2::f overridden in D)
+<font color=red>
+  [5]  C2-in-D (preorder; has virtual bases)
   [6]    V2-in-D (V2::f overridden in D, has virtual base)
-  [7]  C2-in-D (postorder; has virtual bases)
+  [7]    V1-in-D (A2::f overridden in D)
+</font>
     // (For complete object D VTT, these can all point to the
     // secondary vtables in the D vtable.  In the sub-VTT for
     // D in a class derived from D, some might be construction
@@ -1393,10 +1422,9 @@ complete object vtables are required.
 If A2 is a virtual base of V1,
 the VTT will contain 14 elements
 (exercise left to the astute reader).
-</font>
 
 <p>
-<h4> Construction VTABLE Layout</h4>
+<h4> 2.6.3 Construction VTABLE Layout</h4>
 
 <p>
 The construction vtables for a complete object are 
@@ -1426,7 +1454,7 @@ so the latter do not have external names.
 
 
 <p>
-<h4> Construction VTABLE entries</h4>
+<h4> 2.6.4 Construction VTABLE entries</h4>
 
 <p>
 The construction vtable group for a
@@ -1581,6 +1609,9 @@ threading support.
 <h3> 2.9 Run-Time Type Information (RTTI) </h3>
 
 <p>
+<h4> 2.9.1 General </h4>
+
+<p>
 The C++ programming language definition implies that information about
 types be available at run time for three distinct purposes:
 <ol type=a>
@@ -1610,7 +1641,7 @@ be complete must be weak symbol references.
 </i>
 
 <p>
-<h5>Place of emission</h5>
+<h4> 2.9.2 Place of Emission </h4>
 
 <p>
 It is desirable to minimize the number of places where a
@@ -1638,7 +1669,7 @@ e.g., that of std::bad_alloc.)
 
 
 <p>
-<h5>The typeid operator</h5>
+<h4> 2.9.3 The <code>typeid</code> Operator</h4>
 
 <p>
 The typeid operator produces a reference to a std::type_info structure
@@ -1671,7 +1702,6 @@ directly or indirectly pointing to incomplete class types,
 a more complex comparison is required,
 described below with the RTTI layout of pointer types.
 
-<font color=red>
 <p>
 The <code>name()</code> member function returns the address of an NTBS,
 unique to the type,
@@ -1687,7 +1717,6 @@ In a flat address space
 the <code>operator==</code>, <code>operator!=</code>, and <code>before()</code>
 members are easily implemented in terms of
 an address comparison of the name NTBS.
-</font>
 
 <p>
 This implies that the type information must keep a description of the public,
@@ -1696,7 +1725,7 @@ and volatile qualifications applied to types.
 
 
 <p>
-<h5>The dynamic_cast operator</h5>
+<h4> 2.9.4 The <code>dynamic_cast</code> Operator</h4>
 
 <p>
 Although dynamic_cast can work on pointers and references,
@@ -1718,16 +1747,16 @@ inherited hierarchy.
 
 <p>
 <a name=rtti-layout></a>
-<h5>RTTI layout</h5>
+<h4> 2.9.5 RTTI Layout </h4>
 
 <ol type=1>
 
 <p>
 <li>
-The RTTI layout for a given type depends on whether a 32-bit or
-64-bit mode is in effect.
-The class definitions below are to be interpreted as following the
-class layout rules for the host ABI.
+<font color=red>
+The class definitions below are to be interpreted as implying a memory
+layout following the class layout rules for the host ABI.
+</font>
 
 <p>
 <li>
@@ -1788,7 +1817,7 @@ abi::__enum_type_info does not add data members either.
 
 <p>
 <li>
-Three different types are used to represent type information:
+Three different types are used to represent user type information:
 
 <ol type=a>
 <p>
@@ -1803,18 +1832,6 @@ in which case it must be prevented from preempting
 the RTTI for the complete class type,
 for instance by emitting it as a static object (without external linkage).
 
-<font color=red>
-<p>
-<strike>
-Two abi::__class_type_info objects are normally compared for equality
-(i.e. of the types represented)
-by comparison of their addresses.
-However, incomplete class RTTI objects,
-which can only be accessed via abi::__pointer_type_info objects,
-must be compared for equality
-by comparison of the name NTBS in their std::type_info bases.
-</strike>
-
 <p>
 Two abi::__class_type_info objects can always be compared,
 for equality (i.e. of the types represented) or ordering,
@@ -1822,8 +1839,6 @@ by comparison of their name NTBS addresses.
 In addition, complete class RTTI objects
 may also be compared for equality
 by comparison of their type_info addresses.
-
-</font>
 
 <p>
 <li>
@@ -1903,7 +1918,6 @@ descriptions.
 
 </ol>
 
-<font color=red>
 <p>
 <li>
 abi::__pbase_type_info is a base for both pointer types and
@@ -1950,19 +1964,6 @@ that will not resolve to the final complete class RTTI
 (because the latter need not exist),
 possibly by making it a local static object.
 
-<font color=red>
-<p>
-<strike>
-Two abi::__pbase_type_info objects are compared for equality
-(i.e. of the types represented)
-by checking for equal target or class
-type RTTI pointers unless either or both
-have either of the incomplete flags set,
-in which case the
-NTBS data members in the base std::type_info structures
-must be checked for equality.
-</strike>
-
 <p>
 Two abi::__pbase_type_info objects can always be compared
 for equality (i.e. of the types represented) or ordering
@@ -1971,15 +1972,11 @@ In addition,
 unless either or both have either of the incomplete flags set,
 equality can be tested by comparing the type_info addresses.
 
-</font>
-
 <p>
 <li>
 abi::__pointer_type_info is derived from abi::__pbase_type_info
 with no additional data members.
-</font>
 
-<font color=red>
 <p>
 <li>
 The abi::__pointer_to_member_type_info type adds one field
@@ -1990,8 +1987,6 @@ to abi::__pbase_type_info:
 </ul>
 
 </ol>
-
-</font>
 
 <p>
 <img src=warning.gif alt="<b>NOTE</b>:">
@@ -2008,14 +2003,14 @@ it is a good candidate for this role.
 </i>
 
 
-<h5>std::type_info::name()</h5>
+<h4> 2.9.6 <code>std::type_info::name()</code> </h4>
 <p>
 The null-terminated byte string returned by this routine is
 the <a href=#mangling>mangled name</a> of the type.
 
 
 <p>
-<h5>The dynamic_cast algorithm</h5>
+<h4> 2.9.7 The <code>dynamic_cast</code> Algorithm </h4>
 
 <p>
 Dynamic casts to "void cv*" are inserted inline at compile time.
@@ -2111,7 +2106,7 @@ Rationale:
 </i>
 
 <p>
-<h5>The exception handler matching algorithm</h5>
+<h4> 2.9.8 The Exception Handler Matching Algorithm</h4>
 
 <p>
 Since the RTTI related exception handling routines are "personality specific",
@@ -2122,10 +2117,8 @@ no interfaces need to be specified in this document
 
 <p> <hr> <p>
 <a name=layout>
-<h2> Chapter 3: Function Calling Conventions </h2>
+<h2> Chapter 3: Function Calling Conventions and APIs </h2>
 <p> <hr> <p>
-
-<font color=red>
 
 <p>
 In general, the calling conventions for C++ in this ABI
@@ -2140,7 +2133,7 @@ or by features without analogues in C.
 </a>
 
 <p>
-<h4> Value Parameters </h4>
+<h4> 3.1.1 Value Parameters </h4>
 
 <p>
 In general, C++ value parameters are handled just like C parameters.
@@ -2175,7 +2168,7 @@ or its address (if there is a non-trivial copy constructor).
 
 <p>
 <li>
-The collee calls any non-trivial copy constructor for the parameter
+The callee calls any non-trivial copy constructor for the parameter
 before returning.
 (Note that, if there is no non-trivial copy constructor,
 this implies that the parameter was copied out of registers on entry,
@@ -2190,14 +2183,14 @@ the caller deallocates space after the return.
 
 
 <p>
-<h4> Reference Parameters </h4>
+<h4> 3.1.2 Reference Parameters </h4>
 
 <p>
 Reference parameters are handled by passing a pointer to the actual
 parameter.
 
 <p>
-<h4> Empty Parameters </h4>
+<h4> 3.1.3 Empty Parameters </h4>
 
 <p>
 A parameter of an empty class type will not normally occupy a position
@@ -2221,7 +2214,7 @@ However, the content of the passed parameter is undefined.
 
 
 <p>
-<h4> Return Values </h4>
+<h4> 3.1.4 Return Values </h4>
 
 <p>
 In general, C++ return values are handled just like C return values.
@@ -2234,12 +2227,10 @@ The callee constructs the return value into this temporary.
 
 
 <p>
-<h4> Constructor Return Values </h4>
+<h4> 3.1.5 Constructor Return Values </h4>
 
 <p>
 Constructors return <code>void</code> results.
-
-</font>
 
 
 <p>
@@ -2499,16 +2490,6 @@ their complete object vtables for initialization.
 
 <p>
 <i>
-Note: The EDG compiler passes the constructor vtables
-by assigning them to the subobject virtual pointer
-and the subobject constructors get the array address from the virtual
-pointer.
-This doesn't work when an exception is raised during construction,
-and the destructor doesn't have the constructor vtable's address anymore.
-There may be a way to make this work with the landing pad model,
-but I haven't worked that out.
-
-<p>
 Suppose we have a subobject class D that needs a construction vtable,
 derived from a base B that needs a construction vtable as part of D,
 and possibly from others that do not need construction vtables.
@@ -2577,7 +2558,7 @@ A test program for this can be found in the
 
 <p>
 <a name=array-ctor>
-<h4> 3.4 Array Construction and Destruction </h4>
+<h3> 3.4 Array Construction and Destruction APIs </h3>
 
 <p>
 An ABI-compliant system shall provide several runtime routines for use
@@ -2677,22 +2658,227 @@ no destructor call is to be made.
 </dl>
 
 
+<font color=red>
+<p>
+<a name=dso-dtor>
+<h3> 3.5 DSO Object Destruction API </h3>
+
+<p>
+<h5> 3.5.1 Motivation </h5>
+
+<p>
+The C++ Standard requires that destructors be called for global objects
+when a program exits in the opposite order of construction.
+Most implementations have handled this by calling the C library
+<code>atexit</code> routine to register the destructors.
+This is problematic because the 1999 C Standard only requires that the
+implementation support 32 registered functions,
+although most implementations support many more.
+More important,
+it does not deal at all with the ability in most implementations to
+remove DSOs from a running program image by calling
+<code>dlclose</code> prior to program termination.
+
+<p>
+The API specified below is intended to provide
+standard-conforming treatment during normal program exit,
+which includes executing <code>atexit</code>-registered functions
+in the correct sequence relative to constructor-registered destructors,
+and reasonable treatment during early DSO unload (e.g. dlclose).
+
+<p>
+<h5> 3.5.2 Runtime Data Structure </h5>
+
+<p>
+The runtime library shall maintain a list of termination functions
+with the following information about each:
+
+<ul>
+<li> A function pointer (a pointer to a function descriptor on IA-64).
+<li> A void* operand to be passed to the function.
+<li> A void* handle for the <i>home DSO</i> of the entry (below).
+</ul>
+
+<p>
+The representation of this structure is implementation defined.
+All references are via the API described below.
+
+<p>
+<h5> 3.5.3 Runtime API </h5>
+
+<ol type=A>
+<p>
+<li> Object construction:
+<p>
+When a global or local static object is constructed,
+which will require destruction on exit,
+a termination function is <i>registered</i> as follows:
+<center><code>
+extern "C" int __cxa_atexit ( void (*f)(void *), void *p, dso_handle d );
+</code></center>
+This registration, e.g. <code>__cxa_atexit(f,p,d)</code>,
+is intended to cause the call <code>f(p)</code> when DSO d is unloaded,
+before all such termination calls registered before this one.
+It returns zero if registration is successful, nonzero on failure.
+
+<p>
+The registration function is not called from within the constructor.
+
+<p>
+<li> User atexit calls:
+<p>
+When the user registers exit functions with <code>atexit</code>,
+they should be registered with NULL parameter and DSO handle, i.e.
+<center><code>
+extern "C" __cxa_atexit ( f, NULL, NULL );
+</code></center>
+It is expected that implementations supporting both C and C++ will
+integrate this capability into the libc <code>atexit</code>
+implementation, so that C-only DSOs will nevertheless interact with C++
+programs in a C++-standard-conforming manner.
+No user interface to __cxa_atexit is supported,
+so the user is not able register an <code>atexit</code> function with a
+parameter or a home DSO.
+
+<p>
+<li> Termination:
+<p>
+When linking any DSO containing a call to <code>__cxa_atexit</code>,
+the linker should define a hidden symbol <code>__dso_handle</code>,
+with a value which is an address in one of the object's segments.
+(It does not matter what address,
+as long as they are different in different DSOs.)
+It should also include a call to the following function in the FINI
+list (to be executed first):
+<center><code>
+extern "C" void __cxa_finalize ( dso_handle d );
+</code></center>
+The parameter passed should be <code>&__dso_handle</code>.
+
+<p>
+Note that the above can be accomplished either by explicitly providing
+the symbol and call in the linker, or by implicitly including a
+relocatable object in the link with the necessary definitions,
+using a .fini_array section for the FINI call.
+Also, note that these can be omitted for an object with no calls to
+<code>__cxa_atexit</code>, but they can be safely included in all objects.
+
+<p>
+When <code>__cxa_finalize(d)</code> is called,
+it should walk the termination function list,
+calling each in turn if <code>d</code> matches
+<code>__dso_handle</code> for the termination function entry.
+If <code>d == NULL</code>, it should call all of them.
+Multiple calls to <code>__cxa_finalize</code> shall not result in
+calling termination function entries multiple times;
+the implementation may either remove entries or mark them finished.
+
+<p>
+When the main program calls <code>exit</code>,
+it must call any remaining <code>__cxa_atexit</code>-registered functions,
+either by calling <code>__cxa_finalize(NULL)</code>,
+or by walking the registration list itself.
+
+</ol>
+
+<p>
+Since <code>__cxa_atexit</code> and <code>__cxa_finalize</code>
+must both manipulate the same termination function list,
+they must be defined in the implementation's runtime library,
+rather than in the individual linked objects.
+
+</font>
+
+
+<font color=red>
+<p>
+<a name=array-ctor>
+<h3> 3.6 Demangler API </h3>
+
+<p>
+<b>Synopsis</b>:
+<code><pre>
+namespace abi {
+  extern "C" char* __cxa_demangle (const char* mangled_name,
+				   char* buf,
+				   size_t* n,
+				   int* status);
+}
+
+</code></pre>
+
+<ul>
+<p>
+<li>
+<code>mangled-name</code>
+is a pointer to a null-terminated array of characters.
+
+<p>
+<li>
+<code>buf</code> may be null.
+If it is non-null, then <code>n</code> must also be nonnull,
+and buf is a pointer to an array, of at least *n characters,
+that was allocated using malloc.
+
+<p>
+<li>
+<code>status</code> points to an int that's used as an error indicator.
+It is permitted to be null,
+in which case the user just doesn't get any detailed error information.
+</ul>
+
+<p>
+<b>Behavior</b>:
+The return value is a pointer to a null-terminated array 
+of characters, the demangled name.
+If there is an error in demangling, the return value is a null pointer.
+The user can examine *status to find out what kind of error it is.
+Meaning of error indications:
+<ul>
+<li> 0:  success
+<li> -1: memory allocation failure
+<li> -2: invalid mangled name
+<li> -3: invalid arguments (e.g. buf nonnull and n null)
+</ul>
+
+<p>
+<b>Memory management</b>: 
+<ul>
+<li> If buf is a null pointer,
+    <code>__cxa_demangle</code> allocates a new buffer with malloc.
+    It stores the size of the buffer in *n, if n is nonnull.
+<li> If buf is not a null pointer,
+    it must have been allocated with malloc.
+    If the array turns out to be too small,
+    <code>__cxa_demangle</code> may use realloc to increase its size.
+    The new size will be stored in *n.
+</ul>
+</font>
+
+
 <p> <hr> <p>
 <a name=layout>
 <h2> Chapter 4: Exception Handling </h2>
 <p> <hr> <p>
-See <a href=abi-eh.html>Exception Handling</a> document.
+See <a href=abi-eh.html>Exception Handling</a> document,
+currently just the base psABI-level material,
+and the
+HP <a href=exceptions.pdf>exception handling</a> working paper,
+8 December 1999.
 
 
 
 <p> <hr> <p>
 <a name=layout>
 <h2> Chapter 5: Linkage and Object Files </h2>
-
-
 <p> <hr> <p>
+
+
 <a name=mangling>
 <h3> 5.1 External Names (a.k.a. Mangling) </h3>
+
+<p>
+<h4> 5.1.1 General </h4>
 
 <p>
 This section specifies the <i>mangling</i>, i.e. encoding,
@@ -2726,18 +2912,16 @@ we use <code>Ret?</code> for an unknown function return type
 or <code>Type?</code> for an unknown data type.
 
 <p>
-<h4> Loose Ends </h4>
+<h5> Loose Ends </h5>
 
 <p>
 <ul>
-<li> Mangling of special entities: helper variables for thread protection, ...
-<li> Encode return type of all functions?   (Issue F-10)
 <li> Proof of nonambiguity
 <li> ILP-32 conventions?
 </ul>
 
 <p>
-<h4> General structure </h4>
+<h4> 5.1.2 General Structure </h4>
 
 <p>
 Entities with C linkage and global namespace variables are not mangled.
@@ -2753,6 +2937,7 @@ and in the case of functions its type (to support overloading).
 At this top level,
 function types do not have the special delimiter characters required
 when nested (see below).
+The type is omitted for variables and static data members.
 
 <pre><font color=blue><code>
     &lt;name> ::= &lt;nested-name>
@@ -2772,44 +2957,32 @@ a single substitution.
 
 <pre><font color=red><code>
     &lt;nested-name> ::= N [&lt;CV-qualifiers>] &lt;compound-name> E
-    &lt;compound-name> ::= &lt;compound-prefix> &lt;compound-name>
+    &lt;compound-name> ::= &lt;compound-name> &lt;component-name>
+		    ::= &lt;template-prefix> &lt;template-args>
+		    ::= &lt;component-name>
 		    ::= &lt;unqualified-name>
-    &lt;compound-prefix> ::= &lt;path-component> [&lt;template-args>]
-    &lt;path-component> ::= &lt;<i>namespace</i> source-name>
-		     ::= &lt;<i>class-enum</i> source-name>
-    &lt;unqualified-name> ::= &lt;source-name>  # types, functions
-		       ::= &lt;source-name> &lt;template-args>
-		       ::= &lt;operator-name>
-		       ::= &lt;operator-name> &lt;template-args>
-		       ::= &lt;special-name> # ctors, vtables, ...
-		       ::= &lt;special-name> &lt;template-args>
+		    ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
+    &lt;template-prefix> ::= &lt;compound-name> &lt;template-name>
+		      ::= &lt;substitution> # See <a href=#mangling-compression>Compression</a> below
+    &lt;component-name> ::= &lt;template-name>
+		     ::= &lt;<i>namespace</i> source-name>
+		     ::= &lt;builtin-type>
+		     ::= &lt;function-type>
+		     ::= &lt;array-type>
+		     ::= &lt;pointer-to-member-type>
+    &lt;template-name> ::= &lt;<i>function</i> source-name>
+		    ::= &lt;<i>class-enum</i> source-name>
+		    ::= &lt;operator-name>
+		    ::= &lt;special-name>	# constructors
 
+    &lt;unqualified-name> ::= &lt;source-name>  # types, functions
+		       ::= &lt;template-name> &lt;template-args>
+		       ::= &lt;operator-name>
+		       ::= &lt;special-name> # ctors, vtables, ...
+</font><font color=blue>
     &lt;source-name> ::= &lt;<i>length</i> number> &lt;identifier>
     &lt;number> ::= &lt;<i>decimal integer</i>>
     &lt;identifier> ::= &lt;<i>unqualified source code identifier</i>>
-
-</pre></font></code>
-
-<font color=red>
-The above grammar fragment describes the form of nested names.
-However, for compression purposes
-(discussed <a href=#mangling-compression>below</a>),
-only a prefix of this nesting can be substituted,
-corresponding to likely symbol table entries for namespaces,
-types, objects, templates, and instantiated templates.
-The following substitute grammar fragment for &lt;compound-name>,
-though it permits many nonsensical constructs,
-indicates which prefixes of valid names may be substituted:
-</font>
-
-<pre><font color=red><code>
-    &lt;compound-name> ::= &lt;compound-name> &lt;compound-component>
-		    ::= &lt;compound-component>
-		    ::= &lt;substitution>
-    &lt;compound-component> ::= &lt;source-name>
-			 ::= &lt;operator-name>
-			 ::= &lt;special-name> # ctors, vtables, ...
-			 ::= &lt;template-args>
 
 </pre></font></code>
 
@@ -2821,11 +2994,13 @@ except for the value zero, represented as '0'.
 &lt;identifier> is a pseudo-terminal representing the unqualified
 identifier for the entity in the source code.
 
+<font color=red><strike>
 <p>
 &lt;type> is used to disambiguate overloaded functions,
 but also to distinguish the various virtual tables associated
 with a given complete class type.
 &lt;type> is omitted for variables and static data members.
+</strike></font>
 
 <p>
 Note that &lt;source-name> in the productions for &lt;unqualified-name>
@@ -2834,7 +3009,7 @@ or a class or enum name when derived from &lt;type>.
 
 <p>
 <a name=mangling-operator>
-<h4> Operator Encodings </h4>
+<h4> 5.1.3 Operator Encodings </h4>
 
 <p>
 Operators appear as function names,
@@ -2904,7 +3079,7 @@ shall encode them as a 'vx' prefix followed by the name in &lt;length,ID> form.
 
 <p>
 <a name=mangling-special>
-<h4> Other Special Functions and Entities </h4>
+<h4> 5.1.4 Other Special Functions and Entities </h4>
 
 <p>
 Associated with a virtual table are several entities with mangled
@@ -2986,7 +3161,7 @@ where the final &lt;unqualified-name> is replaced by one of the following:
 
 <p>
 <a name=mangling-type>
-<h4> Type encodings </h4>
+<h4> 5.1.5 Type encodings </h4>
 
 <p>
 Types are encoded as follows:
@@ -3146,16 +3321,14 @@ since extern "C" function objects have unmangled names.
 </pre></font></code>
 
 <p>
-<font color=red>
 A class or enum type is simply a name,
 It may be a simple &lt;unqualified-name>,
 with or without a template argument list,
 or a more complex &lt;nested-name>.
 Thus, it is encoded like a function name,
 except that no CV-qualifiers are present in a nested name specification.
-</font>
 
-<pre><font color=red><code>
+<pre><font color=blue><code>
   &lt;class-enum-type> ::= &lt;nested-name>
 		    ::= &lt;unqualified-name>
 </pre></font></code>
@@ -3180,54 +3353,19 @@ Pointer-to-member types encode the class and member types.
 </pre></font></code>
 
 <p>
-Template parameters (including nontype and template template parameters)
-encode the parameter number.
-<font color=red><strike>
-Objects appearing within multiple levels of template number the
-top-level parameters 1..n, the next level n+1..n+m, etc.
-</strike></font>
+<font color=red>
+When function and member function template instantiations reference
+the template parameters in their parameter/result types,
+the template parameter number is encoded.
+Class template parameter references are mangled using the standard
+mangling for the actual parameter type,
+typically a substitution.
+</font>
 
 <pre><font color=blue><code>
   &lt;template-param> ::= T &lt;<i>parameter</i> number> _
 
 </pre></font></code>
-
-<font color=red>
-<p>
-There are two possible complications in numbering the template parameters.
-First, a template parameter may itself be a template instantiation with
-parameters, e.g. as in:
-<pre><code>
-	int A&lt;B&lt;int>,C&lt;float>>::f(C&lt;float>);
-
-</pre></code>
-<p>
-In such cases, the parameters are numbered left-to-right, depth-first,
-preorder.  So in the example given, the numbering would be:
-<pre><code>
-	T1_: B&lt;int>
-	T2_: int
-	T3_: C&lt;float>
-	T4_: float
-
-</pre></code>
-
-<p>
-The second complication comes from templates nested in templates,
-e.g. as in:
-<pre><code>
-	int A&lt;int>::B&lt;float>::f(float);
-
-</pre></code>
-<p>
-In such cases, the outermost parameters are numbered first:
-<pre><code>
-	T1_: int
-	T2_: float
-
-</pre></code>
-
-</font>
 
 <p>
 Template argument lists appear after the unqualified template name,
@@ -3296,14 +3434,12 @@ The operators are encoded using their two letter mangled names.
 For example, "B&lt;(J+1)/2>", if J is template parameter 1,
 becomes "1BI Xdv pl T1_ Li1E Li2E E E"
 (the blanks are present only to visualize the decomposition).
-<font color=red>
 Note that the expression is mangled without constant folding or other
 simplification,
 and without parentheses, which are implicit in the postfix representation.
 Except for the parentheses, therefore,
 it represents the source token stream.
 (C++ Standard reference 14.5.5.1 p. 5.)
-</font>
 
 <pre><font color=blue><code>
   &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
@@ -3315,18 +3451,16 @@ it represents the source token stream.
 
 </pre></font></code>
 
-<font color=red>
 <p>
 The encoding for a literal of an enumerated type is the encoding of the
 type name followed by the encoding of the numeric value of the literal
 in its base integral type
 (which deals with values that don't have names declared in the type).
-</font>
 
 
 <p>
 <a name=mangling-scope>
-<h4> Scope Encoding </h4>
+<h4> 5.1.6 Scope Encoding </h4>
 
 <p>
 A nonlocal scope is encoded as the qualifier of a qualified name:
@@ -3346,15 +3480,12 @@ multiple translation units to require access to that entity).
 The encoding for such entities is as follows:
 <code><pre>
   &lt;local-name> := Z &lt;<i>function</i> encoding> E &lt;<i>entity</i> name> [&lt;discriminator>]
-<font color=red>
                := Z &lt;<i>function</i> encoding> E s [&lt;discriminator>]
                := Z &lt;<i>function</i> encoding> E c
-</font>
 
   &lt;discriminator> := _ &lt;number> 
 </pre></code>
 
-<font color=red>
 <p>
 The first production is used for named local static objects,
 which are identified by their declared names.
@@ -3372,7 +3503,6 @@ if this is the nth distinct string literal, in lexical order,
 appearing in the function.
 Multiple references to the same string literal produce one string
 object with one name in the sequence.
-</font>
 <i>
 Note that this assumes that the same string literal occurring twice
 in a given function in fact represents a single entity,
@@ -3381,24 +3511,20 @@ i.e. has a unique address.
 
 <i>
 <p>
-<font color=red>
 For both named objects and string literals,
 the numbering order is strictly lexical order based on the original
 token sequence.
 All objects occurring in that sequence are to be numbered,
 even if subsequent optimization makes some of them unnecessary.
-</font>
 It is expected that this will be the 'natural' order in most compilers.
 In any case, conflicts would arise only if different compilation units
 including the same code were compiled by different compilers,
 and multiple entities requiring mangling had the same name.
 </i>
 
-<font color=red>
 <p>
 The third production is used only to produce the name used for the
 COMDAT group containing the local objects.
-</font>
 
 <p>
 Example:
@@ -3428,7 +3554,7 @@ Example:
 
 <p>
 <a name=mangling-compression>
-<h4> Compression </h4>
+<h4> 5.1.7 Compression </h4>
 
 <p>
 To minimize the length of external names,
@@ -3437,7 +3563,10 @@ a substitution encoding to eliminate repetition of name components,
 and abbreviations for certain common names.
 Each non-terminal in the grammar above for which &lt;substitution>
 appears on the RHS,
-types, names, and qualified name prefixes,
+<font color=red>
+types (except &lt;builtin-type> other than vendor extended types),
+</font>
+names, and qualified name prefixes,
 is both a source of future substitutions
 and a candidate for being substituted.
 
@@ -3461,11 +3590,13 @@ considered left-to-right,
 components before the composite structure of which they are a part.
 If a component has been encountered before,
 it is substituted as described below.
-If not, its mangling is identified,
+This decision is independent of whether its components have been substituted,
+so an implementation may optimize by considering large structures
+for substitution before their components.
+If a component has not been encountered before,
+its mangling is identified,
 and it is added to a dictionary of substitution candidates.
 No entity is added to the dictionary twice.
-Thus, an implementation may optimize by considering large structures
-for substitution before their components.
 
 <p>
 Substitution is according to the production:
@@ -3478,37 +3609,58 @@ Substitution is according to the production:
 
 The &lt;seq-id> is a sequence number in base 36,
 using digits and upper case letters,
-and identifies the &lt;seq-id>-th most recently encoded component,
-in right-to-left order, starting at "0".
+and identifies the &lt;seq-id>-th
+<font color=red>
+<strike>most recently</strike>
+encoded component,
+in left-to-right order,
+</font>
+starting at "0".
 As a special case,
-the immediately preceding substitutable entity is encoded as "S_",
+the
+<font color=red>
+<strike>immediately preceding</strike> first
+</font>
+substitutable entity is encoded as "S_",
 i.e. with no number,
-so the numbered entities are the second preceding one as "S0_",
+so the numbered entities are the second
+<font color=red>
+<strike>preceding</strike>
+</font>
+one as "S0_",
 the third as "S1_", the twelfth as "SA_", the thirty-eighth as "S10_",
 etc.
 All substitutable components are so numbered,
-except those that have already been numbered for substitution,
-but the substitution occurs only if "S&lt;seq-id>_" (or "S_")
-is strictly shorter than the unsubstituted encoding,
+except those that have already been numbered for substitution.
 <font color=red>
+<strike> but the substitution occurs only if "S&lt;seq-id>_" (or "S_")
+is strictly shorter than the unsubstituted encoding,
 i.e. the encoding obtained if no substitution of its parts were done.
+</strike>
 </font>
-A component is less recent than the structure of which it is a part.
+A component is
+<font color=red>
+<strike>less recent</strike>
+earlier in the substitution dictionary
+</font>
+than the structure of which it is a part.
 For example:
 
+<font color=red>
 <code><pre>
-   "_ZN1N1TIiiE2mfES2_IddE": Ret? N::T&lt;int, int>::mf(N::T&lt;double, double>)
+   "_ZN1N1TIiiE2mfES0_IddE": Ret? N::T&lt;int, int>::mf(N::T&lt;double, double>)
 </pre></code>
 
-since at the point where S2_ appears:
+since at the point where S0_ appears:
 <code><pre>
-   "S_" == N::T&lt;int, int>::mf
-   "S0_" == N::T&lt;int, int>
-   "S1_" == int
-   "S2_" == N::T (template is less recent than template-id)
-   "S3_" == N (qualifier is less recent than qualified entity)
+   "S2_" == N::T&lt;int, int>::mf
+   "S1_" == N::T&lt;int, int>
+	(int is builtin, and isn't considered)
+   "S0_" == N::T (template is less recent than template-id)
+   "S_" == N (qualifier is less recent than qualified entity)
 
 </pre></code>
+</font>
 
 <p>
 Note that substitutable components are the represented symbolic constructs,
@@ -3553,7 +3705,7 @@ For example:
 
 <p>
 <a name=mangling-examples>
-<h4> Examples </h4>
+<h4> 5.1.8 Examples </h4>
 
 <p>
 In the table below,
@@ -3581,18 +3733,17 @@ they are not part of the actual mangled name, and should be ignored.
 <tr class=small><td> _Z3foo3bar </td>
 <td> Ret? foo(bar); </td></tr>
 
-<tr class=small><td> _Zrm1X1X </td>
+<tr class=small><td><font color=red> _Zrm1XS0_ </font></td>
 <td> Ret? operator%(X, X); </td></tr>
 
-<tr class=small><td> _ZplR1XR1X </td>
+<tr class=small><td><font color=red> _ZplR1XRS1_ </font></td>
 <td> Ret? operator+(X&, X&); </td></tr>
 
-<tr class=small><td> _ZlsRK1XS_ </td>
+<tr class=small><td><font color=red> _ZlsRK1XS2_ </font></td>
 <td> Ret? operator&lt;&lt; (X const&, X const&);
-<br> (Note: strlen("S_")&lt;strlen("RK1X")) </td></tr>
-
-<tr class=small><td> _ZlsRK1XS_S_ </td>
-<td> Ret? operator&lt;&lt; (X const&, X const&, X const&);
+<font color=red>
+<br> (Note: operator&lt;&lt; is S_, X is S0_, X const is S1_)
+</font>
 </td></tr>
 
 <tr class=small><td> _ZN3FooIA4_iE3barE </td>
@@ -3603,9 +3754,12 @@ they are not part of the actual mangled name, and should be ignored.
 <br> (Note: the return type is always explicitly encoded for template
 functions taking parameters.)</td></tr>
 
-<tr class=small><td> _Z5firstI3DuoEvS1_ </td>
+<tr class=small><td><font color=red> _Z5firstI3DuoEvS0_ </font></td>
 <td> void first&lt;Duo>(/*nondependent*/Duo);
-<br>(Note: "S_" would refer to the "void" return type.) </td></tr>
+<font color=red>
+<br>(Note: first is S_, Duo is S1_, first<Duo> is S2_)
+</font>
+</td></tr>
 
 <tr class=small><td> _Z5firstI3DuoEvT1_ </td>
 <td> void first&lt;Duo>(/*T1=*/Duo); </td></tr>
@@ -3636,7 +3790,7 @@ functions taking parameters.)</td></tr>
 <td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
 <br> // T1 == template template parameter </td></tr>
 
-<tr class=small><td> _Z3foo 5Hello5WorldS_S0_ </td>
+<tr class=small><td><font color=red> _Z3foo 5Hello5WorldS1_S0_ </font></td>
 <td> void foo(Hello,World,World,Hello) </td></tr>
 
 <tr class=small><td> _Z3fooPM2ABi </td>
@@ -3672,22 +3826,19 @@ and specify the symbol to be used to identify duplicates in the
 
 <p>
 <a name=vague-inline></a>
-<b>Out-of-line Functions</b>
+<h4> 5.2.1 Out-of-line Functions</h4>
 
 <p>
 It may sometimes be necessary or desirable to reference an out-of-line
 copy of a function declared inline,
-<font color=red>
 i.e. to reference a global symbol naming the function.
 This may occur because the implementation cannot, or chooses not to,
 inline the function, or because it needs an address rather than a call.
 In such a case,
 the function is to be emitted in each object where its name is referenced.
-</font>
 A COMDAT group is used to eliminate duplicates,
 with the mangled name of the function as the identifying symbol.
 
-<font color=red>
 <p>
 Inline functions, whether or not declared as such,
 and whether they are inline or out-of-line copies,
@@ -3703,6 +3854,7 @@ This COMDAT group must be emitted in each object with references to the
 symbols for objects it contains, either inline or out-of-line.
 
 <p>
+<font color=red>
 Issue:  Different instances may require different subsets of the local
 objects defined, e.g. due to different optimization levels.
 In particular, the inlined copies might eliminate large parts of the code.
@@ -3713,7 +3865,7 @@ or otherwise guarantee that everything required is present.
 
 <p>
 <a name=vague-vtable></a>
-<b>Virtual Tables</b>
+<h4> 5.2.2 Virtual Tables</h4>
 
 <p>
 The virtual table for a class is emitted in the same object containing
@@ -3726,19 +3878,16 @@ any new construction virtual tables required for subobjects,
 and the VTT for the class.
 They are emitted in a COMDAT group,
 with the virtual table mangled name as the identifying symbol.
-<font color=red>
 <i>
 Note that if the key function is not declared inline in the class definition,
 but its definition later is always declared inline,
 it will be emitted in every object containing the definition.
 </i>
-</font>
 
 <p>
 <a name=vague-rtti></a>
-<b>Typeinfo</b>
+<h4> 5.2.3 Typeinfo</h4>
 
-<font color=red>
 <p>
 The RTTI std::type_info structure for a complete class type is
 emitted in the same object as its virtual table if dynamic,
@@ -3760,13 +3909,11 @@ an implementation may choose to emit them as local static objects,
 or in COMDAT groups with implementation-defined names and COMDAT identifiers.
 The RTTI name NTBS objects are emitted in separate COMDAT groups
 identified by the NTBS mangled names.
-</font>
 
 <p>
 <a name=vague-ctor></a>
-<b>Constructors and Destructors</b>
+<h4> 5.2.4 Constructors and Destructors</h4>
 
-<font color=red>
 <p>
 Constructors and destructors for a class,
 whether implicitly-defined or user-defined,
@@ -3782,11 +3929,54 @@ Implicitly-defined or inline user-defined constructors and destructors
 are emitted where referenced,
 each in its own COMDAT group identified by the constructor or
 destructor name.
-</font>
 
 <p>
 <a name=vague-itemplate></a>
-<b>Instantiated Templates</b>
+<h4> 5.2.5 Instantiated Templates</h4>
+
+<font color=red>
+<p>
+An instantiation of a class template requires:
+<ul>
+<p>
+<li> In the object where instantiated,
+    the virtual table, any subobject construction vtables, and the VTT,
+    along with any static member data,
+    are emitted in a COMDAT identified by the virtual table mangled name.
+<p>
+<li> In the object where instantiated,
+    non-inline virtual member functions are emitted in COMDAT groups
+    identified by the function name.
+<p>
+<li> Non-virtual member functions are emitted in any object where
+    referenced (non-inline),
+    in COMDAT groups identified by the function name.
+</ul>
+
+<p>
+An instantiation of a function template or member function template
+is emitted in any object where it is referenced (non-inline),
+in a COMDAT group identified by the function name.
+</font>
+
+
+<p> <hr> <p>
+<font color=red>
+<a name=unwind>
+<h3> 5.3 Unwind Table Location </h3>
+
+<p>
+As described in the IA-64 psABI,
+IA-64 implementations shall produce unwind table entries in a
+<code>SHT_IA_64_UNWIND</code> section,
+and unwind information descriptors in a section that will be linked
+with the associated code.
+IA-64 linkers shall put the unwind table,
+the unwind information table,
+and the associated code in a single text segment,
+with a <code>PT_IA_64_UNWIND</code> program table entry identifying the
+unwind table location.
+</font>
 
 
 <p>
@@ -3796,6 +3986,24 @@ destructor name.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[000417]</font>
+Updates from 17 April meeting.
+Clarify order of vcall offsets.
+More elaboration of construction vtable.
+Specification of COMDAT RTTI name.
+Reorganization of pointer RTTI.
+Modify mangling grammar to clarify substitution in compound names.
+Clarify Vague Linkage section.
+
+<p>
+<font color=blue>[000407]</font>
+Updates from 6 April meeting, email.
+More elaboration of construction vtable.
+Updates/issues in RTTI.
+Minor mangling changes.
+Added Vague Linkage section.
 
 <p>
 <font color=blue>[000327]</font>
