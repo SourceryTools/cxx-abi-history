@@ -4570,6 +4570,24 @@ and it is added to a dictionary of substitution candidates.
 No entity is added to the dictionary twice.
 
 <p>
+The type of a non-static member function is considered to be
+different, for the purposes of substitution, from the type of a
+namespace-scope or static member function whose type appears similar.
+Therefore, in the following example:
+<blockquote><code><pre>
+typedef void T();
+struct S {};
+void f(T*, T (S::*)) {}
+</pre></code></blockquote>
+the function <code>f</code> is mangled as
+<code>_Z1fPFvvEM1SFvvE</code>; the type of the member function pointed
+to by the second parameter is not considered the same as the type of
+the function pointed to by the first parameter.  Both function types
+are, however, entered the substitution table; subsequent references to
+either variant of the function type will result in the use of
+substitutions.
+
+<p>
 Substitution is according to the production:
 
 <pre><font color=blue><code>
@@ -4870,6 +4888,10 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021021]</font>
+Clarify mangling of pointer-to-member functions.
 
 <p>
 <font color=blue>[021016]</font>
