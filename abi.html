@@ -1930,7 +1930,7 @@ Given the above, the following is pseudocode for processing
   p1 = (T*) ( (char *)p + padding )
 
   if padding > 0
-    *( (unsigned long *)p1 - 1) = n
+    *( (size_t *)p1 - 1) = n
 
   for i = [0, n)
     create a T, using the default constructor, at p1[i]
@@ -2237,7 +2237,7 @@ at offset zero (i.e. the derived class is dynamic iff the base is),
 class <code>abi::__si_class_type_info</code> is used.
 It adds to <code>abi::__class_type_info</code> 
 a single member pointing to the type_info structure for the base type,
-declared "<code>__class_type_info const *type</code>".
+declared "<code>__class_type_info const *__base_type</code>".
 <pre><code>
       class __si_class_type_info : public __class_type_info {
 	public:
