@@ -1090,14 +1090,14 @@ that adjusts the result pointer before returning.
 <p>
 The entries for virtual destructors are actually pairs of entries.
 The first destructor,
-called the non-deleting in-charge destructor,
+called the non-deleting destructor,
 performs the destruction without calling delete() on the object.
 The second destructor,
-called the deleting in-charge destructor,
+called the deleting destructor,
 calls delete() after destroying the object.
 Both destroy any virtual bases;
 a separate, non-virtual function,
-called the not-in-charge destructor,
+called the base object destructor,
 performs destruction of the object but
 not its virtual base subobjects, and does not call delete().
 
@@ -2970,16 +2970,14 @@ This includes:
 </a>
 
 <p>
-The complete object (in-charge) constructors and destructors find the VTT,
+The complete object constructors and destructors find the VTT,
 described in Section 2.6, Virtual Tables During Object Construction,
-via its mangled name.
-They pass the address of the subobject's sub-VTT
-entry in the VTT as a second parameter when calling
-the subobject (not-in-charge) constructors and destructors.
-The subobject ctor/dtors use the addresses passed to initialize
-the primary virtual pointer and virtual pointers that point to the
-classes which either have virtual bases or override virtual functions
-with a virtual step
+via its mangled name.  They pass the address of the subobject's
+sub-VTT entry in the VTT as a second parameter when calling the base
+object constructors and destructors.  The base object constructors and
+destructors use the addresses passed to initialize the primary virtual
+pointer and virtual pointers that point to the classes which either
+have virtual bases or override virtual functions with a virtual step
 (have vcall offsets needing adjustment).
 
 <p>
@@ -4059,12 +4057,12 @@ where the final &lt;unqualified-name> of a nested name
 is replaced by one of the following:
 
 <pre><font color=blue><code>
-  &lt;ctor-dtor-name> ::= C1	# complete object (in-charge) constructor
-		   ::= C2	# base object (not-in-charge) constructor
-		   ::= C3	# complete object (in-charge) allocating constructor
-		   ::= D0	# deleting (in-charge) destructor
-		   ::= D1	# complete object (in-charge) destructor
-		   ::= D2	# base object (not-in-charge) destructor
+  &lt;ctor-dtor-name> ::= C1	# complete object constructor
+		   ::= C2	# base object constructor
+		   ::= C3	# complete object allocating constructor
+		   ::= D0	# deleting destructor
+		   ::= D1	# complete object destructor
+		   ::= D2	# base object destructor
 
 </pre></font></code>
 
@@ -4795,20 +4793,17 @@ as weak symbols.
 <h4> 5.2.5 Constructors and Destructors</h4>
 
 <p>
-Constructors and destructors for a class,
-whether implicitly-defined or user-defined,
-are emitted under the same rules as other functions.
-That is, user-defined constructors or destructors,
-unless the function is declared inline, or has internal linkage,
-are emitted where defined,
-with all variants required (in-charge/not-in-charge).
-A user-defined constructor or destructor with non-inline,
-internal linkage is emitted where defined,
-with only the variants actually referenced.
+Constructors and destructors for a class, whether implicitly-defined
+or user-defined, are emitted under the same rules as other functions.
+That is, user-defined constructors or destructors, unless the function
+is declared inline, or has internal linkage, are emitted where
+defined, with their complete, and base object variants.  For
+destructors, the deleting variant is emitted as well.  A user-defined
+constructor or destructor with non-inline, internal linkage is emitted
+where defined, with only the variants actually referenced.
 Implicitly-defined or inline user-defined constructors and destructors
-are emitted where referenced,
-each in its own COMDAT group identified by the constructor or
-destructor name.
+are emitted where referenced, each in its own COMDAT group identified
+by the constructor or destructor name.
 
 <p>
 This ABI does not require the generation or use of allocating constructors,
@@ -4877,6 +4872,11 @@ unwind table location.
 <a name=revisions>
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
+
+<p>
+<font color=blue>[021008]</font>
+Make the names used for constructors and destructor entry points
+consistent throughout.
 
 <p>
 <font color=blue>[021008]</font>
