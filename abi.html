@@ -3306,7 +3306,7 @@ and the size of its elements,
 call the given destructor on each element.
 If the destructor throws an exception,
 rethrow after destroying the remaining elements if possible.
-If the destructor throws a second exception, call terminate.
+If the destructor throws a second exception, call <code>terminate()</code>.
 The destructor pointer may be NULL,
 in which case this routine does nothing.
 </dd>
@@ -3323,7 +3323,7 @@ Given the (data) address of an array,
 the number of elements,
 and the size of its elements,
 call the given destructor on each element.
-If the destructor throws an exception, call terminate.
+If the destructor throws an exception, call <code>terminate()</code>.
 The destructor pointer may be NULL,
 in which case this routine does nothing.
 </dd>
@@ -3344,7 +3344,7 @@ using the cookie to determine the number of elements,
 and then delete the space.
 If the destructor throws an exception,
 rethrow after destroying the remaining elements if possible.
-If the destructor throws a second exception, call terminate.
+If the destructor throws a second exception, call <code>terminate()</code>.
 If padding_size is 0, the destructor pointer must be NULL.
 If the destructor pointer is NULL,
 no destructor call is to be made.
@@ -3496,7 +3496,7 @@ or 16 for ELF-64.
 <img src=warning.gif alt="<b>NOTE</b>:">
 <i>
 An implementation may initialize as many (or as few) objects of the
-same prioriry as it chooses in a single such initialization function,
+same priority as it chooses in a single such initialization function,
 as long as the sequence of such initialization entries for a given file
 preserves the source code order of objects to be initialized.
 </i>
@@ -3585,7 +3585,7 @@ The API specified below is intended to provide
 standard-conforming treatment during normal program exit,
 which includes executing <code>atexit</code>-registered functions
 in the correct sequence relative to constructor-registered destructors,
-and reasonable treatment during early DSO unload (e.g. dlclose).
+and reasonable treatment during early DSO unload (e.g. <code>dlclose</code>).
 
 <p>
 <h5> 3.3.5.2 Runtime Data Structure </h5>
@@ -3611,14 +3611,14 @@ All references are via the API described below.
 <p>
 <li> Object construction:
 <p>
-After construcing a global (or local static) object,
+After constructing a global (or local static) object,
 that will require destruction on exit,
 a termination function is <i>registered</i> as follows:
 <center><code>
 extern "C" int __cxa_atexit ( void (*f)(void *), void *p, dso_handle d );
 </code></center>
 This registration, e.g. <code>__cxa_atexit(f,p,d)</code>,
-is intended to cause the call <code>f(p)</code> when DSO d is unloaded,
+is intended to cause the call <code>f(p)</code> when DSO <code>d</code> is unloaded,
 before all such termination calls registered before this one.
 It returns zero if registration is successful, nonzero on failure.
 
@@ -3626,16 +3626,16 @@ It returns zero if registration is successful, nonzero on failure.
 The registration function is not called from within the constructor.
 
 <p>
-<li> User atexit calls:
+<li> User <code>atexit</code> calls:
 <p>
 When the user registers exit functions with <code>atexit</code>,
-they should be registered with NULL parameter and DSO handle, i.e.
+they should be registered with NULL parameters and DSO handles, i.e.
 <center><code>
     __cxa_atexit ( f, NULL, NULL );
 </code></center>
 It is expected that implementations supporting both C and C++ will
 integrate this capability into the libc <code>atexit</code>
-implementation, so that C-only DSOs will nevertheless interact with C++
+implementation so that C-only DSOs will nevertheless interact with C++
 programs in a C++-standard-conforming manner.
 No user interface to <code>__cxa_atexit</code> is supported,
 so the user is not able to register an <code>atexit</code> function
@@ -3722,12 +3722,12 @@ or an internal NTBS mangling, e.g. of a type for type_info.
 <li>
 <code>buf</code> may be null.
 If it is non-null, then <code>n</code> must also be nonnull,
-and buf is a pointer to an array, of at least *n characters,
+and <code>buf</code> is a pointer to an array, of at least <code>*n</code> characters,
 that was allocated using malloc.
 
 <p>
 <li>
-<code>status</code> points to an int that's used as an error indicator.
+<code>status</code> points to an int that is used as an error indicator.
 It is permitted to be null,
 in which case the user just doesn't get any detailed error information.
 </ul>
