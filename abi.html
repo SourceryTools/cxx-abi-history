@@ -4073,7 +4073,8 @@ the first of which is lowercase.
 		  ::= cl	# ()            
 		  ::= ix	# []            
 		  ::= qu	# ?             
-		  ::= sz	# sizeof        
+		  ::= st	# sizeof (a type)
+		  ::= sz	# sizeof (an expression)
 		  ::= sr	# scope resolution (::), see below        
 		  ::= cv &lt;type>	# (cast)        
 		  ::= v &lt;digit> &lt;source-name>	# vendor extended operator
@@ -4510,6 +4511,7 @@ it represents the source token stream.
 <pre><font color=blue><code>
   &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
 	       ::= &lt;<i>binary</i> operator-name> &lt;expression> &lt;expression>
+               ::= st &lt;type&gt;
 	       ::= &lt;expr-primary>
   &lt;expr-primary> ::= &lt;template-param>
 		 ::= L &lt;type> &lt;<i>value</i> number> E	# literal
