@@ -15,13 +15,21 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 27 July 1999</i>
+<i>Revised 30 July 1999</i>
 
 </center>
 
 </HEAD>
 
 <BODY>
+
+<p> <hr> <p>
+<h3> Revisions </h3>
+
+<p>
+<font color=blue>[990730]</font>
+Selected first variant for empty base allocation; removed others.
+
 
 <p> <hr> <p>
 <h3> General </h3>
@@ -84,7 +92,7 @@ the unique base class (if any) with which it shares the Vptr at offset 0.
 <p> <hr> <p>
 <h3> POD Data Types </h3>
 
-The size and alignment of POD types is as specified by the base (C) ABI.
+The size and alignment of C POD types is as specified by the base (C) ABI.
 Type bool has size and alignment 1.
 All of these types have data size equal to their size.
 (We ignore tail padding for PODs because the Standard does not allow us
@@ -159,33 +167,13 @@ allocate as follows:
   <li> If D is an empty base class,
 	its allocation is similar to the first case above,
 	except that additional candidate offsets are considered before
-	starting at dsize(C):
-
-      <ol type=a>
-      <p>
-      <li> First variant:
-	   Attempt to place D at offset zero.
-	   If unsuccessful (due to a component type conflict),
-	   proceed with attempts at dsize(C) as for non-empty bases.
-      <p>
-      <li> Second variant:
-	   Suppose non-empty bases B1, B2, B3, ..., Bn,
-	   have already been placed.
-	   Attempt to place D at 0 (=offset(B1)), at offset(B2),
-	   at offset(B3), ...,
-	   before finally attempting offsets starting at dsize(C) as above.
-      <p>
-      <li> Third variant:
-	   Suppose non-empty bases B1, B2, B3, ..., Bn,
-	   have already been placed as in the second variant.
-	   Attempt to place D at 0 (=offset(B1)),
-	   at offsets dsize(B1) through offset(B2),
-	   at offsets offset(B2)+dsize(B2) through offset(B3), ...,
-	   before finally attempting offsets starting at dsize(C) as above.
-      </ol>
+	starting at dsize(C).
+	First, attempt to place D at offset zero.
+	If unsuccessful (due to a component type conflict),
+	proceed with attempts at dsize(C) as for non-empty bases.
 
 	<p>
-	For all variants, once offset(D) has been chosen,
+	Once offset(D) has been chosen,
 	update sizeof(C) to max (sizeof(C), offset(D)+sizeof(D)).
 	Note that align(D) is 1, so no update of align(C) is needed.
 	Similarly, since D is an empty base class,
@@ -214,6 +202,109 @@ Round sizeof(C) up to a non-zero multiple of align(C).
 <p> <hr> <p>
 <h3> Virtual Table Layout </h3>
 
+<p>
+<h4> General </h4>
+
+<p>
+A <i>virtual table</i> (<i>Vtable</i>) is a table of information used
+to dispatch virtual functions,
+to access virtual base class subobjects,
+and to access information for runtime type identification (RTTI).
+Each class that has virtual member functions or virtual bases
+has an associated set of Vtables.
+There may be multiple Vtables for a particular class,
+if it is used as a base class for other classes.
+However, the Vtable pointers within all the objects (instances)
+of a particular most-derived class point to the same set of Vtables.
+
+<p>
+A Vtable consists of a sequence of offsets, data pointers,
+and function pointers, as well as structures composed of such items.
+We will describe below the sequence of such items.
+Their offsets within the Vtable are determined by that allocation
+sequence and the natural ABI size and alignment,
+just as a data struct would be.  In particular:
+<ul>
+<li> Offsets are of type <code>ptrdiff_t</code> unless otherwise stated.
+<li> Data pointers have normal pointer size and alignment.
+<li> Function pointers remain to be defined.
+     One possibility is that they will be
+     &lt;function address, GP address> pairs, with pointer alignment.
+</ul>
+
+<p>
+In general, what we consider the address of a Vtable
+(i.e. the address contained in objects pointing to a Vtable)
+may not be the beginning of the Vtable.
+We call it the <i>address point</i> of the Vtable.
+The Vtable may therefore contain components at either positive or
+negative offsets from its address point.
+
+<p>
+<h4> Components </h4>
+
+<p>
+Each Vtable consists of the following components:
+
+<ul>
+<p>
+<li>
+<i>Base offsets</i> are used to access
+the virtual bases of an object,
+or non-virtual bases when pointer adjustment is required
+for some overriden virtual function.
+Such an entry is a displacement to a virtual base subobject from the
+location within the object of the Vtable pointer that addresses this vtable.
+These entries are only necessary if the class directly or indirectly
+inherits from virtual base classes,
+or if it overrides a virtual function defined in a base class and if
+adjustment from the base to the derived class is needed.
+The values can be positive or negative.
+
+<p>
+<li>
+The <i>offset to top</i> holds the displacement to the top of the object
+from the location within the object of the vtable pointer that addresses
+this vtable.
+A negative value indicates the vtable pointer is part of an embedded
+base class subobject; otherwise it is zero.
+The offset provides a way to find the top of the object from any base
+subobject with a vtable pointer.
+This is necessary for dynamic_cast<void*> in particular.
+
+<p>
+The virtual pointer points to the "offset to top" field.
+
+<p>
+<li>
+The <i>typeinfo pointer</i> points to the typeinfo object used for RTTI.
+All entries in each of the Vtables for a given class point to the same
+typeinfo object.
+
+<p>
+<li>
+The <i>duplicate base information pointer</i> points to a table used to
+perform runtime disambiguation of duplicate base classes for dynamic casts.
+The entries in the vtables for a given class do not necessarily
+all point to the same table of duplicate base information.
+
+<p>
+<li>
+
+<p>
+<li>
+
+<p>
+<li>
+
+<p>
+<li>
+
+
+
+</ul>
+
+
 <i>
 &lt;To be defined.>
 
@@ -228,6 +319,20 @@ Issues:
 <li> B-7:  Possible to allocate in shared memory?
 </ul>
 </i>
+
+
+<p> <hr> <p>
+<h3> Virtual Table Layout </h3>
+
+<i>
+&lt;To be defined.>
+
+
+<p> <hr> <p>
+<h3> External Names (a.k.a. Mangling) </h3>
+
+<i>
+&lt;To be defined.>
 
 <p>
 <hr>
