@@ -1,0 +1,405 @@
+<HTML>
+
+<HEAD>
+<title>C++ ABI for IA-64: Exception Handling</title>
+
+<link rel=stylesheet href=small-table.css type="text/css">
+<link rel=stylesheet href=code.css type="text/css">
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ ABI for IA-64: Exception Handling
+</b></i></font>
+
+<font size=-1>
+<p>
+<i>Revised 9 September 1999</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+<p> <hr> <p>
+<h3> Revisions </h3>
+
+<p>
+<font color=blue>[990909]</font>
+Original version.
+
+
+<p> <hr> <p>
+<h3> General </h3>
+
+In what follows, we define the C++ exception handling ABI,
+at three levels:
+<ul>
+<li> the base ABI,
+    interfaces common to all languages and implementations;
+<li> the C++ ABI,
+    interfaces necessary for interoperability of C++ implementations; and
+<li> the specification of a particular runtime implementation.
+</ul>
+
+<p> <hr> <p>
+<h3> Definitions </h3>
+
+<p>
+The descriptions below make use of the following definitions:
+
+
+<p> <hr> <p>
+<a name=base-abi></a>
+<h3> Base ABI </h3>
+
+<p>
+The minimal level of specification is effectively that of the definition
+in the IA-64 Software Conventions document.
+It describes a framework which can be used by an arbitrary implementation,
+with a complete definition of the stack unwind mechanism,
+but no significant constraints on the language-specific processing.
+In particular, it is not sufficient to guarantee that two object files
+compiled by different C++ compilers could interoperate,
+e.g. throwing an exception in one of them and catching it in the other.
+
+<p>
+It is intended that nothing in this section be specific to C++,
+though some parts are clearly intended to support C++ features.
+
+<p>
+<h4> Data Structures </h4>
+
+<p>
+<b> Exception Handle </b>
+<p>
+An exception handle is an address pointing to an exception object
+consisting of an exception control header followed by user exception
+information.
+The handle points to the user information,
+so the control information is accessed at a negative offset from it.
+The control information consists of:
+<code><pre>
+	<i>language-specific information</i>
+	Unexpected_Handler	unexpectedHandler;
+	Terminate_Handler	terminateHandler;
+	Exception_Destructor	destructor;
+</pre></code>
+
+<p>
+The runtime may at any time call unexpectedHandler
+to report an unexpected exception;
+if NULL, it should call terminateHandler.
+The runtime may at any time call terminateHandler
+to terminate execution;
+if NULL, it should call exit.
+The runtime or the eventual user code handler may call destructor to
+destroy and if necessary deallocate the exception object;
+it may be NULL if no destruction is necessary.
+
+<p>
+<b> Unwind State Handle </b>
+<p>
+The stack unwind process maintains its current state via an opaque
+structure containing unwound machine state,
+accessible only via a procedural API, TBD.
+
+<p>
+<h4> Exception Handler Framework </h4>
+
+<p>
+The standard ABI exception handling / unwind process begins with
+a call to __eh_throw, described below.
+This call specifies an exception object,
+and an exception class (a __uint_64).
+
+<p>
+The runtime framework then starts a two-phase process:
+
+<ul>
+<p>
+<li>
+In the search phase,
+the framework repeatedly calls the personality routine,
+with the EH_SEARCH_PHASE API described below,
+first for the current PC and register state,
+and then unwinding a frame to a new PC at each step,
+until the personality routine reports either success (a handler found)
+or failure (no handler).
+It does not actually restore the unwound state,
+and the personality routine must access the state through the API.
+If failure is reported, it ... (calls terminateHandler?).
+<p>
+<li>
+If the search phase reports success,
+the framework restarts in the cleanup phase.
+Again, it repeatedly calls the personality routine,
+with the EH_CLEANUP_PHASE API described below,
+first for the current PC and register state,
+and then unwinding a frame to a new PC at each step,
+until the personality routine reports success.
+At that point, it restores the register state,
+and branches to the PC,
+which has been set by the personality routine to the landing pad address.
+
+</ul>
+
+<p>
+<h4> Throwing an Exception </h4>
+
+<p>
+Exceptions are initially thrown, after creating an exception object,
+by calling:
+
+<code><pre>
+	void __eh_throw (
+	    bool	rethrow,
+	    __uint_64	exception_class,
+	    void *	exception_object,
+	    ...
+	);
+</pre></code>
+
+<i>&lt;To Be Specified></i>
+
+<p>
+<h4> Personality Routine </h4>
+
+<p>
+The personality routine has the following prototype:
+<code><pre>
+
+	typedef enum {
+	    EH_SEARCH_PHASE,	// Search phase call
+	    EH_CLEANUP_PHASE	// Cleanup phase call
+	} EH_PHASE;
+	typedef enum {
+	    EH_HANDLER,		// Handler landing pad found
+	    EH_PROCEED,		// Proceed to next frame
+	    EH_UNEXPECTED,	// Unexpected exception
+	    EH_TERMINATE,	// Terminate thread/program
+	    ...
+	} EH_RESULT;
+
+	EH_RESULT personality (
+	    int		version,
+	    EH_PHASE	phase,
+	    __uint_64	exception_class,
+	    void *	exception_object,
+	    void *	language_specific_data_area,
+	    Unwind_State *unwind_state
+	);
+</pre></code>
+
+<p>
+If called with phase==EH_SEARCH_PHASE,
+the personality routine may:
+
+<ul>
+<p>
+<li>
+Determine that control should be passed to user code,
+for any purpose including a real catch or cleanup and rethrow,
+in which case it returns EH_HANDLER.
+In this case, the framework starts over with the unwind process,
+now passing EH_CLEANUP_PHASE.
+
+<p>
+<li>
+Determine that the current exception is unexpected and processing
+cannot proceed, in which case it returns EH_UNEXPECTED.
+In this case, the framework ...
+
+<p>
+<li>
+Determine that the program must be terminated,
+in which case it returns EH_TERMINATED.
+In this case, the framework calls terminateHandler if non-NULL,
+or exit() otherwise, neither of which will return.
+
+<p>
+<li>
+Determine that nothing interesting happens in this frame,
+in which case it returns EH_PROCEED.
+In this case, the framework unwinds a frame and calls it again.
+
+</ul>
+
+<p>
+If called with phase==EH_CLEANUP_PHASE,
+the personality routine may:
+
+<ul>
+<p>
+<li>
+Determine that control should be passed to user code,
+for any purpose including a real catch or cleanup and rethrow,
+in which case it uses the API to set the PC and any registers
+which need to contain data, and returns EH_HANDLER.
+In this case, the framework restores the register state
+and transfers control to the PC in Unwind_State.
+This user code may either simply proceed with program execution,
+or may perform cleanup actions and rethrow.
+
+<p>
+<li>
+Determine that the current exception is unexpected and processing
+cannot proceed, in which case it returns EH_UNEXPECTED.
+In this case, the framework ...
+
+<p>
+<li>
+Determine that the program must be terminated,
+in which case it returns EH_TERMINATED.
+In this case, the framework calls terminateHandler if non-NULL,
+or exit() otherwise, neither of which will return.
+
+<p>
+<li>
+Determine that nothing interesting happens in this frame,
+in which case it returns EH_PROCEED.
+In this case, the framework unwinds a frame and calls it again.
+
+</ul>
+
+<p>
+<h4> Unexpected Exception Handler </h4>
+
+<p>
+<i>
+Define the prototype and behavior of the Unexpected_Handler.
+Delete the exception object?  Rethrow?
+</i>
+
+<p>
+<h4> Terminate Handler </h4>
+
+<p>
+<i>
+Define the prototype and behavior of the Terminate_Handler.
+Delete the exception object or pass it to the handler?
+Perhaps pass all of the personality parameters to the handler so debug
+traceback is easy?
+</i>
+
+<p>
+<h4> Unexpected Exception Handler </h4>
+
+<p>
+<i>
+Define the prototype and behavior of the Destructor.
+Do we need a size in the standard exception object header?
+</i>
+
+<p>
+<h4> Debugging </h4>
+
+An idea:
+If we were to define a special value of exception_class to identify a
+debugging unwind, and put a debug entry in the exception object,
+the personality routines could support language-specific debug traceback.
+
+
+<p> <hr> <p>
+<a name=cxx-abi></a>
+<h3> C++ ABI </h3>
+
+<p>
+The second level of specification is the minimum required to allow
+interoperability in the sense described above.
+This level requires agreement on:
+
+<ul>
+<p>
+<li>
+Standard runtime initialization,
+e.g. pre-allocation of space for out-of-memory exceptions.
+
+<p>
+<li>
+The layout of the exception object created by a throw and processed by
+a catch clause.
+
+<p>
+<li>
+When and how the exception object is allocated and destroyed.
+
+<p>
+<li>
+The API of the personality routine,
+i.e. the parameters passed to it,
+the logical actions it performs,
+and any results it returns
+(either function results to indicate success, failure, or continue,
+or changes in global or exception object state),
+for both the phase 1 handler search and the phase 2 cleanup/unwind.
+
+<p>
+<li>
+How control is ultimately transferred back to the user program at a
+catch clause or other resumption point.
+That is, will the last personality routine transfer control directly to
+the user code resumption point,
+or will it return information to the runtime allowing the latter to do so?
+
+<p>
+<li>
+Standard runtime initialization,
+e.g. pre-allocation of space for out-of-memory exceptions.
+
+<p>
+<li>
+Multithreading behavior.
+
+</ul>
+
+
+<p> <hr> <p>
+<a name=cxx-rt></a>
+<h3> Common C++ Runtime Implementation </h3>
+
+<p>
+The third level is a specification sufficient to allow all compliant
+C++ systems to share the relevant runtime implementation.
+It includes, in addition to the above:
+
+<ul>
+<p>
+<li>
+Format of the C++ language-specific unwind tables.
+
+<p>
+<li>
+APIs of the functions named __allocate_exception, __throw, and
+__free_exception (and likely others) by HP, or their equivalents.
+
+<p>
+<li>
+API of landing pad code,
+and of any other entries back into the user code.
+
+<p>
+<li>
+Definition of what HP calls the exception class value.
+
+</ul>
+
+<p>
+The vocal attendees at the meeting wish to achieve the third level,
+and we will attempt to do so.
+Whether or not that is achieved, however,
+a second-level specification must be part of the ABI.
+
+<i>
+&lt;To be specified.>
+
+<p>
+<hr>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+</BODY>
+</HTML>
