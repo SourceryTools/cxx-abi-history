@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 27 October 1999</i>
+<i>Revised 28 October 1999</i>
 
 </center>
 
@@ -27,108 +27,40 @@ C++ ABI Open Issues
 <h3> Revisions </h3>
 
 <p>
-<font color=blue>[990926]</font>
+<font color=blue>[991028]</font>
+Opened <a href=#C9>C-9</a>, <a href=#C10>C-10</a>.
+Closed <a href=cxx-closed.html#A6>A-6</a>,
+<a href=cxx-closed.html#B6>B-6</a>,
+<a href=cxx-closed.html#C10>C-10</a>.
+Additions to <a href=#C5>C-5</a>, <a href=#C6>C-6</a>,
+<a href=#F1>F-1</a>, <a href=#F2>F-2</a>, <a href=#F3>F-3</a>.
+
+<p>
+<font color=blue>[991026]</font>
 Additions to <a href=#F1>F-1</a>.
 
 <p>
-<font color=blue>[990912]</font>
+<font color=blue>[991012]</font>
 Closed <a href=cxx-closed.html#B8>B-8</a>,
 <a href=cxx-closed.html#G5>G-5</a>.
 Additions to <a href=#A6>A-6</a>, <a href=#B5>B-5</a>,
 <a href=#C5>C-5</a>.
 
 <p>
-<font color=blue>[990912]</font>
+<font color=blue>[991012]</font>
 Closed <a href=cxx-closed.html#D5>D-5</a>,
 <a href=cxx-closed.html#D6>D-6</a>.
 Additions to <a href=#B4>B-4</a>, <a href=#B5>B-5</a>,
 <a href=#D7>D-7</a>.
 
 <p>
-<font color=blue>[990905]</font>
+<font color=blue>[991005]</font>
 New issue <a href=#F4>F-4</a>.
 Additions to <a href=#A6>A-6</a>, <a href=#B5>B-5</a>, <a href=#B6>B-6</a>,
 <a href=#C4>C-4</a>, <a href=#D5>D-5</a>, <a href=#D7>D-7</a>.
 
 <p>
-<font color=blue>[990929]</font>
-Additions to <a href=#D0>D-*</a>, <a href=#D9>D-9</a>.
-
-<p>
-<font color=blue>[990914]</font>
-Additions to <a href=#B1>B-1</a>, <a href=#D0>D-*</a>, <a href=#D9>D-9</a>.
-
-<p>
-<font color=blue>[990908]</font>
-New issue <a href=#D9>D-9</a>.
-Additions to <a href=#B1>B-1</a>, <a href=#D0>D-*</a>,
-<a href=#D2>D-2</a>, <a href=#D4>D-4</a>,
-<a href=#D5>D-5</a>, <a href=#D6>D-6</a>.
-
-<p>
-<font color=blue>[990901]</font>
-Additions to <a href=#A6>A-6</a>, <a href=#B6>B-6</a>.
-
-<p>
-<font color=blue>[990825]</font>
-Additions to <a href=#A6>A-6</a>, <a href=#B6>B-6</a>,
-<a href=#C5>C-5</a>, <a href=#D0>D-*</a>.
-
-<p>
-<font color=blue>[990813]</font>
-Closed <a href=cxx-closed.html#A11>A-11</a>.
-Additions to <a href=#A6>A-6</a>,
-<a href=#B1>B-1</a>, <a href=#B6>B-6</a>, <a href=#B8>B-8</a>,
-<a href=#C2>C-2</a>,
-<a href=#G5>G-5</a>.
-
-<p>
-<font color=blue>[990810]</font>
-New issue <a href=#G5>G-5</a>.
-Additions to <a href=#B6>B-6</a>, <a href=#C2>C-2</a>, <a href=#C3>C-3</a>.
-
-<p>
-<font color=blue>[990805]</font>
-Closed A-12, A-14, B-3, B-4, B-7, C-7.
-Additions to <a href=#A6>A-6</a>, <a href=#A11>A-11</a>,
-<a href=#B1>B-1</a>, <a href=#B6>B-6</a>, <a href=#F1>F-1</a>.
-
-<p>
-<font color=blue>[990729]</font>
-Closed A-7.
-Additions to A-11, A-12, C-2.
-Summary added for A-12.
-New issue A-14.
-
-<p>
-<font color=blue>[990727]</font>
-Closed B-2, C-8.
-Additions to A-9 (closed), C-2.
-Summaries added for C-4, C-6, D-1 to D-4.
-
-<p>
-<font color=blue>[990720]</font>
-Additions to B-2, B-5, C-2, D-1.
-
-<p>
-<font color=blue>[990701]</font>
-Closed A-3, A-5, A-10, A-13.
-Additions to A-6, B-6, B-7, B-8, C-2, C-7.
-
-<p>
-<font color=blue>[990625]</font>
-Closed A-1, A-2, A-4, A-8, A-9.
-Additions to A-3, A-5, A-7, B-4, B-5, B-7, G-3, G-4.
-New issues B-6, B-7, B-8, C-7, C-8.
-
-<p>
-<font color=blue>[990616]</font>
-Added HP summaries.
-Added sketchy notes from 990610 discussions (A and B issues).
-A-10 was intended by HP as something different than I described,
-so it was renamed, and a new issue A-13 opened as an SGI issue.
-HP did not submit A-12, so relabeled as Sun's (is that right?).
-Added library interface issues, H-1 and H-2.
+<a href=#ancient>Ancient revision history</a>.
 
 
 <p> <hr> <p>
@@ -373,10 +305,10 @@ no parameter slot will be allocated to empty parameters.
 <tr> <a name=A6></a> <td> A-6 </td>
 <td> RTTI .o representation </td>
 <td> data call ps </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 991028 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -387,145 +319,13 @@ Define the data structure to be used for RTTI, that is:
 <li> for exception-handling.
 </ul>
 </td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+Defined in the
+<a href=abi-layout.html#rtti>ABI data layout document</a>.
+</tr>
 
 </table>
-
-<p>
-<font color=blue>[990701 All]</font>
-Daveed will put together a proposal by the 15th (action #13);
-the group will discuss it on the 22nd.
-
-<p>
-<font color=blue>[990805 All]</font>
-Daveed should have his proposal together for discussion.
-Michael Lam will look into the Sun dynamic cast algorithm.
-
-<p>
-It was noted that appropriate name selection along with the normal
-DSO global name resolution should be sufficient to produce a unique
-address for each class' RTTI struct,
-which address would then be a suitable identifier for comparisons.
-
-<p>
-<font color=blue>[990812 Sun -- Michael]</font>
-Sun has provided a description,
-<a href=Sun-RTTI-990812.html>in a separate page</a>,
-describing their implementation.
-They are filing for a patent on the algorithms described.
-
-<p>
-<font color=blue>[990819 EDG -- Daveed]</font>
-(Proposal replaced by later version on 6 October.)
-
-<p>
-<font color=blue>[990826 All]</font>
-Discussion centered on whether the representation should include all
-base classes or just the direct ones,
-and in the former case how hashing might be handled.
-It was agreed that the __qualifier_type_info variant is not needed,
-and it is now striken in the above proposal.
-Also, a pointer-to-member variant is needed.
-Christophe will provide a description of the HP hashing approach,
-and Daveed will update the specification.
-
-<p>
-<font color=blue><hr><p>[991006 EDG -- Daveed]</font>
-
-<p>
-<h5>Run-time type information</h5>
-
-<p>
-The C++ programming language definition implies that information about
-types be available at run time for three distinct purposes:
-<ol type=a>
-<li> to support the typeid operator,
-<li> to match an exception handler with a thrown object, and
-<li> to implement the dynamic_cast operator.
-</ol>
-(c) only requires type information about polymorphic class types,
-but (a) and (b) may apply to other types as well;
-for example, when a pointer to an int is thrown,
-it can be caught by a handler that catches "int const*".
-
-
-<p>
-<h5>Deliberations</h5>
-<p>
-The following conclusions were arrived at by the attending members of
-the C++ IA-64 ABI group:
-
-<ul>
-<p>
-<li> The exact layout for type_info objects is dependent on whether a
-    32-bit or 64-bit model is supported.
-<p>
-<li> Advantage should be taken of COMDAT sections and symbol preemption:
-    two type_info pointers point to equivalent types if and only if the
-    pointers are equal.
-<p>
-<li> A simple dynamic_cast algorithm that is efficient in the common
-    case of base-to-most-derived cast case is preferrable over more
-    sophisticated ideas that handle deep-base-to-in-between-derived
-    casts more efficiently at a slight cost to the common case.
-    Hence, the original scheme of providing a hash-table into the
-    list of base classes
-    (as is done e.g. in the HP aC++ compiler)
-    has been dropped.
-<p>
-<li> The GNU egcs development team has implemented an idea of this ABI
-    group to accelerate dynamic_cast operations by a-posteriori
-    checking a "likely outcome".
-    The interface of std::__dynamic_cast therefore keeps the
-    src2dst_offset hint.
-<p>
-<li> std::__extended_type_info is dropped.
-</ul>
-
-<p>
-The full proposal has been incorporated in the
-<a href=abi-layout.html#rtti>ABI data layout document</a>.
-
-<p>
-<font color=blue><hr><p>[991014 all]</font>
-<ol>
-<p>
-<li>
-Do we keep pointers to direct bases only, or to indirect bases as well?
-It is believed that keeping pointers to indirect bases speeds
-up dynamic_cast by a constant factor,
-but at the cost of extra space even when dynamic_cast is never used.
-There is a general preference for keeping direct bases only.
-
-<p>
-<li>
-The current proposal has a flag to differentiate single
-inheritance from multiple inheritance case.
-Jason suggests instead splitting the two cases into two separate classes,
-and there was general agreement that this is a good idea.
-
-<p>
-<li>
-The current proposal has separate classes for various kinds of
-non-class types.
-Jason suggests merging all non-class types into a single class.
-Nobody had strong feelings,
-or strong arguments either for or against this change.
-In the absence of a consensus in favor of this change,
-we'll keep the proposal as is.
-
-<p>
-<li>
-Minor changes:
-There's a typo in the pointer to member part, which Daveed will fix.
-Jason suggests flipping the sign on the offset, and nobody objected.
-</ol>
-
-<p>
-ACTION ITEMS: Daveed---make these changes.  Jim---incorporate these
-changes into the open issues list.  We are almost ready to close this
-issue; we intend to close it at the 28 October meeting, after we've
-all had a change to go over the modified writeup.
-
 
 
 <p>
@@ -614,17 +414,11 @@ Do we use an access clause as an opportunity to fill the gaps left by padding?
 </td> </tr>
 <tr> <td colspan=7>
 <b>Resolution</b>:
-See <a href=cxx-closed.html#A9>closed issue list</a>.
+See <a href=cxx-closed.html#A9>closed issue list</a> and the
+<a href=abi-layout.html#class-types>ABI Data Layout Specification</a>.
 </td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990722 all]</font>
-The precise placement of empty bases when they don't fit at offset zero
-remained imprecise in the original description.
-Accordingly, a precise layout algorithm is described in
-a separate writeup of <a href=abi-layout.html>Data Layout</a>.
 
 <p>
 <table border=on cellpadding=3>
@@ -2241,245 +2035,22 @@ Jim Dehnert will push these proposals to the base ABI committee.
 <tr> <a name=B6></a> <td> B-6 </td>
 <td> Virtual function table layout </td>
 <td> data </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990520 </td>
-<td> </td>
+<td> 991028 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 What is the layout of the Vtable?
 </td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+See the ABI data layout document,
+<a href=abi-layout.html#vtable>abi-layout.html</a>.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990624]</font>
-Issue split from A-1.
-
-<p>
-<font color=blue>[990630 HP - Christophe]</font>
-
-<p>
-The current full proposal has been incorporated in the
-<a href=abi-layout.html#vtable>ABI data layout document</a>.
-
-
-
-<p>
-<font color=blue>[990701 All]</font>
-The above arrived to late for everyone to read it carefully.
-It was agreed that we would consider it outside the meetings,
-discuss any issues noted by email,
-and attempt to close on 22 July.
-(Christophe is on vacation until that week,
-and Daveed leaves on vacation the next week.)
-
-<p>
-<font color=blue>[990811 SGI -- Jim]</font>
-I've put a reworked version of Christophe's writeup in the
-<a href=abi-layout.html#vtable>data layout document</a>,
-along with a number of questions it raises.
-
-<p>
-<font color=blue>[990812 All]</font>
-Extensive discussion of this issue produced the observations that
-<ul>
-<li> The number of virtual base offsets changes for vtables
-    embedded in derived vtables.
-<li> Therefore, one cannot reference one by a compile-time-constant
-    offset from another (within the set associated with a type).
-<li> Therefore, one cannot omit vfunc pointers from a derived vtable
-    just because they appear in one of the base class vtables.
-</ul>
-Christophe will look at the implications of these observations.
-Others should too.
-
-<p>
-<font color=blue>[990820 IBM -- Brian]</font>
-
-<p>
-<h5> Re: vtable layout, sharing vtable offsets </h5>
-<p>
-I'm going to write the exam on this to see how well I
-am understanding the issue.
-
-<p>
-If I understand it correctly,
-the proposal under consideration is tied to the decision to replicate
-virtual function entries in vtables.
-It requires replicating in the vtable for base class B all virtual functions
-that are overridden in B; more replication that this implies will
-be wasted since a function is always called through a vtable
-of an introducing or overriding class.
-
-<p>
-When a non-pure virtual function X::f() is compiled it is possible to
-determine whether it requires a secondary entry point.
-It will require one if that function may be virtually called
-(i.e., is the final overrider)
-in any class in which f() appears in more than one vtable;
-this needs to be decidable knowing only X.
-A rule that works is: X::f() overrides one or more f()'s
-from base classes of X,
-and either one or more of those base classes are
-virtual or X fails to share its vptr with all instances of them.
-
-<p>
-[Though a virtual base may happen to share its vptr with X
-in an object of complete type X,
-that relationship may fail to hold in further derived classes,
-so we need to generate the secondary entry point just in case.]
-["Sharing a vptr" is the condition under which no adjustment is necessary;
-if the bases involved are all nonvirtual then
-subsequent class derivation won't change this.]
-
-<p>
-Each vtable that requires a nonzero adjustment will have a
-"convert to X" offset mixed in with its virtual base offsets.
- It is necessary that a "convert to X" appears in the same position in
-each vtable that references X::f()'s secondary entry;
-it is desirable that the "convert to X" also be unique in each vtable.
-
-<p>
-Assume that X has nonvirtual nonprimary bases Nx (x=1,2,...),
-and virtual bases Vx, all of which have a virtual f().
-Then vtables for Nx in X,
-or in anyclass derived from X that does not further override f(),
-will reference X::f()'s secondary entry.
-Vtables for Vx in X or any derived class where Vx
-does not share a vptr with X,
-will also reference X::f()'s secondary entry;
-note this will occur in a construction vtable even if the
-derived class does further override f().
-
-<p>
-The question, then,
-is whether a position for the "convert to X" offset can be chosen,
-knowing only X and its parentage,
-that can be used consistently in all those vtables and that won't
-collide with a "convert to Y" position chosen on account of some other
-hierarchy where Y::g() overrides an Nx::g() or Vx::g().
-
-<p>
-If Y derives from X,
-we will be able to select a "convert to Y" position that doesn't conflict,
-so we can restrict our attention to cases where X and Y are unrelated.
-Also, if the base involved is nonvirtual (Nx) then we are safe,
-because no instance of Nx will be a subobject of both X and Y,
-so no Nx vtable will require both "convert to X" and "convert to Y" offsets.
-
-<p>
-The remaining case is where X and Y are unrelated but both have
-a virtual base Vx:
-
-<code><pre>
-struct V1 { virtual void f();  virtual void g(); };
-struct Other1 { virtual void ignore1(); }
-struct X : Other1, virtual V1 { virtual void f(); }
-
-struct Y : Other1, virtual V1 { virtual void g(); }
-
-struct ZZ: X, Y { }
-</pre></code>
-
-<p>
-The vtable for N1 in ZZ does require both offsets.
-The only way I see to accomplish this is to preallocate
-an adjustment slot for each virtual function in V1.
- That is, X::f() uses the first slot position, and Y::g() the second,
-based on the order that f() and g() are declared in V1.
-This only needs to be done in hierarchies where V1 is virtual,
-but the same offset has to be used for any Nx tables in X too.
-
-<p>
-Is this close?
-
-<p>
-<h5>Re: Concatenating vtables</h5>
-<p>
-I don't understand the comment that varying numbers of virtual
-base offsets make it impossible to concatenate vtables and refer
-to them via a single symbol.
-The only code that refers by name to X's vtable and the vtables
-of N1 in X etc. is X's constructor and destructor,
-and maybe some derived classes that find they are able to reuse some pieces.
-All that code is aware of X's declaration and can map out its tables.
-What am I missing?
-
-<p>
-<font color=blue>[990826 All]</font>
-There is still considerable confusion about what will work.
-Key questions are
-(1) whether member functions can share offsets to base classes,
-or each need their own; and
-(2) when we need a no-this-adjustment override entry.
-
-<p>
-<font color=blue>[990901 SGI -- Jim]</font>
-Being confused myself by all the discussion,
-I've constructed a <a href=cxx-vtable-ex.html>new page</a>
-containing (initially)
-an example of a class hierarchy supplied by Christophe,
-and attempted to identify possible function calls,
-the class data layout,
-and the class vtable layout based on Christophe's original proposal.
-Please provide corrections,
-and if you're proposing alternative vtable constructions,
-describing them for this example might help (me, at least).
-Also feel free to provide additional examples illustrating other points.
-
-<p>
-<font color=blue>[990930 Cygnus -- Jason]</font>
-Jason has updated the Vtable layout description in
-<a href=abi-layout.html>abi-layout.html</a>
-to reflect the approach from Cygnus and IBM.
-
-<p>
-<font color=blue><hr><p>[991014 all]</font>
-<ol>
-<p>
-<li>
-Do we promote base offsets out of base class vtables?
-Answer: we promote them out of virtual bases,
-but we do not promote them out of nonvirtual bases.
-It's a time/space tradeoff.
-The time saving is large for virtual bases,
-but too small to bother with for nonvirtual bases.
-
-<p>
-<li>
-Do we have rtti fields for classes that have virtual bases but no
-virtual functions?
-The C++ standard regards such classes as nonpolymorphic,
-so performing rtti operations on them is undefined.
-Decision: we will keep the rtti fields themselves in the vtable, in
-the interest of having a uniform vtable format.  The slot of offset to
-beginning of complete type will be filled in, and the slot for offset
-to typeinfo object will contain 0.
-
-<p>
-<li>
-When we discussed issue B-8, we agreed that we would have an
-offset to typeinfo object rather than a pointer to typeinfo object.
-This means that the typeinfo object is now part of the vtable.
-It will go at the very beginning,
-i.e. at a negative offset from where the vtpr points.
-(Comment: We discussed B-6 before discussing B-8.
-Does making this change interfere with having a uniform vtable offset,
-since we won't have a typeinfo object at the beginning of a vtable
-for a nonpolymorphic class with virtual bases?
-Should we revisit decision (2) or (3), or am I just being paranoid?)
-</ol>
-
-<p>
-ACTION ITEMS: Jason---update writeup to reflect these three changes.
-Our decision on issue B-8 will require a one-sentence change.
-All of us: study the revised version.
-We are almost ready to close this issue,
-and if we agree with the revised version we can close it at the
-21 October meeting.
-
 
 
 <p>
@@ -3177,6 +2748,42 @@ We don't have a detailed proposal yet.
 HP is working on a prototype implementation.
 Christophe will submit a writeup.
 
+<p>
+<font color=blue><hr><p>[991028 all]</font>
+There are two options in destructors:
+<ul>
+<li> Whether or not <code>delete()</code> is called.
+<li> Whether or not the destructor is <i>in-charge</i>,
+     i.e. calls the destructor for virtual bases.
+</ul>
+Since only the most-derived object calls <code>delete()</code>,
+and only the most-derived object does destruction for virtual bases,
+only three of the possible combinations arise:
+<ul>
+<li> No <code>delete()</code>, not in-charge.
+<li> No <code>delete()</code>, in-charge.
+<li> Call <code>delete()</code>, in-charge.
+</ul>
+The first will be called for a base object when a derived object is
+being destroyed,
+and one of the other two for the most-derived object.
+Therefore, for any particular vtable,
+no more than two will be required.
+A vtable for a class with virtual destructors will contain two
+destructor entries, delete and no-delete,
+and they will both be the in-charge versions for the most-derived class
+in the structure.
+The no-delete, not in-charge destructors may be called from those,
+but always directly,
+so a global name is required but no vtable entry.
+
+<p>
+We distinguish the delete/no-delete cases by distinct entrypoints,
+so only a <code>this</code> parameter is required,
+and the standard calling conventions are used.
+The only special treatment of virtual destructors is the pair of vtable
+entries described above.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -3188,7 +2795,7 @@ Christophe will submit a writeup.
 </tr>
 
 <tr> <a name=C6></a> <td> C-6 </td>
-<td> Extra parameters to ctors/dtors </td>
+<td> Extra parameters to constructors </td>
 <td> call </td>
 <td> open </td>
 <td> Cygnus </td>
@@ -3197,12 +2804,20 @@ Christophe will submit a writeup.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-When calling constructors and destructors for classes with virtual bases,
+When calling constructors for classes with virtual bases,
 information about the virtual base subobjects in the full class
-must be transmitted somehow to the ctor/dtor.
+must be transmitted somehow to the constructor.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[991028 all]</font>
+We will produce two constructor entries,
+one in-charge (constructing virtual bases) for a most-derived object,
+and one not in-charge for a base subobject.
+The object allocation will be the responsibility of the caller,
+so there will be no variation or parameters for that purpose.
 
 <p>
 <table border=on cellpadding=3>
@@ -3266,6 +2881,99 @@ and passes a pointer as an implicit first parameter
 </td> </tr>
 
 </table>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C9></a> <td> C-9 </td>
+<td> Passing parameters with ctors/dtors </td>
+<td> call </td>
+<td> open </td>
+<td> All </td>
+<td> 991028 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Where do allocation, construction, destruction, and deallocation occur
+for value parameters?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991028 all]</font>
+For value parameter types with non-trivial constructors or destructor,
+a call handles the parameter as follows:
+<ol>
+<p>
+<li>
+Space is allocated in the caller for the temporary.
+If there is no non-trivial constructor,
+it is in the normal parameter-passing space (registers/stack);
+otherwise it is allocated on the stack or heap.
+
+<p>
+<li>
+The caller constructs the parameter in the space allocated,
+a simple copy to parameter space if there is no non-trivial constructor.
+
+<p>
+<li>
+The function is called, passing the parameter value
+(if no non-trivial constructor),
+or its address (if there is a non-trivial constructor).
+
+<p>
+<li>
+The callee calls any non-trivial destructor for the parameter before
+returning.
+(Note that, if there is no non-trivial constructor,
+this implies that the parameter was copied out of registers on
+entry so the destructor can be called with <code>this</code> in memory.)
+
+<p>
+<li>
+If necessary (e.g. if the parameter was allocated on the heap),
+the caller deallocates space after the return.
+
+</ol>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C10></a> <td> C-10 </td>
+<td> Synthesized copy assignments </td>
+<td> call </td>
+<td> closed </td>
+<td> All </td>
+<td> 991028 </td>
+<td> 991028 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Should we specify special treatment for synthesized copy assignments,
+to avoid multiple copies of virtual bases?
+</td> </tr>
+<tr> <td colspan=7>
+<b>Resolution</b>:
+No.
+</td> </tr>
+
+</table>
+
 
 <p> <hr> <p> <a name=D0></a>
 <h3> Exception Handling Issues </h3>
@@ -4383,8 +4091,37 @@ name necessary to resolve overloading?
 </table>
 
 <p>
-<font color=blue>[991019 various]</font>
+<font color=blue>[991019/28 various]</font>
 The following is assembled from several mail messages on the subject.
+
+<p>
+<h5> Objectives of the mangling scheme include:</h5>
+<p>
+<ul>
+<p>
+<li>
+Compression:  It is critical that name length be minimized (issue F-2).
+
+<p>
+<li>
+Character set:  Names should use a character set that does not cause
+problems in linkers (easy for Elf) or in assemblers (more problematic).
+This probably implies use of ~64 characters.
+
+<p>
+<li>
+Legibility:  It is desirable that the base name (i.e. the function or
+class name) be present and easy to identify (for readability).
+Other components of the name probably need to be difficult in order to
+attain compression (issue F-2).
+
+<p>
+<li>
+Cfront:  It is desirable that the names <b>not</b> be confusable with
+cfront manglings, to avoid apparent but incomplete compatibility with
+cfront-compiled objects.
+
+</ul>
 
 <p>
 <h5> Entities with linkable names to be resolved include:</h5>
@@ -4502,8 +4239,6 @@ type modifiers/constructors:
 The types in parentheses are available in C99,
 but not in standard C++.
 
- 
-
 
 <p>
 <font color=blue><hr><p>[991021 all]</font>
@@ -4513,6 +4248,11 @@ non-essential type information
 as a separate construct to allow error detection,
 rather than as a required part of the mangled name.
 This allows it to be elided or removed if unneeded.
+
+<p>
+<font color=blue>[991028 all]</font>
+Objectives of a specification were discussed,
+and have been added to the writeup above.
 
 
 
@@ -4549,6 +4289,17 @@ which at least mitigate it.
 </table>
 
 <p>
+<font color=blue>[991028 all]</font>
+Cygnus and Sun use a mangling scheme which has proven extremely
+effective at compression, but not overly complex.
+Each time the mangler incorporates a type into a name,
+it remembers it and assigns it a number,
+and subsequent occurrences of the type in the name are replaced by
+the (escaped) number.
+Jason believes this might be adequate compression,
+without going to large character sets or more complex schemes.
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -4558,7 +4309,7 @@ which at least mitigate it.
 </tr>
 
 <tr> <a name=F3></a> <td> F-3 </td>
-<td> Distinguish template instantiation and specialization
+<td> Consistency checks
 </td>
 <td> call g </td>
 <td> open </td>
@@ -4568,14 +4319,49 @@ which at least mitigate it.
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
-In order to allow detection of conflicting template instantiation
-and specialization (in different translation units),
-should we name them differently?
-If we do so in an easily recognizable way,
-the linker could check for conflicts and report the ODR violation.
+Define a mechanism to support consistency checks, e.g. in the linker,
+in cases where the Standard forbids inconsistency but does not require
+detection.
 </td> </tr>
 
 </table>
+
+<p>
+<font color=blue>[991028 all]</font>
+In a number of cases,
+the Standard requires consistent definitions in different places,
+even in different files,
+but does not require the implementation to detect and report
+inconsistency.
+With a small amount of extra information,
+the linker could often detect and report such inconsistencies.
+Also, there are cases where the linker can already detect a problem,
+but could provide a better diagnostic with more information.
+
+<p>
+Several examples are:
+
+<ul>
+<p>
+<li>
+A template instantiation may conflict with a full specialization
+(in different translation units).
+
+<p>
+<li>
+Functions may be declared with different exceptions specifications.
+
+<p>
+<li>
+Functions may be declared with different return types.
+
+<p>
+<li>
+Template formal parameter names would help improve instantiation error
+messages.
+
+</ul>
+
 
 <p>
 <table border=on cellpadding=3>
@@ -5199,6 +4985,90 @@ and their prototypes.
 </td> </tr>
 
 </table>
+
+<p> <hr> <p>
+<h3><a name=ancient> Ancient Revision History </a> </h3>
+
+<p>
+<font color=blue>[990929]</font>
+Additions to <a href=#D0>D-*</a>, <a href=#D9>D-9</a>.
+
+<p>
+<font color=blue>[990914]</font>
+Additions to <a href=#B1>B-1</a>, <a href=#D0>D-*</a>, <a href=#D9>D-9</a>.
+
+<p>
+<font color=blue>[990908]</font>
+New issue <a href=#D9>D-9</a>.
+Additions to <a href=#B1>B-1</a>, <a href=#D0>D-*</a>,
+<a href=#D2>D-2</a>, <a href=#D4>D-4</a>,
+<a href=#D5>D-5</a>, <a href=#D6>D-6</a>.
+
+<p>
+<font color=blue>[990901]</font>
+Additions to <a href=#A6>A-6</a>, <a href=#B6>B-6</a>.
+
+<p>
+<font color=blue>[990825]</font>
+Additions to <a href=#A6>A-6</a>, <a href=#B6>B-6</a>,
+<a href=#C5>C-5</a>, <a href=#D0>D-*</a>.
+
+<p>
+<font color=blue>[990813]</font>
+Closed <a href=cxx-closed.html#A11>A-11</a>.
+Additions to <a href=#A6>A-6</a>,
+<a href=#B1>B-1</a>, <a href=#B6>B-6</a>, <a href=#B8>B-8</a>,
+<a href=#C2>C-2</a>,
+<a href=#G5>G-5</a>.
+
+<p>
+<font color=blue>[990810]</font>
+New issue <a href=#G5>G-5</a>.
+Additions to <a href=#B6>B-6</a>, <a href=#C2>C-2</a>, <a href=#C3>C-3</a>.
+
+<p>
+<font color=blue>[990805]</font>
+Closed A-12, A-14, B-3, B-4, B-7, C-7.
+Additions to <a href=#A6>A-6</a>, <a href=#A11>A-11</a>,
+<a href=#B1>B-1</a>, <a href=#B6>B-6</a>, <a href=#F1>F-1</a>.
+
+<p>
+<font color=blue>[990729]</font>
+Closed A-7.
+Additions to A-11, A-12, C-2.
+Summary added for A-12.
+New issue A-14.
+
+<p>
+<font color=blue>[990727]</font>
+Closed B-2, C-8.
+Additions to A-9 (closed), C-2.
+Summaries added for C-4, C-6, D-1 to D-4.
+
+<p>
+<font color=blue>[990720]</font>
+Additions to B-2, B-5, C-2, D-1.
+
+<p>
+<font color=blue>[990701]</font>
+Closed A-3, A-5, A-10, A-13.
+Additions to A-6, B-6, B-7, B-8, C-2, C-7.
+
+<p>
+<font color=blue>[990625]</font>
+Closed A-1, A-2, A-4, A-8, A-9.
+Additions to A-3, A-5, A-7, B-4, B-5, B-7, G-3, G-4.
+New issues B-6, B-7, B-8, C-7, C-8.
+
+<p>
+<font color=blue>[990616]</font>
+Added HP summaries.
+Added sketchy notes from 990610 discussions (A and B issues).
+A-10 was intended by HP as something different than I described,
+so it was renamed, and a new issue A-13 opened as an SGI issue.
+HP did not submit A-12, so relabeled as Sun's (is that right?).
+Added library interface issues, H-1 and H-2.
+
 
 <p>
 <hr>
