@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 4 February 2000</i>
+<i>Revised 14 February 2000</i>
 
 </center>
 
@@ -25,6 +25,12 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000214]</font>
+Additions to <a href=#A21>A-21</a>, <a href=#A23>A-23</a>,
+<a href=#A24>A-24</a>, <a href=#F1>F-1</a>.
+New issue <a href=#F5>F-5</a>.
 
 <p>
 <font color=blue>[000204]</font>
@@ -978,6 +984,22 @@ For all other cases, same as proposal A.
 Proposal A is simpler, but proposal B probably conforms more
 closely to user expectations.
 
+<p>
+<font color=blue><hr><p>[000210 All -- Matt]</font>
+We agreed that Proposal B, where
+<code>::operator new(size_t, void*)</code>
+is a special case with no cookie,
+is preferable to Proposal A,
+where all versions of array new get cookies.
+
+<p>
+We also agreed to the variation where we don't reserve space for a
+cookie if the type has no destructor.
+We're calling it Proposal C.
+We need a writeup,
+but we should be able to close this issue next week.
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -1281,6 +1303,37 @@ After an exchange with Nathan,
 I reinstated his first flag
 (contains non-diamond multiple inheritance).
 
+<p>
+<font color=blue><hr><p>[000210 All -- Matt]</font>
+Notes from the meeting:
+<p>
+Minor corrections to RTTI discussion in data layout document:
+In section 7c, which describes the vmi_flags, flag 0x01 is
+documented incorrectly.  It says "class has non-diamond multiple
+inheritance", which isn't quite right.  We're really talking
+more about repeated inheritance: having multiple subobjects of
+the same type.
+
+<p>
+Also in vmi_flags, Jason questions whether flags 0x04 and 0x08 are
+necessary.  What do we really need "has virtual base(s)" and "has
+non-virtual base(s)" for?  Jason has sent email to Nathan about
+this.
+
+<p>
+Naming issue: we decided to put all of our type_info subclasses
+in namespace abi, not namespace std.  This means, of course,
+that they can't go in any of the standard headers.  Rather than
+inventing multiple header names, we would like to put everything
+(unwinding longjmp, type_info subclasses, etc.) into one quasi-
+standard header.  We propose the name <ia64cxxabi>.  Everything
+in that header will be in namespace abi.
+
+<p>
+Issue A23 can almost be closed.  The only thing we need to
+resolve is whether to keep the two flags that Jason is unsure about.
+
+
 
 
 <p>
@@ -1485,6 +1538,67 @@ and a mangling for the name.
 Since all we need from the common block is a distinct address,
 we may want to float a base ABI proposal for a new symbol type which is
 resolved by the linkers to a unique address without allocating storage.
+
+<p>
+<font color=blue><hr><p>[000210 All -- Matt]</font>
+The scheme we have been converging on: we extend __class_type_info
+by putting in a new field, id_proxy_ptr, of type char*.  It points
+to a one-byte comdat which serves only as a unique address.
+(We don't see a strong need to ask the base ABI group to mandate a
+magic unique-address feature in the linker.
+We may want to get input from our linker people, though.)
+
+<p>
+A class's __class_type_info object and its comdat proxy both receive
+mangled names.  We must make sure that the proxy's mangled name is the
+same for all complete and incomplete declarations of a class, that the
+mangled name of the __class_type_info object is the same for all
+complete declarations of a class, and that the mangled name of the
+__class_type_info object is different for incomplete declarations than
+for complete declarations.  One way to achieve this is to make
+__class_type_info objects for incomplete declarations static.
+
+<p>
+We add a new flag to __pointer_type_info; let's say bit 0x4.  If
+this is set, it means we have a pointer to an incomplete type (or
+pointer to pointer to incomplete type, etc.)
+
+<p>
+We compare two __class_type_infos for equality by pointer comparison
+of the id_proxy_ptr fields.  We compare two __pointer_type_infos for
+equality by looking at the addresses of the type_info objects,
+*unless* the incomplete bit is set in at least one of them.  If the
+incomplete bit is set, we have to compare the pointed-to types.  For
+everything other than classes and pointers we can just use address
+equality of the type_info objects themselves.
+
+<p>
+In response to Jason's 000129 question: we can't use gp-relative
+references for type_info objects because we're only using comdat
+proxies for __class_type_info, not for other kinds of type_info
+objects.
+
+<p>
+In response to Nathan's 000130 question: this is the reason to
+give the complete and incomplete __class_type_info objects different
+mangled names.  That way a complete __class_type_info object in a
+DSO won't be overridden by an incomplete __class_type_info object
+in the executable.
+
+<p>
+At the very end of this meeting we got a suggestion from Christophe
+for a complete different mechanism.  We agreed that we can't evaluate
+it without a writeup.  The suggestion: abandon these comdat proxies
+altogether.  Instead we have a new type_info class,
+__incomplete_class_type_info.  Comparisons involving two
+__class_type_info objects use address equality, comparisons involving
+two __incomplete_class_type_info objects, or a __class_type_info and
+an __incomplete_class_type_info, do string comparison on the name.  We
+still would have an incomplete bit in the __pointer_type_info class,
+which, again, we would use to determine whether two
+__pointer_type_info objects with different addresses might
+nevertheless represent the same pointer type.
+
 
 
 
@@ -4599,6 +4713,103 @@ handled by using the function mangling plus a sequence ID.
 
 </ul>
 
+<p>
+<font color=blue><hr><p>[000210 All -- Matt]</font>
+Notes from the meeting:
+<p>
+We have agreed that local statics and local classes must be mangled.
+We agreed that string literals should also be mangled even if linker
+features might make it unnecessary.
+The motivation is a desire to support less capable linkers on other platforms.
+
+<p>
+For local statics and local classes,
+the mangled name consists of the mangled function name,
+a sequence number, and the name of the local class/varaible.
+For string literals the mangled name consists only of
+the mangled function name and the sequence number.
+
+<p>
+(There was concern that this might prevent merging of identical string
+literals.
+Jason believes that given a smart linker it
+will just result in multiple names for the same string literal.)
+
+<p>
+Sequence numbers are assigned in lexical order within a function,
+starting at 1.
+The entities that receive sequence numbers are local static variables,
+local classes, and string literals.
+Other entities (e.g. automatic variables)
+do not receive or affect sequence numbers.
+
+<p>
+Exception specification information must be part of the mangled name
+of a function.
+
+<p>
+Special entities that need to receive mangled names,
+in addition to those mentioned in Daveed's document:
+
+<ul>
+<li>
+Vtables (which should contain mangled name of complete type)
+<li>
+Construction vtables probably do not require mangled names, and
+table of vtables probably doesn't either.  Daveed will reserve
+prefixes for them just in case.
+<li>
+If we are using the comdat proxy method for class typeinfos,
+then both class typeinfo objects and the comdat proxies must be
+given mangled names.
+We must ensure that the comdat proxy for an incomplete class is the
+same as the one for a complete class with the same name,
+and we must ensure that the typeinfo object for an incomplete
+class is different from that of any complete class.
+(Either that, or make all typeinfo objects for incomplete classes static.)
+</ul>
+
+<p>
+Exported template may require other things to be mangled.  We don't
+have a detailed analysis.
+
+<p>
+We discussed the idea of having a small dictionary of well known
+names, so that mangled names could be shorter.
+Jason was concerned with readability of mangled names
+if we had too many things in this dictionary,
+and Daveed was concerned that a large dictionary wouldn't give enough
+of a space savings because an index would take too many bits.
+If we have such a dictionary it will have very few names in it.
+Some obvious candidates are:
+<pre><code>
+  std
+  std::char_traits<char>
+  std::allocator<char>
+  std::basic_string<char, char_traits<char>, std::allocator<char> >
+</code></pre>
+
+<p>
+<font color=blue><hr><p>[000215 HU-Berlin -- Martin]</font>
+(Re: sequence numbers for statics in inline functions.)
+
+<p>
+The C99 standard defines an implicit variable inside of each function:
+<center><code>
+  static const char __func__[]="function-name";
+</code></center>
+Even though this is not part of standard C++, it is likely that C++
+compilers will support this if the 'corresponding' C compiler supports
+it. If so, it might be useful to support it in the ABI.
+
+<p>
+<b>Proposal</b>: The sequence number of __func__ is 0.
+
+<p>
+Of course, there is always discussion what the value of __func__ is in
+C++ context; I think this does not necessarily need to be defined by
+the ABI (or the question whether __func__ is defined at all - if it is
+not used in a function, it does not matter).
 
 
 <p>
@@ -4812,6 +5023,91 @@ Can this specification be merged into the function's name mangling?
 </td> </tr>
 
 </table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F5></a> <td> F-5 </td>
+<td> ILP32 vs. LP64
+</td>
+<td> call </td>
+<td> open </td>
+<td> HP </td>
+<td> 000210 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+This ABI focusses on the LP64 data model.
+What should we do (if anything) to support
+(a) compatibility between different vendors' ILP32 compilers
+(b) compatibility between ILP32 and LP64?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000210 all -- Matt]</font>
+HP will be supporting an ilp32 model as well as as an lp64 model.
+The ABI only discusses an lp64 model.
+Do we want to support ilp32 in any way?
+What will we have to do to support
+(a) compatibility between different vendors' ilp32 compilers, or
+(b) compatibility between ilp32 and lp64?
+HP has suggested, for example,
+modifying the mangling scheme so that long long in ilp32
+is mangled the same way as long in lp64.
+Is this enough to ensure ilp32/lp64 link compatibility,
+or would we need to make many other changes as well?
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F6></a> <td> F-6 </td>
+<td> Demangling
+</td>
+<td> call </td>
+<td> lib </td>
+<td> Cygnus </td>
+<td> 000210 </td>
+<td> </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Users may sometimes want to get demangled names.
+Should we provide an entry point for calling a demangler?
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000210 all -- Matt]</font>
+Users have access to types' mangled names via the standard type_info class.
+Users may sometimes want to get demangled names.
+Should we provide an entry point for calling a demangler?
+This might be a standalone function,
+perhaps with an interface like that of EDG's demangle(),
+or it might be some kind of type_info extension.
+If we do this,
+should we attempt to specify exactly what demangled names look like,
+or should we explicitly leave it unspecified and warn users
+not to depend on the exact format?
+
+
 
 <p> <hr> <p>
 <h3> Miscellaneous Issues </h3>
