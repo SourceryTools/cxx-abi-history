@@ -15,7 +15,7 @@ C++ ABI for IA-64: Data Layout
 
 <font size=-1>
 <p>
-<i>Revised 11 August 1999</i>
+<i>Revised 17 August 1999</i>
 
 </center>
 
@@ -379,21 +379,13 @@ i.e. this is the address of the vtable contained in an object's vptr.
 
 <p>
 <li>
-The offset to top field is next, if required
-(therefore at the vtable address).
-<font color=red> <i>Question:</i>
-Is this field always needed whenever there is a virtual function
-declared in the class?
-</font>
+The offset to top field is next (therefore at the vtable address),
+if required (always if there is a virtual function declared in the class).
 
 <p>
 <li>
 The typeinfo pointer field is next.
 It is always present.
-<font color=red> <i>Question:</i>
-If typeinfo is always present, and offset to top is not,
-we can make them both always at the same offset by reversing this order.
-</font>
 
 <p>
 <li>
