@@ -13,7 +13,7 @@ C++ Vtable Example
 </b></i></font>
 
 <p>
-<i>Revised 8 September 1999</i>
+<i>Revised 9 September 1999</i>
 
 </center>
 
@@ -302,8 +302,8 @@ B::f() [0]
 A::offset_to_top (-16)
 A::rtti
 -- A-in-B vtable address --
-B::f() [0]
-A::g() [16: offset_to_A]
+B::f() [-16: offset_to_top]
+A::g() [0]
 </pre></code></td>
 
 </tr>
@@ -328,8 +328,8 @@ C::g() [0]
 A::offset_to_top (-16)
 A::rtti
 -- A-in-C vtable address --
-A::f() [16: offset_to_A]
-C::g() [0]
+A::f() [0]
+C::g() [-16: offset_to_top]
 </pre></code></td>
 
 </tr>
@@ -355,7 +355,7 @@ C::offset_to_A (16)
 C::offset_to_top (-16)
 C::rtti
 -- C-in-D vtable address --
-C::g() [0]
+C::g() [-16: offset_to_top]
 
 A::offset_to_top (-32)
 A::rtti
@@ -374,8 +374,7 @@ C::g() [offset at -48: thunk]
 <li> Class prefixes for functions identify class where defined.
 <li> Information in square brackets after function pointer entries
     is the offset which must be added to <i>this</i>
-    in the function (or thunk),
-    assuming that the caller has already added offset_to_top.
+    in the function (or thunk).
 </ol>
 </font>
 </td>
@@ -431,11 +430,13 @@ B::rtti
 -- B vtable address --
 B::f() [0]
 
+A::offset_for_g (0)
+A::offset_for_f (-16)
 A::offset_to_top (-16)
 A::rtti
 -- A-in-B vtable address --
-B::f() [0]
-A::g() [16: offset_to_A]
+B::f() [-16: offset_to_top]
+A::g() [0]
 </pre></code></td>
 
 </tr>
@@ -457,11 +458,13 @@ C::rtti
 -- C vtable address --
 C::g() [0]
 
+A::offset_for_g (-16)
+A::offset_for_f (0)
 A::offset_to_top (-16)
 A::rtti
 -- A-in-C vtable address --
-A::f() [16: offset_to_A]
-C::g() [0]
+A::f() [0]
+C::g() [-16: offset_to_top]
 </pre></code></td>
 
 </tr>
@@ -508,8 +511,7 @@ C::g() [offset at -32: thunk]
 <li> Class prefixes for functions identify class where defined.
 <li> Information in square brackets after function pointer entries
     is the offset which must be added to <i>this</i>
-    in the function (or thunk),
-    assuming that the caller has already added offset_to_top.
+    in the function (or thunk).
 </ol>
 </font>
 </td>
