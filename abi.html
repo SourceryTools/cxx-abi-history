@@ -15,7 +15,7 @@ C++ ABI for IA-64 (Draft)
 
 <font size=-1>
 <p>
-<i>Revised 28 July 2000</i>
+<i>Revised 1 August 2000</i>
 
 </center>
 
@@ -602,6 +602,21 @@ Layout (of type C) is done using the following procedure.
 	   values for a pointer (all 8 bytes for IA-64 64-bit ABI).
       </ol>
   </ol>
+
+<font color=red>
+<br>
+<img src=warning.gif alt="<b>NOTE</b>:">
+<i>
+In case (2b) above, the use of the first indirect primary base class as
+the derived class' primary base does not save any space in the object,
+and will cause some duplication of virtual function pointers in the
+additional copy of the base classes virtual table.
+The benefit is that using the derived class virtual pointer as the base
+class virtual pointer will often save a load,
+and no adjustment to the <code>this</code> pointer will be required for
+calls to its virtual functions.
+</i>
+</font>
 
 <p>
 <li> <h5> Non-Virtual-Base Allocation </h5>
@@ -2932,9 +2947,11 @@ such implementations.
 <p>
 The basic initialization sequence for such objects becomes:
 <code><pre>
-	if ( __cxa_guard_acquire (<i>obj_guard</i>) ) {
-	  <i>... initialize the object ...</i>;
-	  __cxa_guard_release (<i>obj_guard</i>);
+	if ( <i>obj_guard.first_byte</i> == false ) {
+	  if ( __cxa_guard_acquire (<i>obj_guard</i>) ) {
+	    <i>... initialize the object ...</i>;
+	    __cxa_guard_release (<i>obj_guard</i>);
+	  }
 	}
 
 </pre></code>
@@ -4456,9 +4473,11 @@ they are not part of the actual mangled name, and should be ignored.
 <br> (Note: the return type is always explicitly encoded for template
 functions taking parameters.)</td></tr>
 
-<tr class=small><td> _Z5firstI3DuoEvS_ </td>
+<tr class=small><td> <font color=red>_Z5firstI3DuoEvS0_</font> </td>
 <td> void first&lt;Duo>(/*nondependent*/Duo);
-<br>(Note: Duo is S_, first<Duo>(Duo) is S0_)
+<br><font color=red>
+(Note: first template is S_, Duo is S0_, first<Duo>(Duo) is S1_.
+<br>Since the function parameter is not dependent, don't use T_.)</font>
 </td></tr>
 
 <tr class=small><td> _Z5firstI3DuoEvT_ </td>
@@ -4487,9 +4506,10 @@ functions taking parameters.)</td></tr>
 _ZngILi42EE v N1A I XplT_Li2EE E 1TE </td>
 <td> void operator-&lt;/*int J=*/42>(A&lt;J+2>::T); </td></tr>
 
-<tr class=small><td> _Z4makeI7FactoryiE T1_IT2_E </td>
+<tr class=small><td> <font color=red>_Z4makeI7FactoryiE T_IT0_E v</font> </td>
 <td> /*T1=*/Factory&lt;/*T2=*/int> make&lt;Factory, int>();
-<br> // T1 == template template parameter </td></tr>
+<br> <font color=red>
+(Note: T_ = factory (a template), T0_ - int)</font> </td></tr>
 
 <tr class=small><td> _Z3foo 5Hello5WorldS0_S_ </td>
 <td> void foo(Hello,World,World,Hello)
@@ -4503,7 +4523,7 @@ _ZngILi42EE v N1A I XplT_Li2EE E 1TE </td>
 <tr class=small><td> _ZlsRSoRKSs </td>
 <td> operator&lt;&lt; (std::ostream&,std::string const&) </td></tr>
 
-<tr class=small><td> _ZN7a_classTIE </td>
+<tr class=small><td> <font color=red>_ZTI7a_class</font> </td>
 <td>  typeid(class a_class)  </td></tr>
 
 </table>
