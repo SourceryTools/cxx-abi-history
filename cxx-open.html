@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 8 August 2000</i>
+<i>Revised 30 August 2000</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[000830]</font>
+Closed <a href=cxx-closed.html#C2>C-2</a>,
+<a href=cxx-closed.html#C18>C-18</a>, <a href=cxx-closed.html#F5>F-5</a>,
+<a href=cxx-closed.html#G1>G-1</a>, <a href=cxx-closed.html#H1>H-1</a>.
+Additions to <a href=#G4>G-4</a>, <a href=#C19>C-19</a>.
 
 <p>
 <font color=blue>[000808]</font>
@@ -1519,10 +1526,10 @@ Use .init_array and .fini_array sections.
 <tr> <a name=C2></a> <td> C-2 </td>
 <td> Order of ctors/dtors w.r.t. link </td>
 <td> lif ps </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 000817 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -1532,526 +1539,14 @@ static linker combine them in the linked executable object?
 (The initialization order determines the finalization order,
 as its opposite.)
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C2> Resolution</a></b>:
+Accepted method based on IBM's specification.
+See <a href=abi.html#ctor-order>Draft C++ ABI for IA-64</a>, Section 3.3.4.
+</td> </tr>
 
 </table>
 
-<p>
-<font color=blue>[990610 All]</font>
-Meeting concensus is that the desirable order is right to left on the
-link command line, i.e. last listed relocatable object is initialized
-first.
-
-<p>
-<font color=blue><hr><p>[990701 SGI]</font>
-We propose that global constructors be handled as follows:
-<ul>
-<p>
-<li>
-The compiler shall emit global constructor calls as one or more entries
-in an SHF_INIT_ARRAY section.
-<p>
-<li>
-The linker shall combine them according to the rules of the base gABI,
-namely as a concatenated array of entries, in link argument order,
-pointed to by a DT_INIT_ARRAY tag.
-(The linker may intersperse entries from command line flags or modules
-from other languages, but that is beyond the C++ ABI scope.)
-</ul>
-
-<p>
-This does not address the global destructor problem.
-That solution needs to deal not only with the global objects seen by
-the compiler, but also interspersed local static objects.
-This treatment seems to be tied up in the question of how early
-unloading of DSOs is handled, and the data structure used for that
-purpose (issue C-3).
-
-<p>
-<font color=blue><hr><p>[990715 All]</font>
-Cygnus scheme:
-priorities are 16-bit unsigned integers, lower numbers are higher priority.
-In each translation unit,
-there's a single initialization function for each priority.
-Anything that's prioritized has a higher priority than anything that
-isn't explicitly assigned a priority.
-
-<p>
-IBM scheme:
-priorities are 32-bit signed integers, higher numbers are higher priority.
-Something that isn't explicitly assigned a priority effectively
-gets a priority of 0.
-
-<p>
-Consensus:
-nobody is sure that negative priorities are very important,
-but also nobody can think of a reason not to allow them.
-We accept the idea that priorities are 32-bit signed integers.
-On a source level Cygnus will keep lower numbers as higher priority,
-but that's a source issue, not an ABI issue.
-
-<p>
-Status: No real technical issues,
-we have consensus on everything that matters.
-We need to write up the finicky details.
-
-<p>
-<font color=blue><hr><p>[990722 all]</font>
-It was decided to follow the IBM approach, including:
-<ul>
-<li> The source pragma will use a 32-bit signed priority.
-	The default will map to 0,
-	and larger numbers are lower priority.
-
-<li> Priorities MIN_INT .. MIN_INT+1023 are reserved to the implementation.
-
-<li> The object representation will use a 32-bit unsigned priority,
-	obtained from the source priority by subtracting INT_MIN.
-
-<li> Initialization priorities are only relevant within a DSO.
-	Between DSOs, the normal ELF ordering based on object order applies.
-
-</ul>
-
-<p>
-To be resolved are the precise source pragma definition (possibly IBM's),
-and the ELF file representation.
-
-<p>
-<font color=blue><hr><p>[990729 all]</font>
-SGI suggested an object representation involving (in relocatables)
-a new section type, containing pairs &lt;priority, entry address>.
-The linker would merge all such sections,
-include any initialization entries specified by other means,
-and leave one or more DT_INITARRAY entries for normal runtime
-initialization, either building a routine to call the entries,
-or referencing a standard runtime routine.
-
-<p>
-IBM noted that they combine their equivalent data structures in the
-linker, but don't sort them, leaving that to a runtime routine.
-This can be done without explicit linker support,
-but involves runtime overhead.
-
-<p>
-Cygnus suggested that if we are going to require linker sorting,
-we should make the facility more general.
-
-<p>
-Jim will write up a more precise proposal.
-
-<p>
-<a name=c2-proposal></a>
-<font color=blue><hr><p>[990804 SGI -- Jim]</font>
-<h4> Proposal </h4>
-
-<p>
-My objectives are:
-<ul>
-<li> Simple representation in relocatable objects.
-<li> No new representation in executable objects.
-<li> Simple static linker processing (general if possible).
-<li> Minimal unnecessary runtime cost.
-<li> Minimal library interface.
-<li> Integration with other initialization (at source priority zero).
-</ul>
-
-<p>
-<h5> Object File Representation </h5>
-
-<p>
-Define a new section type, e.g. <code><b>SHT_CXX_PRIORITY_INIT</b></code>.
-Its elements are structs:
-<code><pre>
-	typedef struct {
-	  ElfXX_Word	pi_pri;
-	  ElfXX_Addr	pi_addr;
-	} ElfXX_Cxx_Priority_Init;
-</pre></code>
-The semantics are that <code>pi_addr</code> is a function pointer,
-with an <code>unsigned int</code> priority parameter,
-which performs some initialization at priority <code>pi_pri</code>.
-Each of these functions will be called with the GP of the
-executable object containing the table.
-The section header field <code>sh_entsize</code> is 8 for ELF-32,
-or 16 for ELF-64.
-
-<p>
-<h5> Runtime Library Support </h5>
-
-<p>
-Each implementation shall provide a runtime library function with
-prototype:
-<code><center>
-void __cxx_priority_init ( ElfXX_Cxx_Priority_Init *pi, int cnt );
-</center></code>
-It will be called with the address of a <code>cnt</code>-element
-(sub-)vector of the priority initialization entries,
-and will call each of them in order.
-It will be called with the GP of the initialization entries.
-
-<p>
-<h5> Linker Processing </h5>
-
-<p>
-The linker must take the collection of SHT_CXX_PRIORITY_INIT section
-entries from the relocatable object files being linked,
-and other initialization tasks specified in other ways
-(and treated as source priority 0 or object priority -MIN_INT),
-and produce an executable object file which executes the initialization
-tasks in priority order using only <code>DT_INIT</code>,
-<code>DT_INIT_ARRAY</code>, and <code>__cxx_priority_init</code>.
-Priority order is first according to the priority of the task,
-and then according to the order of relocatable objects and options
-in the link command.
-The order of tasks specified by other methods,
-relative to SHT_CXX_PRIORITY_INIT tasks of priority zero,
-is implementation defined.
-There are several possible implementations.  Two extremes are:
-
-<ul>
-<p>
-<li>
-The linker sorts the SHT_CXX_PRIORITY_INIT sections together.
-If it inserts entries for initialization tasks specified in other ways,
-it may make a single DT_INIT_ARRAY entry pointing to __cxx_priority_init.
-If not, it must break it into subranges,
-interspersing DT_INIT_ARRAY entries for the other tasks with entries
-for the SHT_CXX_PRIORITY_INIT entries.
-(This implementation will minimize runtime overhead.)
-
-<p>
-<li>
-The linker simply appends the SHT_CXX_PRIORITY_INIT sections.
-It inserts DT_INIT_ARRAY entries before and after the entries for other
-initialization tasks which sort this vector and then execute the
-negative-priority calls on the first call,
-and the positive-priority ones on the second call.
-(I believe this is much like today's IBM implementation.)
-However, to be conforming, the routine which performs these tasks
-must be linked with the resulting executable object,
-or shippable with it as an associated DSO.
-
-</ul>
-
-<p>
-Note that if one is linking ELF-32 objects into a 64-bit program,
-the entries must be expanded as part of this process.
-
-<p>
-<h5> Sorting Sections </h5>
-
-<p>
-Jason suggested that if we base this feature on sorting sections,
-we should provide a general mechanism.
-Following is a proposal for that purpose.
-
-<p>
-Define a new section header flag, <code>SHF_SORT</code>.
-If present, the linker is required to sort the elements of the
-concatenated sections of the same type,
-where the elements are determined by <code>sh_entsize</code>.
-The sort is controlled by fields in <code>sh_info</code>:
-
-<dl>
-<p>
-<dt> <code>#define SH_INFO_KEYSIZE(info) (info & 0xff)</code>
-<br><dd>	The size of the sort key (bytes).
-<p>
-<dt> <code>#define SH_INFO_KEYSTART(info) ((info>>8) & 0xff)</code>
-<br><dd>	The start byte of the sort key within element, from 0.
-<p>
-<dt> <code>#define SH_INFO_SORTKIND(info) ((info>>16) & 0xf)</code>
-<br><dd>	The kind of sort data:
-		0 for unsigned integer, 1 for signed integer.
-
-</dl>
-
-<p>
-The sort must be stable.
-The sort key must be naturally aligned.
-
-<p>
-Other conceivable options would be to allow sorting strings
-(like SHF_MERGE, this would be indicated by setting SHF_STRING
-and putting the character size in <code>sh_entsize</code>),
-or floating point data.
-Also, note that if we don't anticipate using such a general mechanism,
-it becomes possible to avoid padding words in the ELF-64 format by
-separating the priority and address vectors.
-
-<p>
-<font color=blue><hr><p>[990810 HU-B -- Martin]</font>
-Global destructor ordering must not only interleave with static locals,
-but also with atexit.
-This gives two problems:
-atexit is only guaranteed to support 32 functions;
-and dynamic unloading of DSOs break when functions are atexit registered.
-
-<p>
-<font color=blue><hr><p>[990810 SGI -- Matt]</font>
-Yes, the interleaving is required by the C++ standard.
-It's a nuisance, and I don't think there's any good reason for it,
-but the requirement is quite explicit.
-
-<p>
-The relevant part of the C++ standard is section 3.6.3, paragraph 3:
-
-<p>
-<dl><dd>
-<cite>
-"If a function is registered with atexit (see <cstdlib>, 18.3) then
-following the call to exit, any objects with static storage duration
-initialized prior to the registration of that function shall not be
-destroyed until the registered function is called from the termination
-process and has completed. For an object with static storage duration
-constructed after a function is registered with atexit, then following
-the call to exit, the registered function is not called until the
-execution of the object's destructor has completed. If atexit is called
-during the construction of an object, the complete object to which it
-belongs shall be destroyed before the registered function is called."
-</cite>
-</dd></dl>
-
-<p>
-What this implies to me is that atexit, and the part of the runtime
-library that handles destructors for static objects, must know about
-each other.
-
-<p>
-<font color=blue><hr><p>[990812 All]</font>
-Some people would prefer a sorting scheme based on the section name
-instead of the data, and also less linker impact.
-Jim will look into alternatives.
-
-<p>
-<font color=blue><hr><p>[991110 SGI -- Jim]</font>
-I said I would revisit my proposal, looking at two questions:
-<ol type=A>
-<li> Can we get less linker impact?
-<li> Can we sort based on section name instead of data?
-</ol>
-
-I'll address them separately.
-
-<p>
-<h5> A) Linker impact </h5>
-
-<p>
-I believe the proposal made need have almost no linker impact.
-Consider the second suggested implementation scheme, based on IBM's
-description of their approach.
-
-<p>
-A minimalist implementation (from the linker point of view)
-includes:
-
-<ol type=1>
-<p>
-<li>
-The link components are bracketed (either by a driver constructing
-the command line, or by implicit arguments generated within the
-linker) by two INIT_ARRAY entries.  The first calls
-<p>
-<dd>    __cxx_priority_init_begin()
-<p>
-The one at the end calls
-<p>
-<dd>    __cxx_priority_init_end()
-<p>
-These are both in the implementation runtime.  The begin routine
-determines the address and size of the SHT_CXX_PRIORITY_INIT section
-(below).  It sorts the section by priority, and calls
-__cxx_priority_init(addr,cnt) as described in the proposal with the
-count of <=0 entries.
-<p>
-__cxx_priority_init_end calls __cxx_priority_init(addr,cnt) with the
-address and count of >0 entries.
-
-<p>
-<li>
-The linker simply concatenates the SHT_CXX_PRIORITY_INIT sections,
-and emits markers (DT entries) that allow __cxx_priority_init_begin
-to find the section and its size.  At the same time, it creates a
-init_array section from other (i.e. non-constructor) entries as it
-normally would, which of course gets bracketed by the entries
-described above.
-
-<p>
-<li>
-At runtime, when loading the executable object, the init_array
-entries are executed, thereby sorting the constructor entries,
-executing the <=0-priority entries, executing the non-constructor
-entries, and finally executing the >0-priority entries.
-</ol>
-
-<p>
-My original proposal did not describe the dynamic tags to delimit the
-section, nor the __cxx_priority_init_<begin,end> routines.  Given such
-an approach, it's hard for me to imagine much less linker impact.
-
-<p>
-Now suppose you want to minimize runtime instead of linker impact --
-the first suggested implementation scheme.  There are at least two
-approaches:
-
-<ul>
-<p>
-<li>
-   The linker sorts the SHT_CXX_PRIORITY_INIT section after generating
-   it, and emits bracketing __cxx_priority_init_<begin,end> calls in
-   init_array entries itself.
-
-<p>
-<li>
-   To make things even simpler for the runtime, the linker could also
-   convert init_array entries in the .o files to CXX_PRIORITY_INIT
-   section entries with priority zero, reducing everything to a single
-   init_array entry that calls __cxx_priority_init.
-</ul>
-
-<p>
-One of my original objectives, and I think a key attribute of this
-proposal, is that this full range of possible implementations, from
-minimal linker impact to minimal runtime impact, makes absolutely no
-difference to the generated .o files -- compatibility between compilers
-does not depend on the chosen link-time implementation.
-
-<p>
-<h5> B) Sorting approach </h5>
-
-<p>
-Sorting is a more interesting issue.  I see four possibilities:
-
-<ol type=1>
-<p>
-<li> No sorting -- the low-linker-impact approach above.
-
-<p>
-<li> Implicit sorting -- the low-runtime approach above, with knowledge
-   explicit in the linker about how to sort SHT_CXX_PRIORITY_INIT.
-
-<p>
-<li> Explicit sorting within a section, e.g. what my proposal described,
-   based on an explicit sorting specification that describes the size
-   of objects to be sorted and the key location.
-
-<p>
-<li> Explicit sorting of sections, based on a sort key encoded in the
-   section name (for example).
-</ol>
-
-<p>
-I'll say up front that I think implicit sorting is adequate for the
-purpose at hand, and I'd like to understand other applications before
-I'd choose (3) or (4).
-
-<p>
-There are two differences between (3) and (4):
-
-<ul>
-<p>
-<li> the unit of sorting (an object within a section, or a whole section)
-
-<p>
-<li> the sort key (part of the data, or separate from the data).
-</ul>
-
-<p>
-Either would work for the application at hand.  Approach (3) would
-require only one SHT_CXX_PRIORITY_INIT section per .o file, while
-approach (4) would require up to one such section per constructor call
-(though only if the user used lots of different priorities).  I
-personally think sorting based on a data vector that's already been
-concatenated should be much more efficient, but it probably doesn't
-matter much.
-
-<p>
-On the other hand, sorting an arbitrarily-sized section, based on an
-external key, is more flexible except that the keys may be more
-constrained.  So, again, I think the choice comes down to other
-applications of the feature.  Absent significant other demands, I'd
-just stick to implicit sorting (and optional at that) for now.
-
-<p>
-<font color=blue><hr><p>[991202 All]</font>
-An extensive discussion failed to reach concensus,
-but clarified the issues.
-
-<p>
-The proposed alternative of sorting based on section name is
-specifically the Linux implementation of treating all section names
-containing a dollar sign ($) as being a section name before the dollar
-sign and a sort key after it.
-As mentioned above, this has the advantage of being more general,
-except with respect to the sort key, which isn't an issue here,
-and it is implemented in Linux.
-
-<p>
-The primary concern with the Linux approach is that some
-implementations must deal with static linkers which are under control
-of other groups or companies,
-and therefore can't depend on getting linker sorting implemented.
-IBM has been in that position,
-though it isn't clear whether it will be an issue on IA-64.
-
-<p>
-A secondary concern is a general objection from SGI to features that
-depend on section naming rather than section types and attributes.
-
-<p>
-Jim will attempt to frame the issue and get feedback from the base ABI
-group.
-
-<p>
-<font color=blue>[000106 All]</font>
-We will wait for base ABI feedback before deciding.
-
-<p>
-<font color=blue><hr><p>[000502 SGI -- Jim]</font>
-The base ABI group is not particularly interested in this,
-because they are not getting pressure from their C++ people to worry about it.
-So, if we want to standardize this,
-we need to apply pressure within our companies.
-
-<p>
-We have three choices:
-<ul>
-<li>We can press ahead and try to build support for a common
-   solution.
-<li>We can specify the API only (already done, and not strictly
-   speaking an ABI issue) so that implementors at least provide a
-   common source code mechanism.
-<li>We can specify nothing.
-</ul>
-
-<p>
-I don't think we should pursue the first unless we have vendors
-anxious to support it.
-
-<p>
-<font color=blue><hr><p>[000504 All]</font>
-The sense of the meeting was that since multiple vendors are going to
-implement this capability,
-the ABI will be much healthier if we can agree on the implementation.
-Otherwise, object files cannot be mixed.
-We will pursue this further.
-
-<p>
-<font color=blue>[000720 All]</font>
-Jim reported that the psABI group agreed to allocate a section type for
-this purpose, and will add a writeup to the Draft ABI (section 3.3.4).
-
-<p>
-<font color=blue>[000803 All]</font>
-We will follow more closely the IBM pragma semantics:
-no variable names, applying until the next pragma or end of file.
-Rename the pragma simply "priority."
-
-<p>
-<font color=blue>[000808 SGI -- Dehnert]</font>
-I remembered why I changed the pragma name.
-I'm concerned about "priority" conflicting with more traditional uses
-of the term, e.g. for multiprocessing priority.
 
 <p>
 <table border=on cellpadding=3>
@@ -2585,10 +2080,10 @@ The issue is tabled unless and until someone determines otherwise.
 <tr> <a name=C18></a> <td> C-18 </td>
 <td> Result buffers </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 000724 </td>
-<td> </td>
+<td> 000817 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -2596,24 +2091,14 @@ Should buffers for results with non-trivial copy constructors be passed
 as a dummy first parameter, or in r8 as specified by the psABI for long
 structured results?
 </td> </tr>
-<!--
 <tr> <td colspan=7>
 <b><a href=cxx-closed.html#C18> Resolution</a></b>:
+In all cases where a result class object is returned in a buffer
+created by the caller,
+the buffer address will be passed in r8,
 </td> </tr>
--->
 
 </table>
-
-<p>
-<font color=blue>[000724 SGI -- Dehnert]</font>
-I just noticed that the IA-64 psABI requires returning large aggregates
-(over 256 bits except for some floating point ones) via a buffer
-allocated by the caller and passed in r8.  We have specified in the C++
-ABI that class results with non-trivial copy constructors be returned
-in a buffer allocated by the caller and passed as an implicit first
-parameter (i.e. in out0, not in r8).  I suggest that we make these two
-cases consistent, i.e. pass the buffer address in r8 instead of out0.
-(This would not affect non-IA-64 compilers.)
 
 
 <p>
@@ -2664,6 +2149,60 @@ the padding size, of course.  There's no reason to try to make these
 routines go fast -- they're just their for convenience, and the memory
 allocation/function call indirection overhead will swamp a few
 conditionals on NULL parameters.
+
+<p>
+<font color=blue><hr><p>[000824 CodeSourcery -- Mark]</font>
+Overall motiviation: there is every reason to make these functions
+convenient for use by compilers and for manual use in various kinds of
+specialized reflection-like situations, including use in debuggers.
+There is virtually no speed penalty for allowing NULL pointers in
+these functions since the tests for NULL can be performed outside of
+the loop, and the loop itself will normally function calls.
+
+<ul>
+<li>__cxa_vec_new:
+<p>
+  `constructor' and/or `destructor' may be NULL.
+<p>
+  The destructor may be NULL if and only if the padding_size is zero.
+
+<p>
+<li>__cxa_vec_new2:
+<p>
+<li>__cxa_vec_new3:
+<p>
+  `constructor' and/or `destructor' may be NULL.
+<p>
+  The destructor may be NULL if and only if the padding_size is zero.
+<p>
+  `alloc' and `dealloc' may not be NULL.
+  
+<p>
+<li>__cxa_vec_ctor:
+<p>
+  `constructor' and/or `destructor' may be NULL.
+
+<p>
+<li>__cxa_vec_dtor:
+<li>__cxa_vec_delete:
+<p>
+  `destructor' may be NULL.
+  
+<p>
+<li>__cxa_vec_delete2:
+<li>__cxa_vec_delete3:
+<p> 
+  `destructor' may be NULL.
+<p>
+  `dealloc' may not be NULL.
+
+<p>
+<li>__cxa_vec_cctor:
+<p>
+  `constructor' and/or `destructor' may be NULL.
+
+</ul>
+
 
 
 
@@ -4070,10 +3609,10 @@ There is no current interest in tackling this.  Table the issue.
 <td> ILP32 vs. LP64
 </td>
 <td> call </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 000210 </td>
-<td> </td>
+<td> 000824 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -4082,33 +3621,12 @@ What should we do (if anything) to support
 (a) compatibility between different vendors' ILP32 compilers
 (b) compatibility between ILP32 and LP64?
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F5> Resolution</a></b>:
+Withdrawn -- no action.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[000210 All -- Matt]</font>
-HP will be supporting an ilp32 model as well as as an lp64 model.
-The ABI only discusses an lp64 model.
-Do we want to support ilp32 in any way?
-What will we have to do to support
-(a) compatibility between different vendors' ilp32 compilers, or
-(b) compatibility between ilp32 and lp64?
-HP has suggested, for example,
-modifying the mangling scheme so that long long in ilp32
-is mangled the same way as long in lp64.
-Is this enough to ensure ilp32/lp64 link compatibility,
-or would we need to make many other changes as well?
-
-<p>
-<font color=blue>[000217 All]</font>
-The group observed that one can prevent all incorrect linkage by using
-a different version prefix for LP64 and ILP32 mangling.
-Christophe would prefer to just mangle those types that are different
-differently, so as not to prevent linkage when it would work.
-It is not clear whether mixed models are workable enough to make such a
-complication useful.
-Christophe will produce a concrete proposal to discuss once the base
-mangling is settled enough to base it on.
 
 
 <p>
@@ -4315,16 +3833,20 @@ See the <a href=abi.html#mangling>Draft C++ ABI for IA-64</a>.
 <tr> <a name=G1></a> <td> G-1 </td>
 <td> Basic command line options </td>
 <td> tools </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 000824 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
 Can we agree on basic command line options (compiler and linker)
 for fundamental functionality,
 possibly allowing portable makefiles?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#G1> Resolution</a></b>:
+Withdrawn -- no action.
 </td> </tr>
 
 </table>
@@ -4868,7 +4390,7 @@ are potentially costly memorywise on IA64
 where any mutex / lock / whatever must be 16-bytes aligned)
 
 <p>
-<font color=blue><hr><p>[000720 All]</font>
+<font color=blue><hr><p>[000803 All]</font>
 Discussion brought out that Christophe's
 <code>__cxa_allocate_static</code> can't work precisely as described,
 since the constructor and its arguments are also needed.
@@ -4907,6 +4429,18 @@ An implementation using another structure might need to rearrange the data.
 The __cxa_guard_release call above would be re-specified to also
 enqueue the object on the destruction list by calling __cxa_atexit or
 its equivalent.
+
+<p>
+<font color=blue><hr><p>[000817 SGI -- Jim]</font>
+Note the tradeoff in the above:
+It would increase the guard variable size from 8 to 40 bytes,
+but would likely eliminate a bunch of instructions
+to gather that data for the destructor registration call.
+(But it would be a pure loss for no-destructor objects.
+So perhaps we should modify it to eliminate the extra data for those,
+and pass a parameter or use a byte in the <code>guard</code> member
+to indicate that to the release routine?)
+
 
 
 
@@ -4988,10 +4522,10 @@ No special treatment -- pass bool like char.
 <tr> <a name=H1></a> <td> H-1 </td>
 <td> Runtime library DSO name </td>
 <td> tools </td>
-<td> open </td>
+<td> closed </td>
 <td> SGI </td>
 <td> 990616 </td>
-<td> </td>
+<td> 000817 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -5000,8 +4534,14 @@ e.g. <code>libC.so</code>.
 If there are to be vendor-specific support libraries which must coexist
 in programs from mixed sources, identify naming convention for them.
 </td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#H1> Resolution</a></b>:
+The runtime library will be named <code>libcxa.so</code>.
+</td> </tr>
 
 </table>
+
+
 
 <p>
 <table border=on cellpadding=3>
