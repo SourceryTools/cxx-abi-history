@@ -15,7 +15,7 @@ C++ ABI Closed Issues
 
 <font size=-1>
 <p>
-<i>Revised 19 April 2000</i>
+<i>Revised 10 May 2000</i>
 
 </center>
 
@@ -2641,6 +2641,501 @@ So, we could either use -1 for NULL, or use 0 and increment the offset.
 Represent NULL by the value -1.
 
 
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=A28></a> <td> A-28 </td>
+<td> RTTI equality testing </td>
+<td> data </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 000406 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Can we get back the ability to do a simple test for RTTI equality?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A28> Resolution</a></b>:
+Mangle the name NTBS for std::type_info separately,
+emit it in its own COMDAT,
+and use it instead of the RTTI struct,
+at least if the incomplete flags are set in pointer types.
+</td> </tr>
+
+</table> 
+
+<p>
+<font color=blue>[000406 CodeSourcery -- Nathan]</font>
+The current RTTI proposal loses the property that all type_info objects
+can be compared for equality and orderability by address comparison.
+Instead, type_info::operator== must involve a virtual function call
+or unconditionaly strcmp.
+(An alternative of testing the typeid of the
+polymorphic type_info objects results in infinite recursion!)
+
+<p>
+Here are two proposals which reinstate the address equality property.
+The first is rather different to the current scheme, but when I was
+done documenting it, I realised there was a minor modification to the
+current scheme, which partially reinstates the address equality. I
+present both for consideration. Feel free to shot them down ...
+
+<p>
+<h4>Proposal A</h4>
+
+<p>
+<ol>
+<p>
+<li>
+The typeid operator produces a std::type_info object for all types.
+No subclassing of std::type_info is done.
+The object has comdat linkage,
+and hence after linking and loading,
+only one object of that name is active.
+For typeid(X) it does not matter whether X is incomplete,
+or direct or indirect pointer to incomplete.
+The functionality required of typeid is to produce objects which can
+test for type equality and (implementation defined) type orderability.
+No information about the internal structure of the type is required.
+
+<p>
+<li>
+Dynamic_cast and catch matching require more information.
+Primarily the heirarchy of a class type,
+and the target of pointer types.
+To do this, a separate class heirarchy is used.
+These objects are also emitted with comdat linkage,
+and with a different name to the std::type_info
+objects produced by typeid.
+(It is not _necessary_ for these to have comdat linkage,
+but that will reduce overall program size.)
+
+<p>
+The base class of these is:
+
+<code><pre>
+class abi::__type_info
+{
+  std::type_info const *type; // pointer to typeid(foo) object.
+  virtual ~__type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+This contains a pointer to the type_info object
+produced by the typeid operator,
+for whatever type this is describing.
+That will be a unique object.
+
+<p>
+There are a number of necessary derivations of this type,
+which can be taken largely unaltered from the current proposal. 
+
+<p>
+It is necessary to distinguish function types, so that catch matching
+can distinguish a data pointer object from a function pointer object.
+Other types (fundamental, enum, array) need not be distinguished,
+and can be represented by an abi::__type_info object.
+(Or we could keep the current proposal of having separate derivations
+for these.)
+
+<code><pre>
+class abi::__function_type_info
+  : public abi::__type_info
+{
+  virtual ~__function_type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+Pointers are as they currently are,
+other than the base class change.
+We still need the incomplete target flag.
+
+<code><pre>
+class abi::__pointer_type_info
+  : public abi::__type_info 
+{
+  abi::__type_info const *target;   // target type of the pointer
+  unsigned flags;                   // flags, as currently specified
+  virtual ~__pointer_type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+Pointers to member could be a sibling class of non member pointers.
+However, they do share common functionality,
+and IMO it makes sense to derive from __pointer_type_info.
+
+<code><pre>
+class abi::__pointer_to_member_type_info
+  : public abi::__pointer_type_info
+{
+  abi::__class_type_info const *klass;  // class of the member
+  virtual ~__pointer_to_member_type_info ();
+  ... other implementation defined member functions
+};
+
+</pre></code>
+
+<p>
+The __class_type_info, __si_class_type_info and __vmi_class_type_info
+are unchanged, other than the change to __class_type_info's base.
+
+<code><pre>
+class abi::__class_type_info
+  : public abi::__type_info
+{
+  ... as currently defined
+}
+
+</pre></code>
+
+</ol>
+
+<p>
+The vtable slot -1,
+(which currently holds a pointer to the std::type_info object for a class),
+points to the abi::__class_type_info object.
+To implement typeid(X),
+where X is polymorphic,
+involves an additional indirection through the
+abi::__type_info base to return the `type' member.
+
+<p>
+dynamic_cast uses the abi::__class_type_info object pointed to in the vtable.
+throwing and catch matching use the abi::__type_info object
+for the type being thrown or caught.
+
+<p>
+As with the current proposal,
+an incomplete type is represented by an abi::__class_type_info object.
+Note that its abi::__type_info base
+will point to the unique std::type_info object for that type,
+regardless of whether a DSO completes the type.
+This incomplete type is prevented
+from preempting the complete type information.
+
+<p>
+Also direct or indirect pointers to incomplete have their incomplete
+flag set,
+and are also prevented from preempting the equivalent pointer to
+complete object.
+
+<p>
+During catch matching,
+comparison of pointers can compare the abi::__pointer_type_info addresses,
+unless either has the incomplete flag set,
+in which case the std::type_info objects pointed to must be compared.
+(The std::type_info objects could be compared even when the incomplete
+flags are clear.)
+
+<p>
+There are two or three naming schemes with this proposal:
+<ol>
+<li>The naming of the std::type_info object produced by typeid.
+<li>The naming of the abi::__type_info object required for dynamic cast
+    and catch matching
+<li>Optionally, the naming of the incomplete abi::__class_type_info
+    and direct or indirect pointers to it.
+    If that mangling is specified,
+    we can emit those as comdat objects too,
+    rather than forcing them to be statics.
+</ol>
+
+<p>
+Advantages of this proposal are:
+<ul>
+<li>Address equivalence of std::type_info objects
+    is maintained in all cases.
+<li>Generating the std::type_info of a pointer type does not force the
+    emission of the std::type_info objects for the pointer chain.
+<li>Generating the std::type_info of a type is always 16 bytes,
+    additional information is only produced when necessary.
+<li>When address equivalence of abi::__type_info objects is not possible,
+    the type's std::type_info object is available for that purpose.
+    There is no requirement to compare the NTBS's of the types.
+<li>We do not have to expose any implementation hooks in the
+    <typeinfo> header file.
+</ul>
+
+<p>
+The cost of this proposal is
+<ul>
+<li>Producing the std::type_info for a polymorphic type involves an
+additional indirection.
+<li>The std::type_info and abi::__type_info derivative for a particular
+type occupies an additional 16bytes (The size of std::type_info).
+</ul>
+
+
+<p>
+<h4>Proposal B</h4>
+
+<p>
+The first proposal is essentially
+using the std::type_info objects as unique objects,
+via which incomplete types can be compared.
+We already have such a unique object candidate --
+the NTBS name member of std::type_info.
+Currently we've not said anything about that.
+If, however, we give that NTBS comdat linkage, a unique name,
+and prevent it being commonized with other strings, we have a proxy.
+These features can be obtained by treating it as a
+`const char []' rather than a string constant.
+type_info equality and orderability can now use the address of this array,
+rather than the type_info objects themselves.
+We can do this in all cases,
+even though it is only necessary for the pointer to incomplete case,
+as that avoids a virtual function call.
+Here is an implementaion of type_info::operator==
+
+<code><pre>
+bool type_info::operator== (type_info const &other) throw ()
+{
+  return name == other.name;
+}
+
+</pre></code>
+
+<p>
+We need to specify the naming scheme for the NTBS.
+
+<p>
+The advantages of this are
+<ul>
+<li>Minimal change from the current scheme.
+<li>type_info orderability is a pointer comparison
+</ul>
+
+<p>
+The costs over proposal A are
+<ul>
+<li>type_info orderability involves indirecting on the type_infos.
+</ul>
+
+<p>
+<font color=blue><hr><p>[000411 CodeSourcery -- Nathan]</font>
+
+<p>
+<b>Issue 2</b>
+
+<p>
+The algorithm for collation order of type_infos,
+cannot simply compare addresses for non-pointer types,
+and complete pointer types.
+Using string collation only works
+when one of the types is a pointer with the incomplete_mask set.
+There are two difficulties.
+Firstly, we might be
+comparing a non-pointer type_info with a pointer type_info. We need to
+determine this and DTRT WRT the incomplete flag of the pointer
+type_info. to do that will require dynamic_cast or typeid'ing the
+type_infos. Secondly, assume we are just comparing pointer type_info's.
+We have two pointers to complete, Aptr and Bptr, and a third pointer to
+incomplete, Cptr.
+
+<p>
+<ol>
+<li>Aptr.before (Bptr) can just compare addresses.
+<li>Bptr.before (Cptr) will compare names.
+<li>Cptr.before (Aptr) will compare names.
+</ol>
+
+<p>
+There is nothing maintaining the consistency of the results of these
+three tests -- result 1 is uncorrelated with results 2 & 3.
+
+<p>
+Therefore type_info::before must be implemented as string compare on
+the type's names. We lose any advantage of commonizing the type_infos.
+
+<p>
+<b>Issue 3</b>
+
+<p>
+17.4.4.4 prevents an implementation adding member functions to one
+of the std classes, except in particular circumstance. About the only
+leeway given is whether a particular non-virtual function is inline or
+not. So I presume we're not permitted to add virtual member functions
+to std::type_info (18.5.1). The rules given in 17.4.4.4 specifying what
+member functions can be added look like applications of the as-if rule,
+but there must be something deeper going on, as if that was all, it
+wouldn't be mentioned. I'm not sure how a conforming program could tell
+whether additional functions had been added.
+
+<p>
+The abi requires us to add virtual functions to type_info. 
+For instance the implementation of operator== will require it to
+deal with pointers to incomplete. G++ needs several for catch matching.
+
+<p>
+<b>Issue 4</b>
+
+<p>
+5.2.8 talks about typeid returning something derived from type_info,
+but the footnote mentioning extended_type_info implies to me that
+typeid always returns objects of the same type.
+Again, I'm not sure how a conforming program could tell.
+
+<p>
+The two proposals above resolve these issues.
+Proposal A resolves issues 2,3 &4,
+whilst proposal B resolves issue 2 only,
+and will leave us (slightly) non-conformant.
+
+
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+The Standard committee members in the group are quite sure that Issues
+3 and 4 are not problems.
+Section 17.4.4.4 does not impose the suggested constraint
+(see footnote 173),
+and the intent of 5.2.8 is not to restrict  typeid to returning a
+single class.
+
+<p>
+Proposal B resolves the remaining issue,
+and the group is inclined to accept it,
+while considering whether to go further with A.
+Jim will (and has) integrated B into the
+<a href=abi.html#rtti> Draft C++ ABI for IA-64</a>.
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+It was decided to accept the current writeup.
+See the <a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+
+<tr class=small> <a name=A29></a> <td> A-29 </td>
+<td> RTTI pointer-to-member </td>
+<td> data </td>
+<td> closed </td>
+<td> CodeSourcery </td>
+<td> 000407 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Derive __pointer_to_member_type_info from __pointer_type_info.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#A29> Resolution</a></b>:
+Derive __pointer_to_member_type_info and __pointer_type_info from
+a common base class __pbase_type_info.
+Add a new flag to __pbase_type_info indicating that the class of a
+pointer-to-member is incomplete
+(propagated up a chain of pointers).
+</td> </tr>
+
+</table> 
+
+<p>
+<font color=blue>[000407 CodeSourcery -- Nathan]</font>
+__pointer_to_member_type_info is derived from type_info.
+I strongly recommend it be derived from __pointer_type_info,
+as it requires much of the same functionality,
+and has the same meanings of its flags.
+By subclassing __pointer_type_info, much code could be reused.
+
+<p>
+Thus point 8 of the rtti classes would become
+<blockquote>
+The abi::__pointer_to_member_type_info type adds one field to
+abi::__pointer_type_info:
+<ul>
+<li>
+              a pointer to a abi::__class_type_info
+                (e.g., the "A" in "int A::*") 
+</ul>
+</blockquote>
+
+<p>
+<font color=blue><hr><p>[000411 CodeSourcery -- Nathan]</font>
+It is permissible in a pointer to member of X,
+for X to be an incomplete type [8.3.3]/2.
+This means that we need more that a single incomplete flag.
+The presence of such a ptr to member,
+will mean that it and all pointers to it will have their incomplete flag set,
+but its target might not be an incomplete chain.
+In implementing G++'s rtti runtime I
+found the following three flags useful,
+(this is with __pointer_to_member_type_info derived from __pointer_type_info):
+
+<code><pre>
+incomplete_mask       = 0x8
+incomplete_chain_mask = 0x10
+incomplete_klass_mask = 0x20
+
+</code></pre>
+
+<p>
+incomplete_mask is an inclusive or of the other two flags.
+incomplete_klass_mask is only used by __pointer_to_member_type_info,
+and __pointer_type_info knows nothing about it (it simply examines the
+other two).
+
+<p>
+A __pointer_type_info or __pointer_to_member_type_info sets the
+incomplete_mask and incomplete_chain_mask, if the target is an
+incomplete
+type, or has its incomplete_mask set.
+
+<p>
+A __pointer_to_member_type_info sets the incomplete_mask and the
+incomplete_klass_mask, if the class of the member is incomplete.
+
+<p>
+<font color=blue><hr><p>[000411 Ed.]</font>
+I've tentatively incorporated both of these into the layout document,
+except that I just defined a second flag (in __pointer_type_info flags)
+for direct or indirect incomplete class type (in member pointers).
+Any pointer type inspections can check for both flags,
+even though only member pointers can cause one of them to be set up the
+chain.
+
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+Derive __pointer_to_member_type_info and __pointer_type_info from
+a common base class __pbase_type_info.
+Add a new flag to __pbase_type_info indicating that the class of a
+pointer-to-member is incomplete
+(propagated up a chain of pointers).
+
+<p>
+(Ed. note)  I've added updates to the
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+It was decided to accept the current writeup.
+See the <a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
+
+
 <p> <hr> <p>
 <h3> B.  Virtual Function Handling Issues </h3>
 
@@ -5041,10 +5536,10 @@ DT_INIT_ARRAYSZ, DT_FINI_ARRAY, and DT_FINI_ARRAYSZ dynamic tags.
 <tr> <a name=C3></a> <td> C-3 </td>
 <td> Order of ctors/dtors w.r.t. DSOs </td>
 <td> ps </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> reopened </td>
+<td> 000504 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -5064,9 +5559,11 @@ Furthermore, the potential for dynamic unloading of a DSO
 requires a mechanism for early destruction of a subset.
 </td> </tr>
 <tr> <td colspan=7>
-<b>Resolution</b>:
+<b><a href=cxx-closed.html#C3> Resolution</a></b>:
 Accept SGI proposal for a simple API which registers destructors and
 atexit calls.
+Subsequently, accept proposal to eliminate call to __cxa_finalize when
+program exits.
 </td> </tr>
 
 </table>
@@ -5139,7 +5636,6 @@ programs in a C++-standard-conforming manner.
 No user interface to __cxa_atexit is supported,
 so the user is not able register an <code>atexit</code> function with a
 parameter or a home DSO.
-</font>
 
 <p>
 <li> Termination:
@@ -5231,6 +5727,560 @@ instead of one DSO at a time.
 Note that the type of "__dso_handle" above is not specified.
 Since the simplest implementation is for the static linker to resolve
 it into an arbitrary address in the DSO, define it as "void *".
+
+
+<p>
+<font color=blue><hr><p>[991216 CodeSourcery -- Mark]</font>
+
+<p>
+What I'm suggesting (for exit finalization) is:
+
+<ul>
+<p>
+<li> As in the ABI, atexit calls __cxa_atexit.
+
+<p>
+<li> When `exit' is called, it invokes all the things registered with
+    all of __cxa_atexit, atexit, and (possibly) on_exit.
+
+<p>
+<li> When a shared library is unloaded, it calls __cxa_finalize, which
+    behaves exactly as in the ABI.
+
+<p>
+<li> When a main program exits, it does not call __cxa_finalize.
+    Instead, it just calls exit.  That does the things described
+    above.
+</ul>
+
+
+<p>
+<font color=blue><hr><p>[991217 CodeSourcery -- Mark]</font>
+I've attached the GNU libc source files.  Basically, none of these
+routines are implemented in terms of the others; instead, they just
+share a common data structure.  I think the source will make it clear;
+none of these files is more than 50 lines or so.
+
+<code><pre>
+================================
+=====  filename="cxa_atexit.c"
+================================
+
+/* Copyright (C) 1999 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <stdlib.h>
+#include "exit.h"
+
+/* Register a function to be called by exit or when a shared library
+   is unloaded.  This function is only called from code generated by
+   the C++ compiler.  */
+int
+__cxa_atexit (void (*func) (void *), void *arg, void *d)
+{
+  
+  struct exit_function *new = __new_exitfn ();
+
+  if (new == NULL)
+    return -1;
+
+  new->flavor = ef_cxa;
+  new->func.cxa.fn = func;
+  new->func.cxa.arg = arg;
+  new->func.cxa.dso_handle = d;
+  return 0;
+}
+
+================================
+=====  filename="cxa_finalize.c"
+================================
+
+/* Copyright (C) 1999 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <stdlib.h>
+#include "exit.h"
+
+/* If D is non-NULL, call all functions registered with `__cxa_atexit'
+   with the same dso handle.  Otherwise, if D is NULL, do nothing.  */
+
+void
+__cxa_finalize (void *d)
+{
+  struct exit_function_list *funcs;
+
+  if (!d)
+    return;
+
+  for (funcs = __exit_funcs; funcs; funcs = funcs->next)
+    {
+      struct exit_function *f;
+
+      for (f = &funcs->fns[funcs->idx - 1]; f >= &funcs->fns[0]; --f)
+        {
+          if (f->flavor == ef_cxa && d == f->func.cxa.dso_handle)
+            {
+              (*f->func.cxa.fn) (f->func.cxa.arg);
+              /* We don't want to run this cleanup again.  */
+              f->flavor = ef_free;
+            }
+        }
+    }
+}
+
+===========================
+=====  filename="atexit.c"
+===========================
+
+/* Copyright (C) 1991, 1996, 1999 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <bits/libc-lock.h>
+#include <stdlib.h>
+#include "exit.h"
+
+
+/* Register FUNC to be executed by `exit'.  */
+int
+atexit (void (*func) (void))
+{
+  struct exit_function *new = __new_exitfn ();
+
+  if (new == NULL)
+    return -1;
+
+  new->flavor = ef_at;
+  new->func.at = func;
+  return 0;
+}
+
+
+/* We change global data, so we need locking.  */
+__libc_lock_define_initialized (static, lock)
+
+
+static struct exit_function_list initial;
+struct exit_function_list *__exit_funcs = &initial;
+
+struct exit_function *
+__new_exitfn (void)
+{
+  struct exit_function_list *l;
+  size_t i = 0;
+
+  __libc_lock_lock (lock);
+
+  for (l = __exit_funcs; l != NULL; l = l->next)
+    {
+      for (i = 0; i < l->idx; ++i)
+        if (l->fns[i].flavor == ef_free)
+          break;
+      if (i < l->idx)
+        break;
+
+      if (l->idx < sizeof (l->fns) / sizeof (l->fns[0]))
+        {
+          i = l->idx++;
+          break;
+        }
+    }
+
+  if (l == NULL)
+    {
+      l = (struct exit_function_list *)
+        malloc (sizeof (struct exit_function_list));
+      if (l != NULL)
+        {
+          l->next = __exit_funcs;
+          __exit_funcs = l;
+
+          l->idx = 1;
+          i = 0;
+        }
+    }
+
+  /* Mark entry as used, but we don't know the flavor now.  */
+  if (l != NULL)
+    l->fns[i].flavor = ef_us;
+
+  __libc_lock_unlock (lock);
+
+  return l == NULL ? NULL : &l->fns[i];
+}
+
+===========================
+=====  filename="on_exit.c"
+===========================
+
+/* Copyright (C) 1991, 1996 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#include <stdlib.h>
+#include "exit.h"
+
+/* Register a function to be called by exit.  */
+int
+__on_exit (void (*func) (int status, void *arg), void *arg)
+{
+  struct exit_function *new = __new_exitfn ();
+
+  if (new == NULL)
+    return -1;
+
+  new->flavor = ef_on;
+  new->func.on.fn = func;
+  new->func.on.arg = arg;
+  return 0;
+}
+weak_alias (__on_exit, on_exit)
+
+========================
+=====  filename="exit.h"
+========================
+
+/* Copyright (C) 1991, 1996, 1997 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the GNU C Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+#ifndef _EXIT_H
+#define _EXIT_H 1
+
+struct exit_function
+  {
+    enum {
+       ef_free, ef_us, ef_on, ef_at, ef_cxa } flavor;
+		/* `ef_free' MUST be zero! */
+    union
+      {
+        void (*at) (void);
+        struct
+          {
+            void (*fn) (int status, void *arg);
+            void *arg;
+          } on;
+        struct
+          {
+            void (*fn) (void *arg);
+            void *arg;
+            void *dso_handle;
+          } cxa;
+      } func;
+  };
+struct exit_function_list
+  {
+    struct exit_function_list *next;
+    size_t idx;
+    struct exit_function fns[32];
+  };
+extern struct exit_function_list *__exit_funcs;
+
+extern struct exit_function *__new_exitfn (void);
+
+#endif  /* exit.h  */
+</pre></code>
+
+
+
+<p>
+<font color=blue><hr><p>[991220 SGI -- Jim]</font>
+<p>
+In the elf context assumed by the base IA-64 ABI, I expect that a C++
+program will typically be running with the C run-time library libc.so,
+the C++ runtime library libC.so, likely other system DSOs, and its own
+components.
+
+<p>
+In this context, achieving an integrated solution could be accomplished
+in a couple of ways.  The obvious one is to replace the routines
+atexit, on_exit, and exit in the C run-time library with routines that
+are cognizant of the C++ __cxa_atexit and __cxa_finalize facilities.
+a less obvious method, but still generally usable, would be to insert
+C++-specific versions of them in the C++ runtime library, and depend on
+preemption to achieve the replacement.  This works as long as libC.so
+precedes libc.so in the library list.
+
+<p>
+There are other possible non-integrated solutions,
+but given the assumption of the underlying IA-64 ABI,
+and the fact that the second solution above can work without changing
+the underlying C run-time library,
+it doesn't seem necessary to consider them.
+
+<p>
+What is an issue, however, is that the application could in theory be
+linked on a different system than the one where it ultimately runs,
+and therefore presumably on a different system than that which built
+the run-time library DSOs.  It is that interface which we need to pin
+down, namely (a) what routines (with what interfaces and semantics)
+must be present in libC.so/libc.so, and (b) what sequences of calls
+the libraries may assume the program will make.
+
+<p>
+We appear to be agreed on the presence of __cxa_atexit and
+__cxa_finalize in libC.so, on the registration of C++ destructors
+and C atexit cleanup with __cxa_atexit, and on the use of
+__cxa_finalize for destructor execution upon early unloading.
+The open questions are (1) whether (or how) on_exit registration can
+be integrated, and (2) how the final cleanup is invoked.
+
+<p>
+The original proposal adopted ignored (1) out of ignorance, and
+answered (2) by specifying a call to __cxa_finalize(NULL).  If (1) is
+addressed by calling __cxa_atexit for on_exit with a parameter, and
+passing an additional exit code parameter to __cxa_finalize (and thence
+to all the finalization actions it invokes), this works, i.e. on_exit
+works as currently defined by Sun and is properly integrated into the
+finalization order.  But that assumes that the exit code is available
+for passing to __cxa_finalize, which may imply calling it from exit if
+it's not available to a .fini_array routine (which was what the
+original proposal specified).
+
+<p>
+Mark points out that it works to just assume that exit does the
+call to __cxa_finalize, or performs the equivalent processing,
+eliminating the need for the explicit __cxa_finalize call in
+.fini_array.  This is slightly simpler in that it doesn't require
+generation of the .fini_array entry, and the library implementation
+can coordinate features like on_exit without exposing the interfaces
+necessary to implement them.  It also probably preserves more
+faithfully the traditional semantics that atexit routines are executed
+before the main program .fini_array, although doing __cxa_finalize
+first in the latter should produce the same effect.
+
+<p>
+Note that we can't just not choose -- one approach requires the builder
+of the main executable to insert a .fini_array entry, while the other
+doesn't -- unless we want to require the run-time to handle either,
+which doesn't seem useful.
+
+<p>
+My current preference is to proceed with Mark's proposal, requiring
+that exit handle the __cxa_atexit -registered calls (but _not_
+requiring that anyone explicitly register __cxa_finalize or anything
+else to accomplish that).  Upon re-reading all the mail, this seems
+quite workable.  In any case, I'll re-open the issue and we can discuss
+it next time.
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+Accept Mark's proposal.
+Jim will add to <a href=abi.html#vtable-ctor>Draft C++ ABI for IA-64</a>.
+
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=C4></a> <td> C-4 </td>
+<td> Construction vtables </td>
+<td> call </td>
+<td> closed </td>
+<td> Cygnus </td>
+<td> 990603 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+When calling a virtual function from the constructor/destructor of a
+base subobject,
+the version specific to the base type is required,
+unlike the typical case when calling such a vfunc for the full object
+from some other context.
+Since the pointer for that vfunc in the the subobject's sub-vtable
+of the full object's vtable is the full object version,
+some other means is required for accessing the correct vfunc.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#C4> Resolution</a></b>:
+Accept Compaq proposal as currently documented in the
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[990630 HP -- Christophe]</font>
+A rough idea from Christophe's original vtable layout proposal
+has been incorporated in the
+<a href=abi.html#vtable-ctor>Draft C++ ABI for IA-64</a>.
+
+<p>
+<font color=blue>[000217 All]</font>
+Coleen has generated <a href=abi.html#vtable-ctor>a proposal</a>.
+
+<p>
+<font color=blue>[000308 All]</font>
+Discussed and clarified the proposal.
+Jim will clarify the content descriptions.
+Coleen will describe how some of the base vtables can be eliminated
+from the construction vtable groups given vbase promotion.
+She should be out to California in two weeks,
+so we can finalize this issue.
+
+<p>
+<font color=blue>[000323 All]</font>
+Discussion clarified the two proposals and their relative merits:
+<ul>
+
+<p>
+<li>
+Proposal A has a VTT with pointers only to full vtable groups,
+which are special construction vtable groups except for those bases
+where the entire group can be the normal complete object group.
+
+<p>
+<li>
+Proposal B has a VTT with pointers to all the vtables in the vtable
+groups for all of the bases,
+but individual vtable pointers can reference the normal group
+(or even construction groups for other bases).
+
+<p>
+<li>
+Therefore, B will have a larger VTT but smaller construction vtables.
+Overall, we should expect much less space required by proposal B.
+Because of this in particular,
+and the sharing of vtables for the construction of various bases as
+well as normal post-construction usage,
+B should have better cache behavior.
+
+<p>
+<li>
+In A, the vpointers are populated by loading a group address from the VTT
+and doing an add and store for each base.
+In B, we must do a load/store pair for each base.
+
+<p>
+<li>
+B breaks the ability to assume that,
+if you have a vpointer for one secondary non-virtual vtable,
+you can use it to access the other secondary vtables at known offsets.
+We know of noone that does this optimization today,
+and it only affects multiple inheritance.
+
+</ul>
+
+<p>
+It was decided that the space savings outweighed the lost optimizations,
+and proposal B was adopted.
+Jim will clean up the writeup for final adoption.
+
+<p>
+For the record,
+following are several issues that have been raised and resolved in the
+process of developing this proposal:
+
+<ul>
+<li>
+We could separate the VTT array from the vtable,
+and provide a new VTT data item.
+<font color=purple><i>
+We will do so.
+</i></font>
+<li>
+We could also make the VTT static so it has no linkage
+and is created in the modules that define the constructors and destructor
+of a class.  I don't think they would take that much space.
+<font color=purple><i>
+We will not do this.
+To avoid replicating the construction vtables, which are big,
+we need to allocate them with the main vtable with a known interface.
+So there's no benefit to putting the VTT elsewhere.
+</i></font>
+<li>
+The subobject construction vtables do not need to be contiguous to the
+normal vtable, since they will be accessed via the VTT.
+<font color=purple><i>
+We will not require them to be contiguous.
+</i></font>
+</ul>
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+Modify VTT order to put everything in preorder,
+to match other aspects.
+Accept Compaq proposal as currently documented in the
+<a href=abi.html#rtti>Draft C++ ABI for IA-64</a>.
 
 
 <p>
@@ -7135,6 +8185,470 @@ components not under control of the system vendor.
 Therefore, no specification is needed.
 
 
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=D12></a> <td> D-12 </td>
+<td> Table location </td>
+<td> lib ps </td>
+<td> closed </td>
+<td> all </td>
+<td> 991216 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Determine constraints on the location of the unwind table
+and the unwind information table.
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#D12> Resolution</a></b>:
+The unwind tables must reside in the text segment they describe.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[991216 SGI -- Jim]</font>
+The unwind table consists of triples:
+a begin and end location bounding the code fragment described by the
+unwind descriptors,
+and the location of the unwind information for this fragment.
+The base psABI states that these are segment-relative offsets,
+to avoid the need to relocate them at runtime.
+It also specifies a section type and name for the unwind table,
+with attribute <code>SHF_ALLOC</code> (but not writable),
+as well as a segment type,
+but does not specify the unwind information table section information.
+
+<p>
+The psABI specification leaves open the question of how to identify the
+relevant segments for the unwind table segment-relative entries.
+There are several possibilities:
+
+<ul>
+<p>
+<li>
+The intended method is to put both the unwind tables
+and the unwind information tables in the text segment they describe.
+That is, the relevant text segment would contain these tables,
+and the unwind table segment would be an overlay segment.
+Then the identification of referenced segments just requires
+determining which text segment contains the unwind segment.
+
+<p>
+Forcing the unwind information tables into the text
+segment is constraining.
+Given that their format is undefined by the ABI
+(i.e. the language-specific data area),
+the severity of that constraint is not fully predictable.
+It would, for example, interfere with the bias in some systems to
+avoid data in text segments.
+
+<p>
+<li>
+The very preliminary (i.e. hacked) SGI implementation put the unwind
+information tables in data with their own section name,
+and used the section table to find them.
+This works, but using the section table is not desirable.
+
+<p>
+<li>
+A fully general solution would be a table of triples,
+each containing segment pointers for the unwind table segment and the
+segments containing its associated unwind information table and text.
+It would usually contain one triple,
+but it is desirable to allow multiple text segments and therefore
+multiple triples.
+It could be located via a dynamic tag,
+which is consistent with how we usually locate things at runtime.
+
+</ul>
+
+<p>
+<font color=blue><hr><p>[000120 HP -- Cary]</font>
+The first bullet you listed is the intended method.
+Both the unwind table and the unwind info blocks are intended
+to be in the same segment as the text with which they're associated.
+Thus, any segment-relative addresses in those tables are understood
+to refer to locations in the same segment.
+
+<p>
+To overcome any limitations that placing info blocks in text might impose,
+we designed the LTV family of relocations,
+which allows a link-time virtual address to be placed in an info block
+without requiring a dynamic relocation;
+the consumer is expected to be able to calculate from context what
+segment the LTV address refers to so it can relocate the address on the fly.
+We also have the LTOFF_FPTR family of relocations,
+which is needed to identify the personality routine as a gp-relative
+offset to a linkage table entry that contains the function pointer.
+
+<p>
+The advantages to this scheme are that there are no dynamic relocations
+for any unwind information
+(except function pointers in the GOT created by LTOFF_FPTR),
+and that the unwind information does not cause any 
+increase in the application's per-process data space.
+
+<p>
+In order to unwind correctly,
+it's important that there is a one-to-one
+relationship between text segments and unwind tables.
+The dynamic loader needs to keep track of these relationships,
+so that the unwinder can find the appropriate unwind table,
+given a pc value.
+
+<p>
+Instead of a table of triples,
+there is a PT_UNWIND program header table entry that locates
+the unwind information for a load module;
+this entry is intended to refer to a subset of the text segment.
+It's through this entry that the dynamic loader finds the unwind table.
+
+<p>
+<font color=blue><hr><p>[991224 SGI -- Jim]</font>
+My concern with this comes from the possibility of
+generating multiple text segments.
+In such a case, if an implementation wants to put the
+unwind information in a separate segment from text,
+there's no longer a trivial way to find the associated text segments for fixup.
+And although I have no objection to putting these in text today for C++,
+I'm concerned that a future requirement for C++ or some other language
+might make it desirable to put them in data.
+If there's a simple way of making this work, I'd like to pursue it.
+
+<p>
+<font color=blue><hr><p>[000126 HP -- Cary]</font>
+
+<p>
+<b>Re. multiple text segments...</b>
+
+<p>
+Our position is that we would only need more than one text segment in a
+single load module where we need to establish different access 
+permissions for some text pages than for others.
+In such a case, we consider them to be separate -- but contiguous --
+text segments from the loader's point of view,
+and a single text segment from the unwinder's point of view.
+Therefore, we still need only one unwind table per load module.
+
+<p>
+This points out the hazy definition of "segment" and "program header 
+table entry" in the ELF specification.
+Some program header table entries describe segments that are disjoint
+from all other segments,
+while others (like PT_DYNAMIC and PT_UNWIND)
+describe "sub-segments" that are really part of another segment.
+
+<p>
+<b>Re. unwind tables in data...</b>
+
+<p>
+The performance bigots here would *never* let me put the unwind tables
+in the data segment.
+Nevertheless, if some language-specific data really needs to be in data,
+it can be arranged by putting "LTV" pointers in the language-specific
+data that point to an auxiliary block of info in the data segment.
+A much earlier version of our C++ exception handling tables 
+in fact did just that.
+
+<p>
+("LTV" pointers are "link-time virtual" addresses.
+At link time,
+an LTV relocation works just like the corresponding DIR relocation,
+except that no dynamic relocation is generated,
+so the associated word can be placed in a read-only segment.
+The consumer of that pointer must, at run time,
+figure out what segment the link-time virtual address refers to and
+apply the appropriate relocation factor to the address.
+The required information can be obtained from the dynamic loader.
+Note that this scheme requires that the linker-assigned addresses
+for all of the loadable segments do not overlap.)
+
+<p>
+<dl>
+<dd> [Jim]
+Does the ABI require that the segment table be allocated?
+Easy to find?
+</dd>
+</dl>
+
+<p>
+No, but the dynamic loader does have access to it.
+When we need to find an unwind table,
+we ask the dynamic loader:
+given a pc value, its <code>dlmodinfo()</code> entry point locates
+the load module containing that text segment,
+and returns a struct load_module_desc,
+which contains, among other things,
+a pointer to the unwind table for that load module.
+
+<p>
+<font color=blue><hr><p>[991226 SGI -- Jim]</font>
+An observation, then:
+in order to make this work,
+we should specify how to obtain this information in the psABI,
+unless <code>dlmodinfo()</code> is already standard.
+
+<p>
+<font color=blue><hr><p>[000203 All]</font>
+To understand this issue better,
+we worked through the EH structures looking at references:
+
+<ol kind=A>
+<p>
+<li> The unwind table is in its own segment,
+    assumed by the HP implementation to be an overlay of .text.
+    They find it, and the associated .text segment by a query to
+    the dynamic linker based on the IP address to be located.
+    They also use linker-defined symbols for the base addresses of text
+    and the unwind table,
+    which of course depend on only having one of each.
+    <p>
+    It contains references:
+    <ul>
+    <li> Start and end addresses of the text fragment which the
+	entry describes,
+	as an offset from the text base address.
+    <li> Address of the unwind information entry for the fragment,
+	as an offset from a segment assumed to be .text.
+    </ul>
+
+<p>
+<li> The unwind info table is
+    assumed by the HP implementation to be contained in .text,
+    and is referenced from the unwind table via .text-segment-relative
+    offsets.
+    <p>
+    It contains references:
+    <ul>
+    <li> Unwind descriptor references are relative to the text fragment.
+    <li> A landing pad start pointer (LPStart),
+	at the beginning of the language-specific data area (LSDA),
+	represented as an offset relative to its own location,
+	and therefore assuming that the LSDA is in the same segment as
+	the landing pad if runtime relocation is to be avoided.
+    <li> A type table base pointer,
+	represented as an offset relative to its own location, 
+	and therefore assuming that the LSDA is in the same segment as
+	the type table if runtime relocation is to be avoided.
+    <li> Other references, to call sites and landing pads,
+	are represented as offsets relative to the address contained in
+	LPStart.
+    </ul>
+
+<p>
+<li> The type table is
+    assumed by the HP implementation to be contained in .text,
+    and is referenced from the unwind info table via self-relative
+    offsets.
+    <p>
+    It contains references:
+    <ul>
+    <li> To RTTI records,
+	relative to the GP for the current text fragment.
+	Note that this does not allow for address-only RTTI comparisons,
+	since it does not support preemption.
+	HP uses the RTTI pointer along with another identifier for
+	comparisons.
+    </ul>
+
+</ol>
+
+<p>
+<font color=blue><hr><p>[000323 Inprise -- Eli]</font>
+I'd like it if we could avoid imposing data structures on the language
+implementations where possible.
+I'd particularly like to avoid this in the area of exception handling,
+as this is a place where different languages need to
+cohabitate in the process space.
+That's partly why I was happy to see the functional interface in the
+C++ exception handling doc that you folks did.
+My problems with the existing gcc mechanism revolve around the total
+commitment requirement to the gcc data format,
+which prevents me from even throwing exceptions past gcc frames without
+dying unless I fully conform to their data format.
+
+<p>
+The updated proposal seems to handle most of my concerns,
+but I'd still like to see the PC map hidden,
+so that language implementors can do as they see fit with this.
+To that end, I'd like to toss out the following additions.
+Note that these are tentative,
+based on my fiddling with it just a bit for the past day or so.
+I'm going to do a prototype to see how it holds together.
+
+<p>
+I would like to see the unwind tables registered with the _Unwind library,
+and referenced only through callbacks,
+like this:
+
+<code><pre>
+typedef __personality_routine
+	(*_Unwind_IPLookupFn) (uint64 IP, void **pImplementationData);
+
+int _Unwind_RegisterIPLookup
+	(_Unwind_IPLookupFn LookupFn, uint64 StartAddr, uint64 EndAddr);
+
+void _Unwind_UnregisterIPLookup (_Unwind_IPLookupFn LookupFn);
+
+</pre></code>
+
+<p>
+The first function takes the address of a lookup function which returns
+a personality and pointer to implementation specific data based on an IP.
+Start and end addresses are made available so that the _Unwind library
+can optimize calls to these routines.
+When an exception is raised, the _Unwind
+library looks up the current IP by calling these registered procedures.
+The need for something like this was implied in the Intel Software
+Conventions and Runtime Architecture Guide,
+Chap 11 (SCRAG is what I'll call it).
+Section 11.1.2 says that the dynamic loader needs to provide an API
+for finding the unwind table.
+I've just changed the 'ownership' of the data a bit.
+
+<p>
+The second function lets you uninstall a lookup function.
+That's for when you're unloading,
+and you don't want to leave bad fn pointers floating.
+Yes, the RTL for the language does have to cooperate,
+or things can go south a considerable time after a module unloads.
+
+<p>
+The personality routine as it is stated in the C++ ABI doesn't have the
+implementation specific data passed to it.
+I'd like to add that:
+
+<code><pre>
+typedef _Unwind_Reason_Code(*__personality_routine)
+	( int version,
+	  _Unwind_Action actions,
+	  uint64 exceptionClass,
+	  _Unwind_Exception *exceptionObject,
+	  _Unwind_Context *context,
+	  void *ImplementationData );
+
+</pre></code>
+
+<p>
+The ImplementationData parameter is the item that is returned by the
+lookup function that resolves the personality for a given IP.
+
+<p>
+Given these changes,
+the format of most of the unwind data in chapter 11 of
+the SCRAG becomes mostly advisory
+(the frame info was already made so by the current document).
+Chapter 11 could essentially become an appendix implementation that
+could be used by implementors if they chose,
+but not forced on them.
+The other thing that I like about the lookup registering
+is that it allows implementors to innovate with respect to fast lookup
+schemes within a loadable module.
+The current scheme allows for no innovation whatever.
+I'd prefer that the implementors be left with the option to build as
+fancy or as simple a scheme for lookups and frame decomposition as possible,
+depending on the needs of the language.
+
+<p>
+<font color=blue><hr><p>[000406 All]</font>
+There was some discussion of Eli's suggestion,
+centered on the observation that registration might be useful for
+situations like Java run-time compilation,
+where the unwind tables (nor the text referenced)
+do not exist at startup time.
+We agreed to go off and consider how we intended to deal with that
+situation.
+
+<p>
+Cary Coutant mentioned in a private conversation that he expects this
+to be handled by having the Java compiler (for example)
+register additional unwind tables with the dynamic linker.
+Since the HP implementation gets the table locations from the dynamic
+linker, this makes the additions transparent to the unwind library.
+
+<p>
+<font color=blue><hr><p>[000406 HP -- Christophe]</font>
+An interesting observation was raised at todays C++ ABI meeting.
+Can we dynamically generate unwind tables for instance from a JIT?
+We are back to the question of whether the IP->UnwindInfo translation
+can be done just by looking up tables,
+or whether we need an API to do it.
+
+<p>
+I had a discussion with Laurent Morichetti a few minutes ago.
+It is unclear at that point whether their unwinding would be based
+on the unwind library at all
+(there are alternatives, such as encoding unwind information themselves).
+But assuming they want to leverage all the code that deals
+with the RSE and all that magic,
+they need to have a way to be compatible with the unwind library.
+
+<p>
+Today, the unwind library uses dlmodinfo to find the start of the code
+segment for the current IP
+(and a predefined symbol in the case of archive-bound executables).
+From there, it can find the start of the unwind table,
+and from there do a binary search on the IP to find the unwind info block.
+
+<p>
+The JVM could be compatible with this black magic by having a way to
+tell dld what to return for the newly created code segment.
+I don't think there is a public dld interface to do that,
+and it creates a rather obscure and difficult
+to document dependency between the JVM,
+the unwind library and dld.
+
+<p>
+Alternatively,
+we could have a couple of APIs to do IP->UnwindInfo translation,
+and to register a new range of text and provide the corresponding
+unwind info pointer.
+In that scheme,
+the actual location of the unwind table would become irrelevant.
+
+<p>
+Also note that in addition to Java support,
+an implementation of Dynamo for IA64 would probably have a similar problem.
+
+<p>
+<font color=blue><hr><p>[000502 SGI -- Jim]</font>
+Unfortunately, though I'm not real happy with forcing the unwind
+tables into the text segment being described, and believe that we
+could avoid that restriction without significant complications,
+I think the current scheme is workable for mainstream systems, and
+I suspect that changing it at this point will encounter more
+resistance than we can overcome.  So without a groundswell of
+support for a more general scheme, we should probably close this
+with the current approach.
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+Agreed as suggested.
+That is, the unwind table and descriptors are to be generated in the
+same text segment as the code to which they refer.
+The dynamic linker (ld.so) can find it via the PT_IA_64_UNWIND
+program header entry,
+and should provide an internal implementation-defined interface to the
+unwind library to map a PC to the associated unwind table,
+which is outside the scope of this C++ ABI.
+
+<p>
+To deal with applications that create code and unwind information
+dynamically (e.g. Java JITs),
+the base ABI should define an interface by which the application
+can register a new code/unwind data pair with ld.so.
+This issue has been submitted to the psABI group.
+
+
 
 <p>
 <table border=on cellpadding=3>
@@ -7668,6 +9182,389 @@ to minimize implementation mistakes.
 <th> Source </th> <th> Opened </th> <th> Closed </th>
 </tr>
 
+<tr> <a name=F6></a> <td> F-6 </td>
+<td> Demangling </td>
+<td> lib </td>
+<td> closed </td>
+<td> Cygnus </td>
+<td> 000210 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+Users may sometimes want to get demangled names.
+Should we provide an entry point for calling a demangler?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F6> Resolution</a></b>:
+Provide a simple demangler interface callable from C.
+See the <a href=abi.html#demangler>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000210 all -- Matt]</font>
+Users have access to types' mangled names via the standard type_info class.
+Users may sometimes want to get demangled names.
+Should we provide an entry point for calling a demangler?
+This might be a standalone function,
+perhaps with an interface like that of EDG's demangle(),
+or it might be some kind of type_info extension.
+If we do this,
+should we attempt to specify exactly what demangled names look like,
+or should we explicitly leave it unspecified and warn users
+not to depend on the exact format?
+
+<p>
+<font color=blue>[000321 HU-Berlin -- Martin]</font>
+Suggestion:
+<code><pre>
+  namespace abi {
+    std::string demangle_mangled_name (const char*);	// &lt;mangled-name>
+    std::string demangle_type (const char*);		// &lt;type>
+  }
+</pre></code>
+
+<p>
+<font color=blue>[000330 all]</font>
+The problem with the suggested interface is that using std::string
+requires sucking in half the standard library.
+An alternate proposed is that the user pass in a buffer,
+with a NULL pointer causing the routine to allocate storage.
+Christophe also volunteered to send the HP interface,
+though it is a bit heavyweight.
+
+<p>
+<font color=blue>[000330 HP -- Christophe]</font>
+Here is the interface HP offers today.
+As I said, it seems overly complicated,
+compared to what Matt proposed.
+On the plus side, it has handling of erroneous input,
+which I believe we need to define.
+
+<code><pre>
+class TDemangler {
+  
+public:
+  void * operator new(size_t size) {
+    return (void*)malloc(size);
+  }
+
+  void operator delete(void *deadObject) {
+    free(deadObject);
+  }
+
+  TDemangler();
+  TDemangler(const char *mangledDecl);
+  ~TDemangler();
+
+  enum Status { OK, Empty, Error, Truncated };
+    
+  void reset();
+  Status getStatus() const { return status; }
+  Status demangleDecl(const char *mangledDecl);
+  Status demangleType(const char *mangledType);
+  Status copy(char *result, size_t maxToCopy /*including null*/) const;
+  Status copy(char *result, size_t maxToCopy /*including null*/,
+              char *name, size_t nameLength) const;
+    
+private:
+  Status status;
+  const char *p;
+  const char *end;
+  void partial(bool top, bool typeOfExternalDecl = false);
+  void typeName(size_t &baseOffset, size_t &baseLength);
+  void templateArgs();
+  void writePrefix(const char *text, size_t length);
+  void writeSuffix(const char *text, size_t length);
+  void writeDuplicate(unsigned offset, unsigned length);
+  void writeBaseName(const char *baseName, size_t baseNameLength,
+                     size_t classNameOffset, size_t classNameLength);
+  enum Spacing { Before, None, After };
+  void writeQualifiers(const char *cv, Spacing spacing);
+  size_t extractCount();
+  void demangleDecl();
+
+  char *buffer;
+  size_t bufferSize;
+  enum { InternalBufferSize = 200 };
+  char internalBuffer[InternalBufferSize];
+  size_t nameSize;
+  size_t prefixSize;
+  size_t suffixSize;
+  bool spaceBeforeName;
+  void makeAvailable(size_t length);
+  void merge();
+  static size_t min(size_t a, size_t b) { return a < b ? a : b; }
+};
+</pre></code>
+
+<p>
+<font color=blue>[000406 all]</font>
+There was some discussion of the desirability of making the demangler a
+class member.
+Christophe believes it would thereby become easier to derive from it,
+e.g. to tailor output.
+Others believe it would add unnecessary complication;
+one particular concern is that it be callable from C.
+Christophe and Matt will send specific proposals.
+
+<p>
+It was observed that Martin's suggestion of two functions is unnecessary.
+A name beginning with "_Z" is a &lt;mangled-name>;
+otherwise it is a type name (if valid).
+
+<p>
+<font color=blue><hr><p>[000406 SGI -- Matt]</font>
+We need to return multiple return values:
+a status code, and a buffer pointer.
+We can use an extra level of indirection on one, both, or neither.
+If neither, we need to return a pair or the moral equivalent.
+
+<p>
+<b>ALTERNATIVE A</b>
+
+<code><pre>
+namespace abi {
+    extern "C" 
+    char* __cxa_demangle ( const char* mangled_name,
+			   char* buf, size_t n,
+			   int* status );
+}
+
+</code></pre>
+
+<p>
+mangled_name is a null-terminated string with the mangled name.
+buf is a pointer to a user-provided buffer of at least n characters.
+If buf is a null pointer then n is ignored,
+and demangle allocates its own buffer with malloc.
+The user is responsible for freeing it.
+
+<p>
+If the return value is non-null,
+it points to a null-terminated string with the demangled name.
+If the return value is null, an error has occurred.
+*status == 0 means the demangling failed because the buffer
+wasn't long enough (or because malloc failed).
+*status == -1 means the demangling failed because mangled_name is invalid.
+
+<p>
+Users may pass a null pointer as the last argument to __cxa_demangle.
+All that means is that, if the demangling fails, they won't be able
+to find out why.
+
+<p>
+<b>ALTERNATIVE B</b>
+
+<code><pre>
+namespace abi {
+    struct dm {
+      char* name;
+      enum { buffer_too_small, invalid_name } status;
+    };
+    dm demangle(const char* mangled_name, char* buf, size_t n);
+}
+
+</code></pre>
+
+<p>
+mangled_name is a null-terminated string with the mangled name.
+buf is a pointer to a user-provided buffer of at least n characters.
+If buf is a null pointer then n is ignored,
+and demangle allocates its own buffer with malloc.
+The user is responsible for freeing it.
+
+<p>
+If result.name is non-null,
+it points to a null-terminated string with the demangled name.
+If result.name is null,
+demangling has failed and result.status gives the type of failure.
+
+<p>
+<b>DISCUSSION</b>
+
+<p>
+I prefer alternative A,
+even though the error indication is clumsier,
+because it's callable from C.
+Having a C-callable demangling interface could come in handy,
+e.g. for linkers.
+If we decide that's unimportant, we should go with alternative B.  
+
+<p>
+<font color=blue><hr><p>[000406 HP -- Christophe]</font>
+
+<p>
+<b>ALTERNATIVE C</b>
+
+<p>
+Interface:
+
+<code><pre>
+namespace abi
+{
+
+struct demangler
+{
+        // Provide name to demangle
+        void demangle(char *);
+protected:
+        // Output demangled characters
+        // I don't know whether it is better to output
+        // on char or a string... It seems there are
+        // many cases where the demangler can put
+        // multiple chars at the same time, but they
+        // are not zero-terminated (we know the length)
+        virtual void output(char c);
+};
+
+}
+
+</code></pre>
+
+<p>
+Implementation:
+
+<code><pre>
+#include &lt;cxxabi.h>
+#include &lt;iostream>
+
+using namespace std;
+
+void abi::demangler::output(char c)
+{
+        cout << c;
+}
+
+</code></pre>
+
+<p>
+<font color=blue><hr><p>[000413 All]</font>
+Most members strongly prefer a C-callable interface.
+Discussion centered around how to handle memory allocation
+(user, library, re-allocatable, etc.)
+and whether options like gcc's (e.g. list parameters or not)
+are desirable.
+Matt will consider these and modify his proposal.
+
+<p>
+<font color=blue><hr><p>[000427 SGI -- Matt]</font>
+One thing I promised to do and didn't, though, was to come up with a
+revised demangler interface.  Here it is.  It's more complicated than
+I like, but the complexity does serve a real purpose.  Motivation:
+<ul>
+<li>allow returning an error code
+<li>interface callable from C
+<li>allow reusing a buffer between multiple invocations
+<li>allow resizing a buffer, since there is no way, even in principle,
+   to know how large a buffer to provide.
+</ul>
+
+<code><pre>
+namespace abi {
+
+  char* __cxa_demangle(const char* mangled_name,
+                       char* buf,
+                       size_t* n,
+                       int* status);
+
+}
+
+</code></pre>
+
+<p>
+<code>mangled-name</code>
+is a pointer to a null-terminated array of characters.
+
+<p>
+<code>buf</code> may be null.
+If it is non-null, then <code>n</code> must also be nonnull,
+and buf is a pointer to an array, of at least *n characters,
+that was allocated using malloc.
+
+<p>
+<code>status</code> points to an int that's used as an error indicator.
+It is permitted to be null,
+in which case the user just doesn't get any detailed error information.
+
+<p>
+<b>Behavior</b>:
+the return value is a pointer to a null-terminated array 
+of characters, the demangled name.
+If there is an error in demangling, the return value is a null pointer.
+The user can examine *status to find out what kind of error it is.
+Meaning of error indications:
+<ul>
+<li> 0:  success
+<li> -1: memory allocation failure
+<li> -2: invalid mangled name
+<li> -3: invalid arguments (e.g. buf nonnull and n null)
+</ul>
+
+<p>
+<b>Memory management</b>: 
+<ul>
+<li> If buf is a null pointer,
+    __cxa_demangle allocates a new buffer with malloc.
+    It stores the size of the buffer in *n, if n is nonnull.
+<li> If buf is not a null pointer,
+    it must have been allocated with malloc.
+    If the array turns out to be too small,
+    __cxa_demangle may use realloc to increase its size.
+    The new size will be stored in *n.
+</ul>
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+Accept Matt's latest proposal.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=F7></a> <td> F-7 </td>
+<td> Mangling statics </td>
+<td> call </td>
+<td> closed </td>
+<td> HP </td>
+<td> 000223 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+What, if anything, should we do about mangling the names of objects in
+static functions in case a compiler chooses to inline them?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F7> Resolution</a></b>:
+Local objects are mangled with the name of the containing function
+followed by a discriminator,
+consisting of the object name and possibly a sequence ID.
+Strings are mangled with a discriminator consisting of "s" followed
+by a sequence ID.
+See the <a href=abi.html#mangling-scope>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
 <tr> <a name=F8></a> <td> F-8 </td>
 <td> Identifiers with unicode letters </td>
 <td> call </td>
@@ -7757,6 +9654,13 @@ the GNU Java approach also cannot be extended to C99.
 We need to follow the underlying C ABI.
 Names containing unicode letters after mangling according to our normal
 mangling rules will be encoded as required for external names by the C ABI.
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+Agreed that only function and member function template parameters are
+mangled with T*_.
+Jim will go back to single nested name grammar,
+and include auxiliary symbols (e.g. RTTI) for builtin types.
 
 
 
@@ -7867,14 +9771,124 @@ No.  It is mangled only for template instantiations/specializations.
 </table>
 
 <p>
+<font color=blue><hr><p>[000504 All]</font>
+See the comment for <a href=cxx-open.html#F3>issue F-3</a>.
+
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr class=small> <a name=F11></a> <td> F-11 </td>
+<td> Hash for local strings </td>
+<td> call </td>
+<td> closed </td>
+<td> all </td>
+<td> 000330 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+How should we hash strings for local name mangling?
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#F11> Resolution</a></b>:
+Strings are mangled with a discriminator consisting of "s" followed
+by a sequence ID.
+See the <a href=abi.html#mangling>Draft C++ ABI for IA-64</a>.
+</td> </tr>
+
+</table>
+
+<p>
+<font color=blue>[000406 All]</font>
+One suggestion is to go back to the collision-resistant hash suggested
+by Mark in November in another context.
+The relevant source code is attached as
+<a href=fingerprint.h>fingerprint.h</a> and
+<a href=fingerprint.c>fingerprint.c</a> .
+
+<p>
+<font color=blue>[991119 CodeSourcery -- Mark]</font>
+I was asked to provide a little more information on collision-free
+hashing algorithms.
+I've appended our source to do this in our C++-to-C translator.
+The hash function here was originally used in Modula-3;
+it is provably collision-resistant.
+This version uses 64 bits;
+the algorithm can be extended to any bit length, however.
+
+<p>
+Even for 64 bits, the probabilistic guarantee (details at
+<a href=http://www.research.digital.com/SRC/m3sources/html/fingerprint/src/Fingerprint.i3.html>Compaq research</a>)
+ensures that (for example),
+the chance of getting a collision with a thousand mangled names
+of length a thousand is less than one in a billion.
+
+<p>
+At CenterLine, we used this algorithm to compute type fingerprints to
+detect ODR mismatches at link-time.  The same trick could be used to
+see whether all definitions of an inline function are really the same.
+It's better to use a collision-resistant hash (like this one) than an
+ad-hoc hash because the math actually guarantees nice properties.
+
+<p>
+Other examples of collision-free hashses are "secure hashes", i.e.,
+those designed to resist an adversaries ability to create a text with
+a given hash, or to find collisions.  Well-known examples include SHA
+and MD5.
+
+<p>
+<font color=blue><hr><p>[000504 All]</font>
+We will use the simpler scheme of the function name followed by a
+discriminator consisting of "s" followed by a sequence number.
+
+<p>
 <font color=blue>[000413 All]</font>
 No.
 It requires more space,
 it can be done external to the mangling,
 and the group is uncomfortable with the potential breakage.
 
+
+
 <p> <hr> <p>
 <h3> G.  Miscellaneous Issues </h3>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th> <th> Class </th> <th> Status </th>
+<th> Source </th> <th> Opened </th> <th> Closed </th>
+</tr>
+
+<tr> <a name=G2></a> <td> G-2 </td>
+<td> Detection of ODR violations </td>
+<td> call </td>
+<td> closed </td>
+<td> Sun </td>
+<td> 990603 </td>
+<td> 000504 </td>
+</tr>
+<tr> <td colspan=7>
+<b>Summary</b>:
+[Sun]
+(See also F-3.)
+</td> </tr>
+<tr> <td colspan=7>
+<b><a href=cxx-closed.html#G2> Resolution</a></b>:
+This is a duplicate.
+See <a href=#F3>F-3</a>, <a href=#F4>F-4</a>, <a href=#F10>F-10</a>.
+</td> </tr>
+
+</table>
 
 <p>
 <table border=on cellpadding=3>
