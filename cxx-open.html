@@ -15,7 +15,7 @@ C++ ABI Open Issues
 
 <font size=-1>
 <p>
-<i>Revised 6 October 1999</i>
+<i>Revised 12 October 1999</i>
 
 </center>
 
@@ -25,6 +25,13 @@ C++ ABI Open Issues
 
 <p> <hr> <p>
 <h3> Revisions </h3>
+
+<p>
+<font color=blue>[990912]</font>
+Closed <a href=cxx-closed.html#D5>D-5</a>,
+<a href=cxx-closed.html#D6>D-6</a>.
+Additions to <a href=#B4>B-4</a>, <a href=#B5>B-5</a>,
+<a href=#D7>D-7</a>.
 
 <p>
 <font color=blue>[990905]</font>
@@ -1322,6 +1329,12 @@ The Vtable will contain a function address/GP pair.
 
 </table>
 
+<p>
+<font color=blue>[991007 All]</font>
+Note that, though this issue was closed,
+it may prove necessary to reopen it if the underlying C ABI treatment
+of function pointers changes.
+
 
 <p>
 <table border=on cellpadding=3>
@@ -1452,7 +1465,7 @@ I propose COMMON.
 See also G-3, for vague linkage of inlined routines and their static variables.
 
 <p>
-<font color=blue>[990624 SGI summarizing others]</font>
+<font color=blue><hr><p>[990624 SGI summarizing others]</font>
 HP uses COMDAT for many cases, keying from the symbol names.
 HP also uses some heuristics.
 HP observes that IA-64 objects will already be large.
@@ -1467,7 +1480,7 @@ A COMDAT mechanism should also specify how to get rid of associated
 sections like debugging info, unless the identical mechanism works.
 
 <p>
-<font color=blue>[990629 HP -- Christophe]</font>
+<font color=blue><hr><p>[990629 HP -- Christophe]</font>
 First, the "usual" heuristic
 (which is usual because it dates back to Cfront)
 is to emit vtables in the translation unit that contains  
@@ -1558,15 +1571,24 @@ he is just pointing out some of the issues we will have to resolve.)
 
 
 <p>
-<font color=blue>[990805 All]</font>
+<font color=blue><hr><p>[990805 All]</font>
 We need a specific proposed representation for COMDAT.
 IBM's version is restricted to one symbol per section.
 Jim will look for Microsoft's PECOFF definition.
 Anyone else with a usable definition should send it.
 
 <p>
-<font color=blue><hr><p>[991004 SGI]</font>
+<font color=blue><hr><p>[revised 991012 SGI]</font>
 <h2> C++ ABI:  COMDAT Proposal </h2>
+
+<p>
+<h3> Revisions </h3>
+
+<p>
+<font color=blue>[991007]</font>
+Change default to simply group; COMDAT semantics is option.
+Don't support removal based on duplication of non-COMDAT sections.
+Just remove symbols defined relative to removed sections.
 
 <p>
 <h3> Introduction </h3>
@@ -1581,6 +1603,15 @@ compilation units,
 in a form which allows the linker to remove all but one copy.
 This is essentially the idea called COMDAT in several existing
 implementations.
+
+<p>
+Various other implementations (notably Windows NT) and proposals obtain
+more generality by varying the duplicate removal semantics.
+The most obviously useful variant supports grouping of sections for
+removal purposes, but treats duplication as an error,
+using it to support link-time removal of unreferenced sections.
+The proposal below treats this simple grouping as the default semantics,
+and provides duplicate removal as an option.
 
 <p>
 Our objectives include:
@@ -1610,14 +1641,6 @@ additional duplicated sections, e.g. containing debug information.
 We want to define a mechanism which can deal with arbitrary such
 associations, without predicting them in advance.
 
-<p>
-<li>
-It is conceivable that duplicates may occur for something which is not
-recognized as a full duplicate at compile time.
-A possible example is a template instantiation which duplicates a
-full specialization in some compilation unit.
-It is desirable to deal with this case if possible.
-
 </ul>
 
 <p>
@@ -1628,57 +1651,61 @@ The proposal below is based on the HP definition,
 with minor modifications and more precise definitions.
 
 <p>
-<h4> SHF_COMDAT: Potentially Duplicate Sections </h4>
+<h4> SHF_GROUP: Group Member Sections </h4>
 
-A section which may be duplicated,
-and for which only one copy is required,
+A section which is part of a group,
+and is to be retained or discarded with the group as a whole,
 is identified by a new section header attribute:
 
 <dl>
-<dt> SHF_COMDAT
-<dd> This section is subject to duplication in other relocatable objects,
-    and the linker should choose only one copy to retain.
-    This section must be referenced in a SHT_COMDAT_GROUP section (see below).
+<dt> SHF_GROUP
+<dd> This section is a member (perhaps the only one) of a group of sections,
+    and the linker should retain or discard all or none of the members.
+    This section must be referenced in a SHT_GROUP section (see below).
 </dl>
 
 <p>
 This attribute flag may be set in any section header,
-and no other modification or indication is made in the potentially
-duplicated sections.
+and no other modification or indication is made in the grouped sections.
 All additional information is contained in the associated
-SHT_COMDAT_GROUP section (see below).
+SHT_GROUP section (see below).
 
 <p>
-<h4> SHT_COMDAT_GROUP: COMDAT Group Definition </h4>
+<h4> SHT_GROUP: Section Group Definition </h4>
 
 <p>
-COMDAT sections are assumed to occur in interrelated groups.
+Some sections occur in interrelated groups.
 For instance, an out-of-line definition of an inline function might require,
 in addition to its .text section,
 a read-only data section containing literals referenced,
 one or more debug information sections,
 and/or other informational sections.
 Furthermore, there may be internal references among these sections that
-would not make sense if one of them were replaced by a duplicate from
-another object.
+would not make sense if one of them were removed or
+replaced by a duplicate from another object.
 Therefore, we assume that such groups are to be included or omitted
 from the linked object as a unit.
-To facilitate this, we define a SHT_COMDAT_GROUP section:
+(Except for the GRP_COMDAT flag described below,
+this definition does not specify the circumstances under which the
+members of a group might be discarded from the linked object.)
 
 <p>
-The section header attributes of a COMDAT Group Section are:
+To facilitate this, we define a SHT_GROUP section:
+
+<p>
+The section header attributes of a Group Section are:
 
 <p>
 <TABLE align=center BORDER=2 CELLSPACING=2 CELLPADDING=2>
 
 <TR>
 <TD><b> name </b></TD>
-<TD><code> .COMDAT_group </codet></TD>
+<TD> unspecified </TD>
 </TR>
 
 <TR>
 <TD><code> sh_type </code></TD>
-<TD><code> SHT_COMDAT_GROUP </code></TD>
+<TD><code> SHT_GROUP </code></TD>
 </TR>
 
 <TR>
@@ -1709,34 +1736,53 @@ The section header attributes of a COMDAT Group Section are:
 </TABLE>
 
 <p>
-The COMDAT group's <code> sh_link </code> field identifies a symbol
+The section group's <code> sh_link </code> field identifies a symbol
 table section, and its <code> sh_info </code> field the index of a
 symbol in that section.
-The name of that symbol is treated as the identifier of the COMDAT group.
-If multiple COMDAT groups in different object files are identified
-by symbols with the same name,
-the linker should remove all but one of the groups.
-If the identifying symbol is defined in a non-COMDAT section in
-some object, the linker should remove all of the COMDAT groups
-identified by that symbol.
+The name of that symbol is treated as the identifier of the section group.
 
 <p>
-The section data of a SHT_COMDAT_GROUP section is a flag word
+The section data of a SHT_GROUP section is a flag word
 followed by a sequence of section indices.
 The flag word may contain the following flags:
 
-<ul>
-&lt;To be defined>
-</ul>
+<dl>
+<dt> GRP_COMDAT (0x1)
+<dd>
+This is a COMDAT group.
+It may duplicate another COMDAT group in another object file,
+where duplication is defined as having the same identifying symbol name.
+In such cases, only one of the duplicate groups should be retained by
+the linker, and the remaining groups should be discarded.
+</dd>
+</dl>
 
 <p>
-The section indices in the SHT_COMDAT_GROUP section identify
+The section indices in the SHT_GROUP section identify
 the sections which make up the group.
-Either none of them or all of them will be removed by the linker.
 
 <p>
 The <code>sh_size</code> value is <code>sh_entsize</code> times
 one plus the number of sections in the group.
+
+<p>
+The linker may choose to discard a section in a group,
+i.e. not include its data in the linked object,
+based on COMDAT duplicate semantics (above),
+or for other implementation-defined reasons
+(e.g. removing unreferenced code).
+If it does so, the group semantics requires that all of the group
+members be removed as a unit.
+
+<p>
+<i>
+(Note, however, that this is not intended to imply that special-case
+behavior like removing debug information requires removing the sections
+to which it refers, even if they are in a group.
+We could clarify this issue by tying the removal semantics to the
+section which contains the identifying symbol,
+but this seems overly restrictive and unnecessary.
+</i>
 
 <p>
 <h4> Requirements </h4>
@@ -1744,9 +1790,10 @@ one plus the number of sections in the group.
 <ul>
 <p>
 <li>
-References to the sections comprising a COMDAT group,
+References to the sections comprising a group,
 from sections outside the group,
-must be made via global symbols.
+must be made via global UNDEF symbols,
+referencing global symbols defined as addresses in the group sections.
 They may not reference local symbols for addresses in the group's
 sections, including section symbols.
 
@@ -1758,32 +1805,25 @@ For example, relocations of one of the group's sections must be in a
 relocation section which is also part of the group.
 
 <p>
-The above rules allow a COMDAT group to be removed without leaving
+The above rules allow a group to be removed without leaving
 dangling references, with only minimal processing of the symbol table.
 
 <p>
 <li>
-An entry in a symbol table section not in the COMDAT group,
-defined as an address in one of the group's sections,
-should be handled as follows:
-<ul>
-<li> If global but not referenced, remove it.
-<li> If global and referenced, change it to UNDEF.
-     (This may cause a link error if the retained version of the
-     COMDAT group does not define the same symbol.)
-<li> If local, remove it.
-     (This will cause a link error if the symbol is referenced.)
-</ul>
+An entry in a symbol table section not in the group,
+with a definition that is relative to one of the group's sections,
+should be removed if the group is discarded.
 
 <p>
 <li>
-The SHT_COMDAT_GROUP section must precede the sections in the group
+The SHT_GROUP section must precede the sections in the group
 (in the section table).
 
 </ul>
 
 <p>
 <h4> Questions </h4>
+<i>
 
 <ul>
 
@@ -1793,7 +1833,9 @@ Do we want flags to specify checking prior to removal of duplicates,
 e.g. for identical sections, same defined global symbols, etc.?
 If so, should there be one flags word per section index,
 instead of per group?
-(We don't see a need, but this was suggested in other proposals.)
+<dd>
+Answer:  No flags besides GRP_COMDAT.  Only one flags word needed.
+</dd>
 
 <p>
 <li>
@@ -1803,25 +1845,92 @@ Alternatively, should we simply require that all symbols defined as
 addresses in the group be removed,
 and that references to them from outside do so via distinct UNDEF
 global symbols?
+<dd>
+Answer:  Just remove symbols defined relative to removed sections.
+</dd>
 
 <p>
 <li>
 Do we want to replace the symbol rule by simply requiring that any
 symbols defined as addresses in the group be defined in a .symtab
 section that is itself in the group?
+<dd>
+Answer:  No.  Removing symbols is not hard, and is already done in
+other circumstances in many implementations.
+</dd>
+
+<p>
+<li>
+Why use a symbol to identify a (COMDAT) group instead of the group
+section name?
+<dd>
+Answer:  These will be very common in C++,
+and the typical names in C++ can be extremely long
+(for template instantiations often multiple kilobytes in current
+implementations, and probably 100+ characters on average even if better
+mangling is adopted).
+Virtually all such sections must already define a real global symbol,
+and duplicating such long names in the section name string table is
+undesirable space overhead.
+</dd>
+
+<p>
+<li>
+What is the name of a group section?
+<dd>
+Answer:
+It is unspecified, because it has no significance to the linker.
+It is recommended that it be something like .group,
+possibly with a short suffix to distinguish multiple groups in an
+object if necessary,
+but we place no requirement on the name.
+</dd>
 
 </ul>
 
 <p>
-<font color=blue><hr><p>[991005 SGI]</font>
+<font color=blue><hr><p>[revised 991012 SGI]</font>
 <h2> gABI:  Section Indices </h2>
-<font size=-1>
+
+<p>
+<h3> Revisions and Status </h3>
+
+<p>
+[991007]
+Change section/flag names, move ELF header extension to section header 0.
 
 <p>
 <h3> Background </h3>
 
 <p>
-The following proposal attempts to remove the limitation of 64K sections.
+SGI has long been concerned about the 64K limitation on the number of
+sections in an object file.
+Although this need not normally be a problem,
+there are purposes for which we would like to place distinct functions,
+and sometimes data items,
+in distinct sections.
+When one takes into account associated sections,
+e.g. relocation, debug information, etc.,
+this leads to a limitation on the order of 16K units,
+and threatens to be a problem for some large compilation units such as
+machine-generated simulators.
+
+<p>
+C++ ABI efforts raise the same issue from another source.
+Various C++ structures are emitted under circumstances
+where the compiler cannot reliably identify a single compilation unit
+in which to emit them.
+Examples include common cases like class virtual tables,
+out-of-line copies of inline functions,
+and template instantiations.
+The favored solution is COMDAT sections,
+i.e. putting the potentially duplicated items in their own sections,
+and allowing the linker to remove the duplicates.
+Once again, though, this threatens to be a problem for very large
+compilation units.
+
+<p>
+The following proposal attempts to remove this limitation.
 Obviously, even if the problem is real,
 it will actually arise in very few compilation units.
 Therefore, the elements of the proposed solution are defined so as to
@@ -1866,8 +1975,9 @@ actual index will be found elsewhere.
 The ELF header has two relevant 16-bit fields:
 e_shnum contains the section count,
 and e_shtrndx the index of a string section.
-We modify their descriptions,
-and add two new optional fields as follows:
+We modify their descriptions to include an overflow indicator,
+and put the actual values in the reserved section header at index 0
+if necessary, as follows:
 </i>
 
 <dl>
@@ -1884,7 +1994,7 @@ If the number of sections is greater than
 <code>SHN_LORESERVE</code> (<code>0xff00</code>),
 this member has the value <code>SHN_XINDEX</code> (<code>0xffff</code>),
 and the actual number of section header table entries is in the member
-<code>e_xshnum</code> (below).
+<code>sh_size</code> of the section header at index 0.
 </dd>
 
 
@@ -1901,28 +2011,7 @@ If the section name string table index is greater than
 <code>SHN_LORESERVE</code> (<code>0xff00</code>),
 this member has the value <code>SHN_XINDEX</code> (<code>0xffff</code>),
 and the actual index of the section name string table is in the member
-<code>e_xshstrndx</code> (below).
-</dd>
-
-<p>
-<dt> <code>ElfXX_Word e_xshnum;</code>
-<dd>
-This member holds the number of entries in the section header table,
-if that number is too large to fit in <code>e_shnum</code>.
-It need not be present in the ELF header if it is not needed,
-and <code>e_ehsize</code> should reflect its presence or absence.
-</dd>
-
-
-<p>
-<dt> <code>ElfXX_Word e_xshstrndx;</code>
-<dd>
-This member holds the section header table index of the entry
-associated with the section name string table,
-if that index is too large to fit in <code>e_shstrndx</code>.
-It need not be present in the ELF header if it is not needed
-(in which case <code>e_xshnum</code> is also needed),
-and <code>e_ehsize</code> should reflect its presence or absence.
+<code>sh_link</code> of the section header at index 0.
 </dd>
 
 </dl>
@@ -1963,7 +2052,7 @@ A new section type is defined:
 
 <dl>
 <p>
-<dt> <code>SHT_SYMTAB_IDX (17)</code>
+<dt> <code>SHT_SYMTAB_SHNDX (17)</code>
 <dd>
 A section of this type is paired with an SHT_SYMTAB section,
 if any of the symbols in that section reference a section index
@@ -1985,7 +2074,7 @@ A new special section name is defined:
 
 <dl>
 <p>
-<dt> <code>.symtab_idx</code>
+<dt> <code>.symtab_shndx</code>
 <dd>
 This section holds a section header index table for an associated
 <code>.symtab</code> section.
@@ -1999,10 +2088,10 @@ otherwise, that bit will be off.
 <p>
 <i>
 There is no available field to point from the <code>.symtab</code> section
-to its associated <code>.symtab_idx</code> section,
+to its associated <code>.symtab_shndx</code> section,
 so we use the <code>sh_link</code> field in the latter to point back.
-It is recommended (but not required) that implementations place the
-<code>.symtab_idx</code> section immediately after its associated
+It is recommended (but not required) that implementations place each
+<code>.symtab_shndx</code> section immediately after its associated
 <code>.symtab</code> section (in the section header table)
 to make it easy for the linker to find.
 </i>
@@ -2033,7 +2122,7 @@ table and the related text describe,
 section indexes in the range 0xff00 to 0xffff indicate special meanings.
 In particular, <code>SHN_XINDEX (0xffff)</code> indicates that the
 real index is too large to fit in this field,
-and must be found in the associated SHT_SYMTAB_IDX table (above).
+and must be found in the associated SHT_SYMTAB_SHNDX table (above).
 </dd>
 
 </dl>
@@ -2041,7 +2130,7 @@ and must be found in the associated SHT_SYMTAB_IDX table (above).
 <p>
 If any of the <code>st_shndx</code> fields in a symbol table section
 contain the value <code>SHN_XINDEX (0xffff)</code>,
-there must be an associated <code>SHT_SYMTAB_IDX</code> section,
+there must be an associated <code>SHT_SYMTAB_SHNDX</code> section,
 with a <code>sh_link</code> field containing the index of this
 <code>SHT_SYMTAB</code> section.
 That section contains an array of 32-bit section indices,
@@ -2051,6 +2140,18 @@ Entries corresponding to <code>SHN_XINDEX (0xffff)</code> values of
 section header index to be used.
 Others should contain either the correct section header index
 (i.e. duplicating the value in <code>st_shndx</code>), or zero.
+
+<p>
+<i>
+The .dynsym section in a linked object is completely analogous to a
+.symtab section in a relocatable object,
+and could be handled in the same way with the addition of a dynamic tag
+to locate it.
+We have not specified handling here because we expect the linking process
+to remove most of the section duplication process which causes the problem,
+e.g. leaving only a small number of .text sections.
+
+</i>
 
 
 <p>
@@ -2062,6 +2163,11 @@ There should be no compatibility impact on existing environments,
 since only very large section counts require object file changes.
 Individual vendors can postpone implementation until convenient,
 with no impact on typical programs.
+
+<p>
+Note, however, that any ELF consumer applications that are currently
+storing section indices as 16-bit values must change.
+
 </i>
 
 
@@ -3725,10 +3831,10 @@ that it allows arbitrary fixup for code motion around the call that throws.
 <tr> <a name=D5></a> <td> D-5 </td>
 <td> Interaction with other languages (e.g. Java) </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 991007 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -3742,42 +3848,13 @@ Does it allow the exception to be caught in a catch(...) provided this
 catch(...) ends with a rethrow?
 Does it allow even more?
 </td> </tr>
+<b>Resolution</b>:
+In general, foreign exceptions will cause normal destructor invocation
+and other cleanup in C++ code, and will pass through C++ frames except
+where explicit exception specifications do not allow them.
+</td> </tr>
 
 </table>
-
-<p>
-<font color=blue>[990908 SGI -- Jim]</font>
-We propose that this be resolved by identifying the source language in
-the exception descriptor and specifying that the personality routine be
-able to perform cleanup actions during handling of foreign-language
-exceptions, but not attempt to catch them.
-
-<p>
-<font color=blue>[991006 All]</font>
-The concensus of the group,
-from the discussion of the low-level exception API, is:
-<ul>
-<p>
-<li>
-A foreign-language exception,
-passing through a C++ frame,
-will cause normal destructor invocations exactly as a C++ exception would.
-<p>
-<li>
-Since catch(...) is commonly used as a cleanup mechanism (with a rethrow)
-rather than as a true catch,
-it is appropriate to catch and rethrow even foreign-language exceptions.
-<p>
-<li>
-Function exception specifications present a more complex issue.
-A foreign exception will generally not match any of the specified
-allowed exceptions
-(though implementations might deal with special cases).
-For consistency, it is expected that a foreign exception will be
-caught by a throw specification and not passed through,
-i.e. that unexpected() will be called.
-
-</ul>
 
 <p>
 <table border=on cellpadding=3>
@@ -3791,10 +3868,10 @@ i.e. that unexpected() will be called.
 <tr> <a name=D6></a> <td> D-6 </td>
 <td> Allow resumption in other languages? </td>
 <td> lib ps </td>
-<td> open </td>
+<td> closed </td>
 <td> HP </td>
 <td> 990603 </td>
-<td> </td>
+<td> 991007 </td>
 </tr>
 <tr> <td colspan=7>
 <b>Summary</b>:
@@ -3805,6 +3882,11 @@ What are the constraints we impose on the C++ exception handling runtime
 to preserve the relative language neutrality of the EH framework?
 Example: do we allow a handler to cleanup and resume at the point
 where the exception was thrown?
+</td> </tr>
+<b>Resolution</b>:
+Moot -- resume-type exceptions are more appropriately handled by
+registering trap handlers and processing them in place.
+No interaction with stack traceback should be necessary.
 </td> </tr>
 
 </table>
@@ -3854,6 +3936,14 @@ if it does not exit the handler.
 <p>
 <font color=blue>[991006 All]</font>
 This common ABI will not allow throwing exceptions from a signal handler.
+
+<p>
+<font color=blue>[991007 All]</font>
+There remains concern about how to help customers
+(examples were presented of big database applications)
+for which raising exceptions from signal handlers for I/O failures
+is a highly desirable design.
+We will revisit this issue.
 
 <p>
 <table border=on cellpadding=3>
@@ -4365,6 +4455,24 @@ we'll need to specify a mangling for the statics,
 and handle multiple copies like we do above.
 
 <p>
+<font color=blue>[990721 Cygnus -- Jason]</font>
+[We should emit inline routines]
+in translation units where an out-of-line copy is needed.
+I am opposed to emitting the inlines with the vtable,
+for two reasons:
+<ul>
+<li>
+One of our users defines a proxy class whose implementation is not
+exported from the shared library where it is defined;
+the API for the class consists of virtual functions,
+accessible through the vtable, and inline functions.
+They complained that since g++ currently emits inlines along with the vtable,
+their code would only link if inlining was enabled.
+<li>
+Often, we will need 0 copies of inline functions.
+</ul>
+
+<p>
 <table border=on cellpadding=3>
 
 <tr>
@@ -4398,7 +4506,7 @@ exception during construction.
 </table>
 
 <p>
-<font color=blue>[990607 SCO -- Jonathan]</font>
+<font color=blue><hr><p>[990607 SCO -- Jonathan]</font>
 The standard is mute on multiple threads of control in general, so 
 there is no requirement in the language to support what I'm talking
 about. But as a practical matter compilers have to do it (Watcom gave
@@ -4460,7 +4568,7 @@ fails by returning 5.
 
 
 <p>
-<font color=blue>[990607 Sun -- Mike Ball]</font>
+<font color=blue><hr><p>[990607 Sun -- Mike Ball]</font>
 As far as I can tell, the language says that the automatic blocking 
 issue isn't a valid approach.  It says what has to happen, and
 it isn't that.
@@ -4517,7 +4625,7 @@ same as we do for every other potential race condition.
 It's a real mess, and, I claim, an unwise one to put in as an extension.
 
 <p>
-<font color=blue>[990608 HP -- Christophe]</font>
+<font color=blue><hr><p>[990608 HP -- Christophe]</font>
 The semantics currently implemented in the HP aC++ compiler is as follows:
 <ul>
 <li> No two thread can enter a static initialization at the same time
@@ -4533,7 +4641,7 @@ the static initialization fails with an exception. Any thread at that
 point can attempt the initialization.
 
 <p>
-<font color=blue>[990608 SCO -- Jonathan]</font>
+<font color=blue><hr><p>[990608 SCO -- Jonathan]</font>
 Here's what the SCO UnixWare 7 C++ compiler does for IA-32,
 from a (slightly sanitized) design document.
  It meets Jim's goal of having no overhead for non-threaded programs
@@ -4625,7 +4733,7 @@ although currently we're using thr_yield(),
 which may or may not be right for this context].
 
 <p>
-<font color=blue>[990608 SGI -- Hans]</font>
+<font color=blue><hr><p>[990608 SGI -- Hans]</font>
 I'd like to make some claims about function scope static constructor
 calls in multithreaded environments.
 I personally can't recall ever having used such a construct,
@@ -4702,6 +4810,67 @@ And if they are really needed, they can be replaced with a file scope
 static constructor call plus an assignment.
 
 </ol>
+
+<p>
+<font color=blue><hr><p>[990607 SCO -- Jonathan]</font>
+Hans' argument breaks such local statics into two groups:
+those that don't depend upon the function's parameters,
+and those that do.
+For the latter group, he says:
+
+<pre><i>
+> 6) Static function scope constructor calls which depend on function
+> arguments are likely to involve a race condition anyway, if multiple
+> instances of the function can be invoked concurrently.  Any of the
+> calls might determine the constructor parameters.  Thus these aren't
+> very interesting either.  And if they are really needed, they can be
+> replaced with a file scope static constructor call plus an assignment.
+</i></pre>
+
+<p>
+I don't agree with these claims.
+There are sometimes situations where a group of objects is being processed,
+and you want to arbitrarily pick one of them
+to serve as an identifier or key for all of them.
+ Consider perhaps a golf course scheduler,
+which is taking in players and assigning them to foursomes.  
+You want to name each foursome by one of the names of the players
+(it doesn't matter which one),
+such as the "Jones group" or the "Smith group".  
+A natural way to program this might be:
+
+<pre><tt>
+      void build_foursome(string golfer) {
+	  static string group_name(golfer);
+	  // process golfer into group group_name ...
+      }
+</tt></pre>
+
+<p>
+Now if the golfers being scheduled are coming from four different databases,
+it might be that a thread is running to extract from each database.
+Thus build_foursome() might be called concurrently.
+That's fine, and there is no need for application-level locks in
+either the caller or this function; we don't care which golfer
+the group is named after.
+We just want the 'static' to work correctly;
+what we don't want is a double initialization,
+with two different group names being generated for golfers in the same group,
+which is possible if the guard code isn't thread-safe.
+
+<p>
+Now one can say that this kind of design isn't wise,
+or that locks will probably be needed later in this function
+to do the rest of the processing, 
+or that this can be coded in several other ways.
+And that may all be so.
+But I think this usage is *reasonable* in this context,
+and that as implementors we should get it right.
+[Editorial:  Especially with the advent of Java,
+threaded application programming is becoming more the norm; 
+and language implementations that dodge the challenge and say that
+thread support is solely the job of libraries,
+may not be looked upon kindly by users.]
 
 
 <p>
