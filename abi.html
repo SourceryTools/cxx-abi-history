@@ -4743,10 +4743,10 @@ may reference static data or character string literals,
 that must be kept in common among all copies
 by using the local symbol mangling defined above.
 These objects are named according to the rules for local names in the
-<a href=#scope-encoding> Scope Encoding </a> section above,
+<a href=#mangling-scope> Scope Encoding </a> section above,
 and the definition of each is emitted in a COMDAT group,
 identified by the symbol name described in the
-<a href=#scope-encoding> Scope Encoding </a> section above.
+<a href=#mangling-scope> Scope Encoding </a> section above.
 Each COMDAT group must be emitted in any object with references
 to the symbol for the object it contains, whether inline or out-of-line.
 
