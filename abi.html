@@ -3376,6 +3376,25 @@ The destructor pointer may be NULL,
 in which case this routine does nothing.
 </dd>
 
+<div class="change">
+<dt><code><pre>
+extern "C" void __cxa_vec_cleanup (
+	    void *array_address,
+	    size_t element_count,
+	    size_t element_size,
+	    void (*destructor) ( void *this ) );
+</pre></code></dt>
+<dd>
+Given the (data) address of an array,
+the number of elements,
+and the size of its elements,
+call the given destructor on each element.
+If the destructor throws an exception, call terminate.
+The destructor pointer may be NULL,
+in which case this routine does nothing.
+</dd>
+</div>
+
 <dt><code><pre>
 extern "C" void __cxa_vec_delete (
 	    void *array_address,
@@ -4975,6 +4994,7 @@ Secondary virtual pointers for subobjects reachable via a virtual path
     (text of 2.6.1, text and example in 2.6.2).
 Note about locating virtual bases statically during construction (2.6.1).
 Rename IA-64 to Itanium throughout.
+Add __cxa_vec_cleanup (3.3.3).
 
 <p>
 <font color=blue>[000817]</font>
