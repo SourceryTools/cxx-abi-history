@@ -1,0 +1,361 @@
+<HTML>
+
+<HEAD>
+<title>C++ ABI Summary</title>
+
+<hr>
+
+<font size=6><i><b>
+<p>
+C++ ABI Summary
+</b></i></font>
+
+<font size=-1>
+<p>
+<i>Revised 2 June 1999</i>
+
+</center>
+
+</HEAD>
+
+<BODY>
+
+<style type="text/css">
+<!--
+ TD (font-size: smaller)
+ TT (font-size: smaller)
+-->
+</style>
+
+<p>
+<hr>
+
+<p>
+<h4>Meetings</h4>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th colspan=2> When </th>
+<th> Where </th>
+<th> Phone </th>
+<th> Reservation </th>
+<th> Passcode </th>
+</tr>
+
+<tr>
+<td> 20 June </td>
+<td> 11:00-13:00 </td>
+<td> SGI B20: Sapphire </td>
+<td> 916-356-9200 </td>
+<td> 7-33255 </td>
+<td> 773-9583 </td>
+<td> </td>
+</tr>
+
+</table>
+
+<p>
+<hr>
+
+<p>
+<h4>Participants</h4><p>Redacted personal contact details for public history conversion.</p><h4>Agenda: 20 June 1999 </h4>
+
+<ul>
+<p>
+<li> Introductions
+
+<p>
+<li> Objectives
+
+  <ul>
+  <li> Interoperable C++ compilation on IA-64:
+  <dd> Data representation
+  <dd> Object file representation
+  <dd> Library API
+  </ul>
+
+<p>
+<li> Procedure
+
+  <ul>
+  <li> Meetings
+  <li> Intel NDA
+  <li> Communication
+  <li> Available documents
+  <li> Intellectual property
+  </ul>
+
+<p>
+<li> Issue Identification
+
+  <ul>
+  <li> Classification
+  <li> New issues
+  </ul>
+
+<p>
+<li> Object Layout (Matt Austern)
+
+</ul>
+
+<p>
+<hr>
+
+<p>
+<h4> Issue Status </h4>
+
+In the following table,
+the <b><i>class</i></b> column attempts to classify the issue on the
+basis of what it likely affects.
+The identifiers used are:
+<dl>
+<dt> call </dt>
+<dd> Function call interface, i.e. call linkage </dd>
+
+<dt> data </dt>
+<dd> Data layout </dd>
+
+<dt> lif </dt>
+<dd> Library interface, i.e. API </dd>
+
+<dt> g </dt>
+<dd> Potential gABI impact </dd>
+
+<dt> ps </dt>
+<dd> Potential psABI impact </dd>
+
+<dt> tools </dt>
+<dd> May affect how program construction tools interact </dd>
+</dl>
+
+<p>
+<hr width=50%>
+
+<p>
+<table border=on cellpadding=3>
+
+<tr>
+<th> # </th>
+<th> Issue </th>
+<th> Class </th>
+<th> Status </th>
+<th> Source </th>
+<th> Opened </th>
+<th> Closed </th>
+</tr>
+
+<tr> </tr>
+<tr> <th> A </th>
+<th colspan=6> <a href=issues-C++-layout.html> Object Layout </a> </th>
+</tr>
+
+<tr> <td> A-1 </td>
+<td> Virtual function table </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-2 </td>
+<td> Virtual base classes </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-3 </td>
+<td> Multiple inheritance </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-4 </td>
+<td> Empty base classes </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-5 </td>
+<td> Empty parameters </td>
+<td> data </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> A-6 </td>
+<td> RTTI (<code>type_info</code>) .o representation </td>
+<td> data call ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+
+
+<tr> </tr>
+<tr> <th> B </th>
+<th colspan=6> <a href=issues-C++-layout.html#vfunc>
+Virtual Function Handling </a> </th>
+</tr>
+
+<tr> <td> B-1 </td>
+<td> Adjustment of "this" pointer </td>
+<td> data call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> B-2 </td>
+<td> Covariant return types </td>
+<td> call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+
+<tr> </tr>
+<tr> <th> C </th>
+<th colspan=6> Global Object Construction/Destruction </th>
+</tr>
+
+<tr> <td> C-1 </td>
+<td> Interaction with .init/.fini </td>
+<td> lif ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+
+<tr> </tr>
+<tr> <th> D </th>
+<th colspan=6> Exception Handling </th>
+
+<ul>
+<tr> <td> D-1 </td>
+<td> Unwind descriptors: language-specific format </td>
+<td> lif ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> D-2 </td>
+<td> Unwind personality routines </td>
+<td> lif ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> D-3 </td>
+<td> Unwind process clarification </td>
+<td> lif ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> D-4 </td>
+<td> Unwind routines nested?
+</td>
+<td> lif ps </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+
+<tr> </tr>
+<tr> <th> E </th>
+<th colspan=6> Template Instantiation Model </th>
+</tr>
+
+<tr> <td> E-1 </td>
+<td> When does instantiation occur? </td>
+<td> tools </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> E-2 </td>
+<td> Separate compilation </td>
+<td> tools </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+
+<tr> </tr>
+<tr> <th> F </th>
+<th colspan=6> Name Mangling </th>
+</tr>
+
+<tr> <td> F-1 </td>
+<td> Mangling convention </td>
+<td> call </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> F-2 </td>
+<td> Mangled name size </td>
+<td> call g </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+<tr> <td> F-3 </td>
+<td> Distinguish template instantiation and specialization
+</td>
+<td> call g </td>
+<td> open </td>
+<td> SGI </td>
+<td> 990520 </td>
+<td> </td>
+</tr>
+
+
+</table>
+
+<p>
+<hr>
+
+<p>
+Please send corrections to <a href=mailto:dehnert@sgi.com>Jim Dehnert</a>.
+
+
+</BODY>
+</HTML>
