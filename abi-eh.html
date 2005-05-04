@@ -6,49 +6,15 @@
 <link rel=stylesheet href=small-table.css type="text/css">
 <link rel=stylesheet href=code.css type="text/css">
 
-<hr>
-
-<font size=6><i><b>
-<p>
-C++ ABI for Itanium: Exception Handling
-</b></i></font>
-
-<font size=-1>
-<p>
-<i>Revised 31 July 2001.
-<a href=#revisions>Revision history</a> at end of document.
-</i>
-
-</center>
-
 </HEAD>
 
 <BODY>
 
-
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-	   INSTRUCTIONS FOR MAKING REVISIONS TO THIS DOCUMENT
-
-  Recent revisions are marked with <div class="change"> or 
-  <span class="change"> elements.  Deleted text is placed in a
-  <strike> element.
-
-   1. Find previous recent revisions by searching for class="change".
-      Remove <div> and <span> tags, and entire <strike> elements.
-
-   2. Merge revisions.  Place new text in <div> and <span> elements. 
-      Place deleted text in <strike> elements rather than deleting
-      it outright.
-
-   3. Add a summary of the revision to the revision history at the
-      end of the document.
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-
+<hr />
+<h1>Itanium C++ ABI: Exception Handling ($Revision: 1.22 $)</h1>
 <p> <hr> <p>
-<h3> Contents </h3>
+
+<h2> Contents </h2>
 
 <ul>
 <li> <a href=#intro> Introduction </a>
@@ -1238,11 +1204,11 @@ Multithreading behavior.
 <h5> 2.2.1  C++ Exception Objects </h5>
 
 <p>
-A <span class="change">complete</span> 
+A complete
 C++ exception object consists of a header,
 which is a wrapper around an unwind object header with additional C++
 specific information,
-followed by the <span class="change">thrown C++</span>
+followed by the thrown C++
 exception object itself.
 The structure of the header is as follows:
 <code><pre>
@@ -1760,7 +1726,19 @@ all handlers must make the following calls.
 <p>
 Upon entry, a handler must call:
 <code><pre>
-	void __cxa_begin_catch ( void *exceptionObject );
+void *__cxa_get_exception_ptr ( void *exceptionObject );
+</pre></code>
+This routine returns the adjusted pointer to the exception object.
+(The adjusted pointer is typically computed by the personality routine
+during phase 1 and saved in the exception object.)
+</div>
+
+<p>
+<strike>Upon entry,</strike>
+<span class="change">Following initialization of the catch parameter,</span>
+a handler must call:
+<code><pre>
+void <span class="change">*</span>__cxa_begin_catch ( void *exceptionObject );
 </pre></code>
 This routine:
 <ul>
@@ -1769,7 +1747,16 @@ This routine:
     if it is not already there,
     linking the exception to the previous top of the stack.
 <li> Decrements the uncaught_exception count.
+<li><span class="change">Returns the adjusted pointer to the exception object.</span>
 </ul>
+
+<p>
+If the initialization of the catch parameter is trivial
+(e,g., there is no formal catch parameter, or the parameter has no copy constructor),
+the calls to <code>__cxa_get_exception_ptr()</code> and
+<code>__cxa_begin_catch()</code> may be combined into a single call to
+<code>__cxa_begin_catch()</code>.
+</p>
 
 <p>
 When the personality routine encounters a termination condition,
@@ -2255,12 +2242,14 @@ This might be translated as follows:
 	_Unwind_Resume();
 
 	H1: // Handler label
+	adjusted_exception_ptr = __cxa_get_exception_ptr(exception);
 	[Initialize catch parameter]
 	__cxa_begin_catch(exception);
 	[User code]
 	goto R1;
 
 	H2:
+	adjusted_exception_ptr = __cxa_get_exception_ptr(exception);
 	[Initialize catch parameter]
 	__cxa_begin_catch(exception);
 	[User code]
@@ -2306,6 +2295,10 @@ and below.
 
 <p><a name=revisions></a> <hr> <p>
 <h3> Appendix R:  Revisions </h3>
+
+<p>
+<font color="blue">[050504]</font>
+Add __cxa_get_exception_ptr, add return value to __cxa_begin_catch.
 
 <p>
 <font color="blue">[011126]</font>
