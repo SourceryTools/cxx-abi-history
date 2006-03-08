@@ -12,7 +12,7 @@
 <BODY>
 
 <hr />
-<h1>Itanium C++ ABI ($Revision: 1.83 $)</h1>
+<h1>Itanium C++ ABI ($Revision: 1.84 $)</h1>
 <p> <hr> <p>
 
 <h2> Contents </h2>
@@ -933,9 +933,11 @@ just as a data struct would be.  In particular:
 <ul>
 <li> Offsets are of type <code>ptrdiff_t</code> unless otherwise stated.
 <li> Data pointers have normal pointer size and alignment.
-<li> Function pointers remain to be defined.
-     One possibility is that they will be
-     &lt;function address, GP address> pairs, with pointer alignment.
+<li> On Itanium, function pointers are pairs: the function address follwed
+by the global pointer value that should be used when calling the
+function, aligned as for a pointer.  On other
+platforms, function pointers are represented as they would be in any
+other context.
 </ul>
 
 <p>
@@ -4953,9 +4955,14 @@ unwind table location.
 <h2> Appendix R: Revision History </h2>
 <p> <hr> <p>
 
-<p>This version of this document is $Revision: 1.83 $.  No special
+<p>This version of this document is $Revision: 1.84 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[030806]</font>
+Specify that function pointers in virtual tables are address/GP pairs
+on Itanium.
 
 <p>
 <font color=blue>[050504]</font>
