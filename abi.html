@@ -3718,7 +3718,8 @@ namespace abi {
 				   int* status);
 }
 
-</code></pre>
+</pre>
+</code>
 
 <ul>
 <p>
@@ -4147,14 +4148,15 @@ Types are qualified (optionally) by single-character prefixes encoding
 cv-qualifiers and/or pointer, reference, complex, or imaginary types:
 
 <pre><font color=blue><code>
-  &lt;type> ::= &lt;CV-qualifiers> &lt;type>
-	 ::= P &lt;type>	# pointer-to
-	 ::= R &lt;type>	# reference-to
-	 ::= C &lt;type>	# complex pair (C 2000)
-	 ::= G &lt;type>	# imaginary (C 2000)
-	 ::= U &lt;source-name> &lt;type>	# vendor extended type qualifier
+  &lt;type&gt; ::= &lt;CV-qualifiers&gt; &lt;type&gt;
+	 ::= P &lt;type&gt;	# pointer-to
+	 ::= R &lt;type&gt;	# reference-to
+         ::= O &lt;type&gt;     # rvalue reference-to (C++0x)
+	 ::= C &lt;type&gt;	# complex pair (C 2000)
+	 ::= G &lt;type&gt;	# imaginary (C 2000)
+	 ::= U &lt;source-name&gt; &lt;type&gt;	# vendor extended type qualifier
 
-  &lt;CV-qualifiers> ::= [r] [V] [K] 	# restrict (C99), volatile, const
+  &lt;CV-qualifiers&gt; ::= [r] [V] [K] 	# restrict (C99), volatile, const
 
 </pre></font></code>
 
@@ -4965,6 +4967,11 @@ unwind table location.
 <p>This version of this document is $Revision: 1.86 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[071207]</font>
+Add mangling for rvalue references.
+</p>
 
 <p>
 <font color=blue>[031006]</font>
