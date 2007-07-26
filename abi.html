@@ -3717,7 +3717,6 @@ namespace abi {
 				   size_t* n,
 				   int* status);
 }
-
 </pre>
 </code>
 
@@ -4151,13 +4150,12 @@ cv-qualifiers and/or pointer, reference, complex, or imaginary types:
   &lt;type&gt; ::= &lt;CV-qualifiers&gt; &lt;type&gt;
 	 ::= P &lt;type&gt;	# pointer-to
 	 ::= R &lt;type&gt;	# reference-to
-         ::= O &lt;type&gt;     # rvalue reference-to (C++0x)
+	 ::= O &lt;type&gt;	# rvalue reference-to (C++0x)
 	 ::= C &lt;type&gt;	# complex pair (C 2000)
 	 ::= G &lt;type&gt;	# imaginary (C 2000)
 	 ::= U &lt;source-name&gt; &lt;type&gt;	# vendor extended type qualifier
 
   &lt;CV-qualifiers&gt; ::= [r] [V] [K] 	# restrict (C99), volatile, const
-
 </pre></font></code>
 
 <p>
@@ -4212,6 +4210,19 @@ if and only if it also treats it as a distinguishing attribute for
 overloading purposes.
 This ABI does not specify that choice.
 </i>
+
+<p>
+C++0x pack expansions are prefixed with <code>Dp</code>. The
+C++0x <code>decltype</code> type is prefixed with
+either <code>Dt</code> or <code>DT</code>, depending on how
+the <code>decltype</code> type was parsed.
+
+<pre><font color="blue"><code>
+ &lt;type&gt;  ::= Dp &lt;type&gt;          # pack expansion of (C++0x)
+         ::= Dt &lt;expression&gt; E  # decltype of an id-expression or class member access (C++0x)
+         ::= DT &lt;expression&gt; E  # decltype of an expression (C++0x)
+</code></font></pre>
+
 
 <a name=mangling-builtin>
 <p>
@@ -4304,6 +4315,12 @@ since extern "C" function objects have unmangled names.
 </pre></font></code>
 
 <p>
+When a function parameter is a C++0x function parameter pack, its type
+is mangled with <code>Dp &lt;type&gt;</code>, i.e., its type is a pack
+expansion.
+</p>
+
+<p>
 A class, union, or enum type is simply a name,
 It may be a simple &lt;unqualified-name>,
 with or without a template argument list,
@@ -4383,6 +4400,7 @@ but also in types and scope identification.
   &lt;template-arg> ::= &lt;type>			# type or template
 		 ::= X &lt;expression> E		# expression
                  ::= &lt;expr-primary>             # simple expressions
+                 ::= sp &lt;expression&gt;            # pack expansion of (C++0x)
 
   &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
 	       ::= &lt;<i>binary</i> operator-name> &lt;expression> &lt;expression>
@@ -4391,6 +4409,7 @@ but also in types and scope identification.
                ::= &lt;template-param>
                ::= sr &lt;type> &lt;unqualified-name>                   # dependent name
                ::= sr &lt;type> &lt;unqualified-name> &lt;template-args>   # dependent template-id
+               ::= sZ &lt;template-param&gt;                            # size of a parameter pack
 	       ::= &lt;expr-primary>
 
   &lt;expr-primary> ::= L &lt;type> &lt;<i>value</i> number> E                   # integer literal
@@ -4967,6 +4986,11 @@ unwind table location.
 <p>This version of this document is $Revision: 1.86 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[072507]</font>
+Add mangling for variadic templates and decltype.
+</p>
 
 <p>
 <font color=blue>[071207]</font>

@@ -49,6 +49,9 @@ C++ ABI for IA-64: Mangling
 <tr><td>oper</td> <td>d</td> <td> l </td> <td> Operator delete </td> </tr>
 <tr><td>oper</td> <td>d</td> <td> v </td> <td> Operator / </td> </tr>
 <tr><td>oper</td> <td>d</td> <td> V </td> <td> Operator /= </td> </tr>
+<tr><td>type</td> <td>D</td> <td> p </td> <td> pack expansion of (C++0x) </td> </tr>
+<tr><td>type</td> <td>D</td> <td> t </td> <td> decltype of an id-expression or class member access (C++0x) </td> </tr>
+<tr><td>type</td> <td>D</td> <td> T </td> <td> decltype of an expression (C++0x) </td> </tr>
 <tr><td>obj </td> <td>D</td> <td> 0 </td> <td> Deleting destructor</td> </tr>
 <tr><td>obj </td> <td>D</td> <td> 1 </td> <td> Complete object (in-charge) destructor</td> </tr>
 <tr><td>obj </td> <td>D</td> <td> 2 </td> <td> Base object (not-in-charge) destructor</td> </tr>
@@ -95,6 +98,7 @@ C++ ABI for IA-64: Mangling
 <tr><td>oper</td> <td>o</td> <td> o </td> <td> Operator || </td> </tr>
 <tr><td>oper</td> <td>o</td> <td> r </td> <td> Operator | </td> </tr>
 <tr><td>oper</td> <td>o</td> <td> R </td> <td> Operator |= </td> </tr>
+<tr><td>type</td> <td>O</td> <td></td> <td> rvalue reference type (C++0x) </td> </tr>
 <tr><td>oper</td> <td>p</td> <td> l </td> <td> Operator + </td> </tr>
 <tr><td>oper</td> <td>p</td> <td> L </td> <td> Operator += </td> </tr>
 <tr><td>oper</td> <td>p</td> <td> m </td> <td> Operator ->* </td> </tr>
@@ -108,12 +112,14 @@ C++ ABI for IA-64: Mangling
 <tr><td>oper</td> <td>r</td> <td> M </td> <td> Operator %= </td> </tr>
 <tr><td>oper</td> <td>r</td> <td> s </td> <td> Operator >> </td> </tr>
 <tr><td>oper</td> <td>r</td> <td> S </td> <td> Operator >>= </td> </tr>
-<tr><td>oper</td> <td>r</td> <td> z </td> <td> Operator sizeof </td> </tr>
 <tr><td>type</td> <td>R</td> <td></td> <td> reference type </td> </tr>
 <tr><td>type</td> <td>s</td> <td></td> <td> builtin type short </td> </tr>
 <tr><td>name</td> <td>s</td> <td></td> <td> local string prefix </td> </tr>
+<tr><td>oper</td> <td>s</td> <td> p </td> <td> Expression pack expansion operator</td> </tr>
 <tr><td>oper</td> <td>s</td> <td> r </td> <td> Scope resolution operator </td> </tr>
-<tr><td>oper</td> <td>s</td> <td> v </td> <td> Operator sizeof </td> </tr>
+<tr><td>oper</td> <td>s</td> <td> t </td> <td> Operator sizeof (a type)</td> </tr>
+<tr><td>oper</td> <td>s</td> <td> z </td> <td> Operator sizeof (an expression)</td> </tr>
+<tr><td>oper</td> <td>s</td> <td> Z </td> <td> Operator sizeof (a pack expansion)</td> </tr>
 <tr><td>abbr</td> <td>S</td> <td> _ </td> <td> substituted name </td> </tr>
 <tr><td>abbr</td> <td>S</td> <td> &lt;digit></td>
 <td> substituted name (repeated) </td> </tr>
