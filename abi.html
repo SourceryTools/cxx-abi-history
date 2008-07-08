@@ -4250,6 +4250,10 @@ Builtin types are represented by single-letter codes:
 		 ::= e	# long double, __float80
 		 ::= g	# __float128
 		 ::= z	# ellipsis
+                 ::= Dd # IEEE 754r decimal floating point (64 bits)
+                 ::= De # IEEE 754r decimal floating point (128 bits)
+                 ::= Df # IEEE 754r decimal floating point (32 bits)
+                 ::= Dh # IEEE 754r half-precision floating point (16 bits)
 		 ::= u &lt;source-name>	# vendor extended type
 
 </pre></font></code>
@@ -4986,6 +4990,12 @@ unwind table location.
 <p>This version of this document is $Revision: 1.86 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p>
+<font color=blue>[080707]</font>
+Add manglings for IEEE 754r decimal and half-precision floating point
+types.
+</p>
 
 <p>
 <font color=blue>[072507]</font>
