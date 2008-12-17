@@ -4254,6 +4254,8 @@ Builtin types are represented by single-letter codes:
                  ::= De # IEEE 754r decimal floating point (128 bits)
                  ::= Df # IEEE 754r decimal floating point (32 bits)
                  ::= Dh # IEEE 754r half-precision floating point (16 bits)
+                 ::= Di # char32_t
+                 ::= Ds # char16_t
 		 ::= u &lt;source-name>	# vendor extended type
 
 </pre></font></code>
@@ -4395,21 +4397,27 @@ that is the actual parameter.
 
 <p>
 Template argument lists appear after the unqualified template name,
-and are bracketed by I/E.
-This is used in names for specializations in particular,
-but also in types and scope identification.
+and are bracketed by I/E.  This is used in names for specializations
+in particular, but also in types and scope identification.  Template
+argument packs are bracketed by additional I/E to distinguish them
+from other arguments.
 
 <pre><font color=blue><code>
   &lt;template-args> ::= I &lt;template-arg>+ E
   &lt;template-arg> ::= &lt;type>			# type or template
-		 ::= X &lt;expression> E		# expression
+		 ::= X &lt;expression&gt; E	        # expression
                  ::= &lt;expr-primary>             # simple expressions
+  		 ::= I &lt;template-arg&gt;* E        # argument pack
                  ::= sp &lt;expression&gt;            # pack expansion of (C++0x)
 
   &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
 	       ::= &lt;<i>binary</i> operator-name> &lt;expression> &lt;expression>
 	       ::= &lt;<i>trinary</i> operator-name> &lt;expression> &lt;expression> &lt;expression>
-               ::= st &lt;type&gt;
+               ::= cl &lt;expression&gt;* E	        # call
+               ::= cv &lt;type&gt; &lt;expression&gt;* E                         # type conversion
+               ::= st &lt;type&gt;		        # sizeof
+	       ::= sT &lt;type&gt;		        # lvalue of specified type
+	       ::= sR &lt;type&gt;		        # rvalue of specified type
                ::= &lt;template-param>
                ::= sr &lt;type> &lt;unqualified-name>                   # dependent name
                ::= sr &lt;type> &lt;unqualified-name> &lt;template-args>   # dependent template-id
@@ -4418,7 +4426,7 @@ but also in types and scope identification.
 
   &lt;expr-primary> ::= L &lt;type> &lt;<i>value</i> number> E                   # integer literal
                  ::= L &lt;type &lt;<i>value</i> float> E                     # floating literal
-                 ::= L &lt;mangled-name> E                           # external name
+                 ::= L &lt;mangled-name&gt; E                          # external name
 
 </pre></code></font>
 
@@ -4474,19 +4482,18 @@ For example:
 </pre></code>
 
 <p>
-An expression, e.g., "B&lt;(J+1)/2>",
-is encoded with a prefix traversal of the operators involved,
-delimited by "X...E".
-The operators are encoded using their two letter mangled names.
-For example, "B&lt;(J+1)/2>", if J is the third template parameter,
-becomes "1BI Xdv pl T1_ Li1E Li2E E E"
-(the blanks are present only to visualize the decomposition).
-Note that the expression is mangled without constant folding or other
-simplification,
-and without parentheses, which are implicit in the prefix representation.
-Except for the parentheses, therefore,
-it represents the source token stream.
-(C++ Standard reference 14.5.5.1 p. 5.)
+An expression, e.g., "B&lt;(J+1)/2>", is encoded with a prefix
+traversal of the operators involved.  The operators are encoded using
+their two letter mangled names.  For example, "B&lt;(J+1)/2>", if J is
+the third template parameter, becomes "1BI Xdv pl T1_ Li1E Li2E E E"
+(the blanks are present only to visualize the decomposition).  Note
+that the expression is mangled without constant folding or other
+simplification, and without parentheses, which are implicit in the
+prefix representation.  Except for the parentheses, therefore, it
+represents the source token stream.  (C++ Standard reference 14.5.5.1
+p. 5.)  An expression used as a template argument is delimited by
+"X...E".
+</p>
 
 <p>
 If an expression is a qualified-name, and the qualifying scope is a
@@ -4495,8 +4502,42 @@ than the <code>&lt;mangled-name></code> production.  If the qualified
 name refers to an operator for which both unary and binary manglings
 are available, the mangling chosen is the mangling for the binary
 version.
+</p>
 
 <p>
+The <code>sT</code> and <code>sR</code> forms are used within the
+C++0x <code>decltype</code> forms <code>DT</code> and <code>Dt</code>.
+Within these contexts, the value of the expression doesn't matter, only the
+type, so we just mangle the type of the expression directly as an
+expression stub in some cases.  This is done for all non-type-dependent
+expressions, and the following forms of type-dependent expressions, for
+which the type can always be described other than in terms of the
+expression even if it is dependent, and therefore is said to
+have <i>describable type</i>:
+</p>
+
+<ul>
+  <li>An expression that names a variable, function, function parameter,
+  enumerator, data member or template non-type parameter from an enclosing
+  function or the current instantiation.</li>
+  <li>A cast (C-style, functional or *_cast).</li>
+  <li>A literal.</li>
+  <li>A new-expression.</li>
+  <li>A unary <code>*</code> expression where the operand has describable type.</li>
+</ul>
+
+<p>A variable or new-expression which uses the
+<code>auto</code> type specifier has describable type if and only if its
+initializer is an expression with describable type.
+</p>
+
+<p>
+If the expression is an lvalue, the <code>sT</code> mangling is used;
+otherwise the <code>sR</code> mangling.  If the immediate operand
+of <code>decltype</code> has describable type, the type is mangled directly,
+omitting the decltype and expression type stub manglings.
+</p>
+
 <a name=mangling-scope>
 <h4> 5.1.6 Scope Encoding </h4>
 
@@ -4990,6 +5031,11 @@ unwind table location.
 <p>This version of this document is $Revision: 1.86 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p><font color="blue">[081210]</font>
+Add manglings for type stub expressions, call expressions, char*_t, and
+N-argument functional casts.  Change argument pack mangling.
+</p>
 
 <p>
 <font color=blue>[080707]</font>
