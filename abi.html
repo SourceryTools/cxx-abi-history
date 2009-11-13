@@ -2015,7 +2015,8 @@ should contain type_info objects for the types
 X, X* and X const*,
 for every X in: void, bool, wchar_t, char, unsigned char, signed char,
 short, unsigned short, int, unsigned int, long, unsigned long, long long,
-unsigned long long, float, double, long double.
+unsigned long long, float, double, long double, char16_t, char32_t,
+and the IEEE 754r decimal and half-precision floating point types.
 (Note that various other type_info objects for class types may reside
 in the run-time support library by virtue of the preceding rules,
 e.g. that of <code>std::bad_alloc</code>.)
@@ -5219,6 +5220,9 @@ unwind table location.
 <p>This version of this document is $Revision: 1.86 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p><font color="blue">[091113]</font>Document passing for IEEE 754r
+decimal and half-precision floating point types.</p>
 
 <p><font color="blue">[091007]</font>Document handling of lambdas.</p>
 
