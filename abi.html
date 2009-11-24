@@ -2588,53 +2588,69 @@ which defines a large number of runtime utility routine APIs.
 <p>
 In general, C++ value parameters are handled just like C parameters.
 This includes class type parameters passed wholly or partially in registers.
-However, in the special case where the parameter type has a non-trivial
-copy constructor or destructor,
-the caller must allocate space for a temporary copy,
-and pass the resulting copy by reference (below).
-Specifically,
+There are, however, some special cases.
+</p>
+<ol type="1">
+ <li>
+  <p>
+   In the special case where the parameter type has a non-trivial copy
+   constructor or destructor, the caller must allocate space for a
+   temporary copy, and pass the resulting copy by reference (below).
+   Specifically,
+  </p>
+  <ul>
+   <li>
+    <p>
+     Space is allocated by the caller for the temporary.  If there is
+     no non-trivial copy constructor or destructor, it is in the normal
+     parameter-passing space, i.e. in the parameter registers or on the
+     stack, and the constructor is called if necessary.  Otherwise, it
+     is allocated on the stack or heap.
+    </p>
+   </li>
 
-<ul>
+   <li>
+    <p>
+     The caller constructs the parameter in the space allocated, using
+     a simple copy to the parameter space (parameter registers or
+     stack) if there is no non-trivial copy constructor or destructor.
+    </p>
+   </li>
 
-<p>
-<li>
-Space is allocated by the caller for the temporary.
-If there is no non-trivial copy constructor
-or destructor,
-it is in the normal parameter-passing space,
-i.e. in the parameter registers or on the stack,
-and the constructor is called if necessary.
-Otherwise, it is allocated on the stack or heap.
+   <li>
+    <p>
+     The function is called, passing the parameter value (if there is
+     no non-trivial copy constructor or destructor), or its address
+     (if there is one).
+    </p>
+   </li>
 
-<p>
-<li>
-The caller constructs the parameter in the space allocated,
-using a simple copy to the parameter space
-(parameter registers or stack)
-if there is no non-trivial copy constructor
-or destructor.
+   <li>
+    <p>
+     The caller calls any non-trivial destructor for the parameter
+     after returning (at the end of the containing expression).
+    </p>
+   </li>
 
-<p>
-<li>
-The function is called,
-passing the parameter value
-(if there is no non-trivial
-copy constructor or destructor),
-or its address (if there is one).
-
-<p>
-<li>
-The caller calls any non-trivial destructor
-for the parameter after returning
-(at the end of the containing expression).
-
-<p>
-<li>
-If necessary (e.g. if the parameter was allocated on the heap),
-the caller deallocates space after return and destruction.
-
-</ul>
-
+   <li>
+    <p>
+     If necessary (e.g. if the parameter was allocated on the heap),
+     the caller deallocates space after return and destruction.
+    </p>
+   </li>
+  </ul>
+ </li>
+ <li>
+  <p>
+   In the case where the parameter type is class
+   <code>std::decimal::decimal32</code>,
+   <code>std::decimal::decimal64</code>, or
+   <code>std::decimal::decimal128</code> as defined in TR 24733, the
+   parameter is passed the same as the corresponding native decimal
+   floating-point scalar type.
+  </p>
+ </li>
+</ol>
 
 <p>
 <h4> 3.1.2 Reference Parameters </h4>
@@ -2672,6 +2688,16 @@ and passes a pointer to the temporary as an implicit
 first parameter
 preceding both the <code>this</code> parameter and user parameters.
 The callee constructs the return value into this temporary.
+</p>
+
+<p>
+ Another exception is that a return value type of class
+ <code>std::decimal::decimal32</code>,
+ <code>std::decimal::decimal64</code>, or
+ <code>std::decimal::decimal128</code> as defined in TR 24733 is
+ returned the same as the corresponding native decimal floating-point
+ scalar type.
+</p>
 
 <p>
 A result of an empty class type will be returned as though it were
@@ -4377,6 +4403,13 @@ except that no CV-qualifiers are present in a nested name specification.
   &lt;class-enum-type> ::= &lt;name>
 </pre></font></code>
 
+<p>
+An exception, however, is that class <code>std::decimal::decimal32</code>,
+<code>std::decimal::decimal64</code>, or <code>std::decimal::decimal128</code>
+as defined in TR 24733 uses the same encoding as the corresponding native
+decimal-floating point scalar type.
+
+</p><p>
 Unnamed class, union, and enum types that aren't closure types, that
 haven't acquired a "name for linkage purposes" (through a typedef), and
 that aren't anonymous union types, follow
@@ -5221,7 +5254,10 @@ unwind table location.
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
 
-<p><font color="blue">[091113]</font>Document passing for IEEE 754r
+<p><font color="blue">[091124]</font>Document passing for IEEE 754r
+decimal and half-precision floating point types.</p>
+
+<p><font color="blue">[091113]</font>Document mangling for IEEE 754r
 decimal and half-precision floating point types.</p>
 
 <p><font color="blue">[091007]</font>Document handling of lambdas.</p>
