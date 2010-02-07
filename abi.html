@@ -4488,6 +4488,7 @@ typically a substitution.
 Note that a template parameter reference is a substitution candidate,
 distinct from the type (or other substitutible entity)
 that is the actual parameter.
+</p>
 
 <pre><code><font color=blue>
   &lt;template-param> ::= T_	# first template parameter
@@ -4495,6 +4496,16 @@ that is the actual parameter.
   &lt;template-template-param> ::= &lt;template-param>
 			    ::= &lt;substitution>
 
+</font></code></pre>
+
+<p>
+Function parameters referenced in a late-specified return type are
+handled similarly:
+</p>
+
+<pre><code><font color="blue">
+  &lt;function-param&gt; ::= fp_	# first function parameter
+		   ::= fp &lt;<i>parameter-2 non-negative</i> number&gt; _
 </font></code></pre>
 
 <p>
