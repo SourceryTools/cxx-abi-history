@@ -4520,7 +4520,7 @@ from other arguments.
 
   &lt;template-arg> ::= &lt;type>                                        # type or template
                  ::= X &lt;expression&gt; E                              # expression
-                 ::= &lt;expr-primary>                                   # simple expressions
+                 ::= &lt;expr-primary>                                # simple expressions
                  ::= I &lt;template-arg&gt;* E                           # argument pack
                  ::= sp &lt;expression&gt;                               # pack expansion of (C++0x)
 
@@ -4529,26 +4529,26 @@ from other arguments.
                ::= &lt;<i>trinary</i> operator-name> &lt;expression> &lt;expression> &lt;expression>
                ::= cl &lt;expression&gt;+ E                              # call
                ::= cv &lt;type&gt; expression                            # conversion with one argument
-               ::= cv &lt;type&gt; _ &lt;expression&gt;* E               # conversion with a different number of arguments
+               ::= cv &lt;type&gt; _ &lt;expression&gt;* E                     # conversion with a different number of arguments
                ::= st &lt;type&gt;                                       # sizeof (a type)
                ::= at &lt;type&gt;                                       # alignof (a type)
                ::= &lt;template-param>
                ::= &lt;function-param&gt;
                ::= sr &lt;type> &lt;unqualified-name>                    # dependent name
-               ::= sr &lt;type> &lt;unqualified-name> &lt;template-args> # dependent template-id
-               ::= dt &lt;expression&gt; &lt;unqualified-name&gt;        # expr.name
+               ::= sr &lt;type> &lt;unqualified-name> &lt;template-args>    # dependent template-id
+               ::= dt &lt;expression&gt; &lt;unqualified-name&gt;              # expr.name
                ::= dt &lt;expression&gt; &lt;unqualified-name&gt; &lt;template-args&gt;
-               ::= pt &lt;expression&gt; &lt;unqualified-name&gt;        # expr->name
+               ::= pt &lt;expression&gt; &lt;unqualified-name&gt;              # expr->name
                ::= pt &lt;expression&gt; &lt;unqualified-name&gt; &lt;template-args&gt;
                ::= on &lt;operator-name&gt;                              # dependent operator-function-id
-               ::= on &lt;operator-name&gt; &lt;template-args&gt;        # dependent operator template-id
+               ::= on &lt;operator-name&gt; &lt;template-args&gt;              # dependent operator template-id
                ::= &lt;source-name&gt;                                   # dependent name
-               ::= &lt;source-name&gt; &lt;template-args&gt;             # dependent template-id
+               ::= &lt;source-name&gt; &lt;template-args&gt;                   # dependent template-id
                ::= sZ &lt;template-param&gt;                             # size of a parameter pack
                ::= &lt;expr-primary>
 
-  &lt;expr-primary> ::= L &lt;type> &lt;<i>value</i> number> E           # integer literal
-                 ::= L &lt;type &lt;<i>value</i> float> E                # floating literal
+  &lt;expr-primary> ::= L &lt;type> &lt;<i>value</i> number> E                     # integer literal
+                 ::= L &lt;type &lt;<i>value</i> float> E                       # floating literal
                  ::= L &lt;mangled-name&gt; E                            # external name
 
 </pre></code></font>
