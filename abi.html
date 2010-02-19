@@ -4528,7 +4528,7 @@ from other arguments.
                ::= &lt;<i>binary</i> operator-name> &lt;expression> &lt;expression>
                ::= &lt;<i>trinary</i> operator-name> &lt;expression> &lt;expression> &lt;expression>
                ::= cl &lt;expression&gt;+ E                              # call
-               ::= cv &lt;type&gt; expression                            # conversion with one argument
+               ::= cv &lt;type&gt; &lt;expression&gt;                          # conversion with one argument
                ::= cv &lt;type&gt; _ &lt;expression&gt;* E                     # conversion with a different number of arguments
                ::= st &lt;type&gt;                                       # sizeof (a type)
                ::= at &lt;type&gt;                                       # alignof (a type)
@@ -4548,7 +4548,7 @@ from other arguments.
                ::= &lt;expr-primary>
 
   &lt;expr-primary> ::= L &lt;type> &lt;<i>value</i> number> E                     # integer literal
-                 ::= L &lt;type &lt;<i>value</i> float> E                       # floating literal
+                 ::= L &lt;type&gt; &lt;<i>value</i> float> E                      # floating literal
                  ::= L &lt;mangled-name&gt; E                            # external name
 
 </pre></code></font>
