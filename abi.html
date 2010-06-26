@@ -2013,10 +2013,15 @@ will be kept in the run-time support library.
 Specifically, the run-time support library
 should contain type_info objects for the types
 X, X* and X const*,
-for every X in: void, bool, wchar_t, char, unsigned char, signed char,
+for every X in: void, std::nullptr_t,
+bool, wchar_t, char, unsigned char, signed char,
 short, unsigned short, int, unsigned int, long, unsigned long, long long,
 unsigned long long, float, double, long double, char16_t, char32_t,
 and the IEEE 754r decimal and half-precision floating point types.
+Each of the type_info objects for X shall have type
+<code>abi::__fundamental_type_info</code> (or a type derived therefrom),
+whereas the objects corresponding to X* and X const* shall have type
+<code>abi::__pointer_type_info</code> (or a type derived therefrom).
 (Note that various other type_info objects for class types may reside
 in the run-time support library by virtue of the preceding rules,
 e.g. that of <code>std::bad_alloc</code>.)
@@ -4321,6 +4326,7 @@ Builtin types are represented by single-letter codes:
                  ::= Dh # IEEE 754r half-precision floating point (16 bits)
                  ::= Di # char32_t
                  ::= Ds # char16_t
+                 ::= Dn # std::nullptr_t (i.e., decltype(nullptr))
 		 ::= u &lt;source-name>	# vendor extended type
 
 </pre></font></code>
@@ -5273,6 +5279,9 @@ unwind table location.
 <p>This version of this document is $Revision: 1.86 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p><font color="blue">[100625]</font>Add <code>nullptr_t</code>
+  mangling.</p>
 
 <p><font color="blue">[100212]</font>Permit mangling of additional
 expression forms as template arguments.</p>
