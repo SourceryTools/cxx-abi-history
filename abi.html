@@ -4599,8 +4599,7 @@ from other arguments.
   &lt;template-arg> ::= &lt;type>                                             # type or template
                  ::= X &lt;expression&gt; E                                   # expression
                  ::= &lt;expr-primary>                                     # simple expressions
-                 ::= I &lt;template-arg&gt;* E                                # argument pack
-                 ::= sp &lt;expression&gt;                                    # pack expansion (C++0x)
+                 ::= J &lt;template-arg&gt;* E                                # argument pack
 
   &lt;expression> ::= &lt;<i>unary</i> operator-name> &lt;expression>
                ::= &lt;<i>binary</i> operator-name> &lt;expression> &lt;expression>
@@ -4630,6 +4629,8 @@ from other arguments.
                ::= pt &lt;expression&gt; &lt;unresolved-name&gt;                    # expr-&gt;name
                ::= ds &lt;expression&gt; &lt;expression&gt;                         # expr.*expr
                ::= sZ &lt;template-param&gt;                                  # size of a parameter pack
+               ::= sZ &lt;function-param&gt;                                  # size of a function parameter pack
+               ::= sp &lt;expression&gt;                                      # pack expansion
                ::= tw &lt;expression&gt;                                      # throw expression
                ::= tr                                                   # throw with no operand (rethrow)
                ::= &lt;unresolved-name&gt;                                    # f(p), N::f(p), ::f(p),
@@ -5478,6 +5479,8 @@ unwind table location.
 <p>This version of this document is $Revision: 1.86 $.  No special
 significance should be attached to the form of the revision number; it
 is simply a identifying number.</p>
+
+<p><font color="blue">[110301]</font>Change mangling for argument packs.</p>
 
 <p><font color="blue">[101124]</font>Revise mangling specification to
   cover instantiation-dependent expressions.</p>
